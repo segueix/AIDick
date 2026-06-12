@@ -728,18 +728,9 @@
   <label class="field-label" for="openaiApiKey" style="margin-top:6px;">🔑 OpenAI API Key <span style="color:var(--text2);font-size:.78rem;">(opcional — per a models GPT)</span></label>
   <input type="password" id="openaiApiKey" placeholder="sk-..." oninput="guardarClausAPI()">
 
-  <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
-    <h3 style="margin:0 0 10px;font-size:1em;">🎭 Estil i To Global del Projecte</h3>
-
-    <label class="field-label" for="config-genere">Gènere Literari</label>
-    <input type="text" id="config-genere" value="Thriller / Nordic Noir" placeholder="ex: Ciència-Ficció, Nordic Noir...">
-
-    <label class="field-label" for="config-autor">Autor de Referència</label>
-    <input type="text" id="config-autor" value="Stieg Larsson" placeholder="ex: Stieg Larsson, Tolkien...">
-
-    <label class="field-label" for="config-focus-climax">Focus del Clímax (Cost acumulat)</label>
-    <input type="text" id="config-focus-climax" value="Cost físic extrem, esgotament mental, entorns freds i hostils, cinisme" placeholder="ex: Esgotament físic, xoc moral...">
-  </div>
+  <!-- Etapa A+: la secció "🎭 Estil i To Global del Projecte" (gènere, autor de
+       referència, focus del clímax) s'ha mogut al formulari de creació narrativa
+       (fase-0, secció B), al costat del selector d'univers. -->
 
   <div class="btn-row">
     <button id="btn-guardar-nou" class="btn btn-primary" onclick="guardarIComencar()">Guardar i Començar Nou</button>
@@ -824,13 +815,34 @@
   <!-- Formulari de nova creació (hidden fins que es clica el botó) -->
   <div id="nova-creacio-form" class="hidden" style="margin-top:16px;">
     <label class="field-label" for="sel-tematica">Univers narratiu base</label>
-    <select id="sel-tematica">
+    <select id="sel-tematica" onchange="sincronitzarEstilAmbUnivers()">
       <option value="">— Selecciona un univers —</option>
       <option value="univers Larsson (Stieg Larsson) — evita tòpics">Stieg Larsson — univers noir i crítica sistèmica (evita tòpics)</option>
       <option value="univers Philip K. Dick — evita tòpics">Philip K. Dick — univers distòpic/paranoic (evita tòpics)</option>
       <option value="univers Castaneda (Carlos Castaneda) — evita tòpics">Carlos Castaneda — univers xamànic i percepció (evita tòpics)</option>
       <option value="univers Tolkien (J.R.R. Tolkien) — evita tòpics">J.R.R. Tolkien — univers èpic i mitopoètic (evita tòpics)</option>
     </select>
+
+    <!-- 🎭 Estil i To Global del Projecte (mogut des de la configuració d'API).
+         En triar l'univers, aquests camps es preomplen per a l'autor; sempre editables. -->
+    <div style="margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);">
+      <div style="font-weight:700;margin-bottom:8px;">🎭 Estil i To Global del Projecte</div>
+
+      <label class="field-label" for="config-autor">Autor de Referència</label>
+      <select id="config-autor" onchange="aplicarPrefillAutor()">
+        <option value="Stieg Larsson" selected>Stieg Larsson</option>
+        <option value="Philip K. Dick">Philip K. Dick</option>
+        <option value="Carlos Castaneda">Carlos Castaneda</option>
+        <option value="J.R.R. Tolkien">J.R.R. Tolkien</option>
+        <option value="">— Veu original (cap autor de referència) —</option>
+      </select>
+
+      <label class="field-label" for="config-genere" style="margin-top:8px;">Gènere Literari</label>
+      <input type="text" id="config-genere" value="Thriller / Nordic Noir" placeholder="ex: Ciència-Ficció, Nordic Noir...">
+
+      <label class="field-label" for="config-focus-climax" style="margin-top:8px;">Focus del Clímax (Cost acumulat)</label>
+      <input type="text" id="config-focus-climax" value="Cost físic extrem, esgotament mental, entorns freds i hostils, cinisme" placeholder="ex: Esgotament físic, xoc moral...">
+    </div>
 
     <div style="margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);">
       <div style="font-weight:700;margin-bottom:8px;">🧬 Creador de Veu Literària Original</div>
@@ -2997,6 +3009,50 @@ ${perfilOriginal.nota_usuari ? `<br>Nota de veu: <em>${escHtml(perfilOriginal.no
 
 // ─── CANVI G: iniciarNovaCreacio amb anàlisi d'estil ─────────────────────────
 
+// 🎭 Estil i To Global: preompliment per autor de referència (camps sempre editables)
+const PREFILL_PER_AUTOR = {
+  'Stieg Larsson': {
+    genere: 'Thriller / Nordic Noir',
+    focus: 'Cost físic extrem, esgotament mental, entorns freds i hostils, cinisme'
+  },
+  'Philip K. Dick': {
+    genere: 'Ciència-ficció distòpica / paranoica',
+    focus: 'Col·lapse de la realitat, paranoia funcional, cost psíquic de descobrir la veritat'
+  },
+  'Carlos Castaneda': {
+    genere: 'Realisme xamànic / relat iniciàtic',
+    focus: 'Desgast perceptiu, por al desconegut, dissolució del jo racional'
+  },
+  'J.R.R. Tolkien': {
+    genere: 'Fantasia èpica / mitopoètica',
+    focus: 'Sacrifici, pes moral de les decisions, esperança fràgil davant la foscor'
+  }
+};
+
+function aplicarPrefillAutor() {
+  const autor = document.getElementById('config-autor')?.value || '';
+  const prefill = PREFILL_PER_AUTOR[autor];
+  if (!prefill) return;
+  const genereEl = document.getElementById('config-genere');
+  const focusEl  = document.getElementById('config-focus-climax');
+  if (genereEl) genereEl.value = prefill.genere;
+  if (focusEl)  focusEl.value  = prefill.focus;
+}
+
+function sincronitzarEstilAmbUnivers() {
+  const univers = (document.getElementById('sel-tematica')?.value || '').toLowerCase();
+  const autorEl = document.getElementById('config-autor');
+  if (!autorEl || !univers) return;
+  let autor = '';
+  if (/larsson/.test(univers)) autor = 'Stieg Larsson';
+  else if (/dick/.test(univers)) autor = 'Philip K. Dick';
+  else if (/castaneda/.test(univers)) autor = 'Carlos Castaneda';
+  else if (/tolkien/.test(univers)) autor = 'J.R.R. Tolkien';
+  if (!autor) return;
+  autorEl.value = autor;
+  aplicarPrefillAutor();
+}
+
 function mostrarFormNovaCreacio() {
   const form   = document.getElementById('nova-creacio-form');
   const botons = document.getElementById('fase-0-botons');
@@ -3025,6 +3081,14 @@ async function iniciarNovaCreacio() {
   ESTAT._nkg = crearNKG();
   ESTAT._modeCreacio = 'guiat';
   ESTAT._autoRedaccioMode = false;
+
+  // El bloc "Estil i To Global" viu ara en aquest formulari: cal capturar els
+  // valors aquí (guardarIComencar s'executa abans que l'usuari els pugui editar).
+  ESTAT.configProjecte = {
+    genere: document.getElementById('config-genere')?.value || '',
+    autor_referencia: document.getElementById('config-autor')?.value || '',
+    focus_climax: document.getElementById('config-focus-climax')?.value || ''
+  };
 
   const resumWrap  = document.getElementById('analisi-resum-wrap');
   const loaderWrap = document.getElementById('analisi-loader-wrap');
