@@ -1584,6 +1584,8 @@
 <div class="card hidden" id="fase-24">
   <h2><span class="icon">📋</span> Control d'Arcs Narratius <span class="badge-model badge-opus">Opus</span></h2>
   <p style="color:var(--text2);font-size:.9rem;margin-bottom:18px;">Opus avalua la novel·la a partir dels resums — sense llegir el cos íntegre — per estalviar tokens.</p>
+  <!-- Etapa E.3: porta de sortida obligatòria -->
+  <div id="checklist-sortida" style="margin-bottom:16px;"></div>
   <div class="loader-wrap" id="loader-24">
     <div class="spinner" style="border-top-color:#60a5fa;"></div>
     <span>🔵 Opus analitzant els arcs narratius…</span>
@@ -1593,7 +1595,10 @@
     <div id="termometre-veritat" style="margin-top:16px;"></div>
     <div class="btn-row" style="margin-top:20px;">
       <button class="btn btn-primary hidden" id="btn-epileg" onclick="escriureEpileg()">✨ Escriure Epíleg Resolutiu <span class="badge-model badge-sonnet">Sonnet</span></button>
+      <!-- Etapa E.4: avaluació informativa per perfil d'autor, mai reescriu -->
+      <button class="btn btn-secondary" id="btn-informe-excellencia" onclick="generarInformeExcellencia()">🏅 Informe d'excel·lència</button>
     </div>
+    <div id="informe-excellencia-cos" class="hidden" style="margin-top:14px;"></div>
   </div>
   <div id="epileg-loader-wrap" class="hidden" style="padding:20px 0;border-top:1px solid var(--border);margin-top:20px;">
     <div style="display:flex;align-items:center;gap:10px;color:var(--text2);font-size:.88rem;margin-bottom:14px;">
@@ -2369,12 +2374,16 @@ function renderPanellEtapes() {
         ? { label: "Anar a l'escriptura", accio: 'etapaAnarEscriptura()', actiu: true }
         : { label: 'Començar a escriure', accio: 'etapaComencarEscriptura()', actiu: st.validacio.ok }
     },
-    {
-      nom: '🔍 6. Revisió i export', desc: "Control d'arcs, epíleg i descàrregues",
-      feta: false, bloquejada: !st.escripturaOk,
-      detall: st.escripturaOk ? 'Disponible' : 'Cal acabar tots els capítols',
-      boto: { label: "Control d'arcs", accio: 'etapaAnarRevisio()', actiu: st.escripturaOk }
-    }
+    (() => {
+      const chk = (typeof checklistSortidaNovella === 'function') ? checklistSortidaNovella() : [];
+      const verds = chk.filter(i => i.ok).length;
+      return {
+        nom: '🔍 6. Revisió i export', desc: "Control d'arcs, checklist de sortida i descàrregues",
+        feta: chk.length > 0 && verds === chk.length, bloquejada: !st.escripturaOk,
+        detall: st.escripturaOk ? `Checklist de sortida: ${verds}/${chk.length} en verd` : 'Cal acabar tots els capítols',
+        boto: { label: "Control d'arcs", accio: 'etapaAnarRevisio()', actiu: st.escripturaOk }
+      };
+    })()
   ];
 
   cos.innerHTML = etapes.map(e => {
@@ -2442,6 +2451,160 @@ function etapaAnarEscriptura() {
 
 function etapaAnarRevisio() {
   if (typeof iniciarFase12 === 'function') iniciarFase12();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ETAPA E.2 — Contradiccions tardanes (reconciliació cap endavant)
+//  Compatible amb la immutabilitat: mai es reescriu un capítol bloquejat;
+//  s'obre un fil 'error-continuïtat' que el capítol següent ha de reconciliar.
+// ═══════════════════════════════════════════════════════════
+function registrarContradiccioTardana(descripcio, capitolOrigen, capitolDetectat) {
+  ESTAT._contradiccionsTardanes = Array.isArray(ESTAT._contradiccionsTardanes) ? ESTAT._contradiccionsTardanes : [];
+  const id = 'errcont_' + Date.now() + '_' + ESTAT._contradiccionsTardanes.length;
+  ESTAT._contradiccionsTardanes.push({
+    id, descripcio: String(descripcio || ''), capitolOrigen, capitolDetectat,
+    estat: 'oberta', creatISO: new Date().toISOString()
+  });
+  if (ESTAT.llibreRegistre && Array.isArray(ESTAT.llibreRegistre.fils_oberts)) {
+    ESTAT.llibreRegistre.fils_oberts.push({
+      id,
+      descripcio: `Reconciliar cap endavant: ${String(descripcio || '')}`,
+      categoria: 'error-continuïtat',
+      prioritat: 'alta',
+      capitol_origen: capitolOrigen,
+      estat: 'obert'
+    });
+  }
+  toast('⚠️ Contradicció tardana registrada: el proper capítol l\'haurà de reconciliar.');
+  renderPanellEtapes();
+  return id;
+}
+
+function tancarContradiccioTardana(id) {
+  const c = (ESTAT._contradiccionsTardanes || []).find(x => x.id === id);
+  if (c) c.estat = 'reconciliada';
+  renderPanellEtapes();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ETAPA E.3 — Checklist de sortida (porta obligatòria de l'etapa 6)
+// ═══════════════════════════════════════════════════════════
+function checklistSortidaNovella() {
+  const reg = ESTAT.llibreRegistre || {};
+  const filsOberts = (Array.isArray(reg.fils_oberts) ? reg.fils_oberts : []).filter(Boolean);
+  const total = (ESTAT._estructuraCapitols || []).length;
+  const escrits = (ESTAT._capitols_generats || []).filter(Boolean).length;
+  const contradiccions = (ESTAT._contradiccionsTardanes || []).filter(c => c.estat === 'oberta');
+  const errorsVal = ESTAT._errorsValidacioLLM || [];
+  return [
+    {
+      nom: 'Capítols complets',
+      ok: total > 0 && escrits >= total,
+      detall: `${escrits}/${total}`
+    },
+    {
+      nom: 'Fils narratius tancats',
+      ok: filsOberts.length === 0,
+      detall: filsOberts.length === 0
+        ? 'tots tancats'
+        : `${filsOberts.length} oberts — tanca'ls o justifica'ls com a final obert volgut`
+    },
+    {
+      nom: 'Contradiccions reconciliades',
+      ok: contradiccions.length === 0,
+      detall: contradiccions.length === 0 ? 'cap pendent' : `${contradiccions.length} obertes`
+    },
+    {
+      nom: 'Validacions LLM netes',
+      ok: errorsVal.length === 0,
+      detall: errorsVal.length === 0 ? 'cap error registrat' : `${errorsVal.length} errors de validació (consola)`
+    }
+  ];
+}
+
+function renderChecklistSortida() {
+  const wrap = document.getElementById('checklist-sortida');
+  if (!wrap) return;
+  const items = checklistSortidaNovella();
+  const verds = items.filter(i => i.ok).length;
+  wrap.innerHTML = `
+    <div style="padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);">
+      <div style="font-weight:700;margin-bottom:8px;">📋 Checklist de sortida — ${verds}/${items.length} en verd</div>
+      ${items.map(i => `<div style="font-size:.86rem;padding:3px 0;">${i.ok ? '✅' : '❌'} <strong>${escHtml(i.nom)}</strong> — <span style="color:var(--text2);">${escHtml(i.detall)}</span></div>`).join('')}
+      ${verds === items.length
+        ? '<div style="margin-top:8px;color:var(--ok,#2eb67d);font-size:.86rem;">El llibre compleix la porta de sortida.</div>'
+        : '<div style="margin-top:8px;color:var(--text2);font-size:.86rem;">El llibre no es considera acabat fins que tot el checklist és verd.</div>'}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ETAPA E.4 — Informe d'excel·lència per perfil d'autor
+//  Avaluació informativa per capítol: MAI reescriu res automàticament.
+// ═══════════════════════════════════════════════════════════
+function renderInformeExcellenciaHtml(resultats) {
+  if (!resultats.length) return '';
+  return resultats.map(r => {
+    if (!r.ok) {
+      return `<div style="margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;"><strong>Capítol ${r.capitol}</strong> — <span style="color:var(--text2);">avaluació no disponible (${escHtml(r.error || 'error')})</span></div>`;
+    }
+    const files = (r.criteris || []).map(c => `
+      <div style="font-size:.84rem;padding:4px 0;border-top:1px dashed var(--border);">
+        ${c.compleix ? '✅' : '❌'} ${escHtml(c.criteri || '')}
+        ${c.evidencia ? `<div style="color:var(--text2);padding-left:22px;">Evidència: ${escHtml(c.evidencia)}</div>` : ''}
+        ${!c.compleix && c.suggeriment ? `<div style="color:var(--text2);padding-left:22px;">Suggeriment: ${escHtml(c.suggeriment)}</div>` : ''}
+      </div>`).join('');
+    const compleix = (r.criteris || []).filter(c => c.compleix).length;
+    return `<div style="margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;">
+      <strong>Capítol ${r.capitol}</strong> — ${compleix}/${(r.criteris || []).length} criteris
+      ${files}
+    </div>`;
+  }).join('');
+}
+
+async function generarInformeExcellencia() {
+  const idPerfil = obtenirAutorIdProjecte();
+  const perfil = (idPerfil && PERFILS_AUTOR[idPerfil]) || null;
+  const criteris = (perfil && perfil.criteris_excellencia) || [];
+  if (criteris.length === 0) { toast("Aquest projecte no té perfil d'autor amb criteris d'excel·lència."); return; }
+  const caps = ESTAT._capitols_generats || [];
+  if (caps.filter(Boolean).length === 0) { toast('Encara no hi ha capítols escrits.'); return; }
+
+  const wrap = document.getElementById('informe-excellencia-cos');
+  const btn = document.getElementById('btn-informe-excellencia');
+  if (btn) { btn.disabled = true; btn.textContent = 'Avaluant…'; }
+  if (wrap) wrap.classList.remove('hidden');
+
+  const models = getModelConfig(USER_CONFIG);
+  const resultats = [];
+  for (let i = 0; i < caps.length; i++) {
+    const text = String(caps[i] || '').trim();
+    if (!text) continue;
+    if (wrap) wrap.innerHTML = `<p style="color:var(--text2);font-size:.86rem;">🏅 Avaluant capítol ${i + 1} de ${caps.length} segons el llistó ${escHtml(perfil.nom)}…</p>` + renderInformeExcellenciaHtml(resultats);
+    const prompt = `Ets un crític literari expert en l'obra de ${perfil.nom}. Avalua si aquest capítol compleix cada criteri d'excel·lència. Sigues exigent: "compleix" només amb evidència clara al text.
+
+CRITERIS:
+${criteris.map((c, n) => `${n + 1}. ${c}`).join('\n')}
+
+CAPÍTOL ${i + 1} (fragment):
+${text.substring(0, 6000)}
+
+Retorna EXCLUSIVAMENT JSON vàlid:
+{"criteris":[{"criteri":"resum curt del criteri","compleix":true,"evidencia":"cita o descripció concreta (1 frase)","suggeriment":"millora concreta si no compleix, o cadena buida"}]}`;
+    try {
+      const resVal = await generarJsonValidat('informe_excellencia', motiu => callLLMMulti(
+        [{ role: 'user', content: prompt + (motiu ? `\n\nATENCIÓ — REINTENT: la resposta anterior era invàlida (${motiu}). Retorna el JSON complet i vàlid.` : '') }],
+        'Ets un crític literari rigorós. Respon EXCLUSIVAMENT JSON vàlid.',
+        Object.assign({}, USER_CONFIG, { maxTokens: 1400, model: models.modelArquitecte }),
+        'arquitectura'
+      ));
+      resultats.push({ capitol: i + 1, ok: resVal.ok, criteris: resVal.ok ? resVal.dades.criteris : [], error: resVal.ok ? '' : (resVal.errors || []).join('; ') });
+    } catch (err) {
+      resultats.push({ capitol: i + 1, ok: false, criteris: [], error: err.message });
+    }
+  }
+  if (wrap) wrap.innerHTML = renderInformeExcellenciaHtml(resultats);
+  if (btn) { btn.disabled = false; btn.textContent = "🏅 Informe d'excel·lència"; }
+  toast("Informe d'excel·lència completat. És informatiu: cap reescriptura automàtica.");
 }
 
 function compteParaules(text) {
@@ -4667,8 +4830,16 @@ async function iniciarEscaletaSeqNou() {
     const escaletesAnteriors = ESTAT._escaletes.slice();
 
     try {
-      const raw = await nouFlux_escaletaCapitol(capInfo, macronarrativaText, escaletesAnteriors, ESTAT._nkg, USER_CONFIG, n);
-      const dades = parseJsonRobust(raw) || {};
+      // Etapa E.1: validació amb esquema + 1 reintent; mai continuar amb {} buit.
+      const resVal = await generarJsonValidat('escaleta_capitol', motiu =>
+        nouFlux_escaletaCapitol(capInfo, macronarrativaText, escaletesAnteriors, ESTAT._nkg, USER_CONFIG, n, motiu)
+      );
+      if (!resVal.ok) {
+        hideLoader('b6');
+        toast(`⛔ Escaleta del capítol ${idx + 1} invàlida després del reintent (${(resVal.errors || []).join(' · ')}). Flux aturat: torna a generar l'escaleta.`);
+        return;
+      }
+      const dades = resVal.dades;
 
       // Parsejar i validar ganxo_final
       const ganxoRaw = dades.ganxo_final && typeof dades.ganxo_final === 'object' ? dades.ganxo_final : null;
@@ -10919,15 +11090,21 @@ Retorna EXCLUSIVAMENT JSON vàlid:
   }];
 
   const models = getModelConfig(userConfig || USER_CONFIG);
-  const raw = await callLLMMulti(
-    msgs,
+  // Etapa E.1: validació amb esquema + 1 reintent. Si falla, no es toca el
+  // registre de fils (es conserva l'estat anterior) i queda constància visible.
+  const resVal = await generarJsonValidat('fils_narratius', motiu => callLLMMulti(
+    motiu
+      ? [{ role: 'user', content: msgs[0].content + `\n\nATENCIÓ — REINTENT: la resposta anterior era invàlida (${motiu}). Retorna el JSON complet i vàlid.` }]
+      : msgs,
     'Ets un analista narratiu. Respon EXCLUSIVAMENT JSON vàlid.',
     Object.assign({}, userConfig || USER_CONFIG, { maxTokens: 600, model: models.modelArquitecte }),
     'arquitectura'
-  );
-
-  const dades = parseJsonRobust(raw);
-  if (!dades) return;
+  ));
+  if (!resVal.ok) {
+    toast(`⚠️ Fils narratius del capítol ${idx + 1} no actualitzats (resposta invàlida). Es conserva l'estat anterior.`);
+    return;
+  }
+  const dades = resVal.dades;
 
   // Actualitzar fils oberts/tancats (estructura tipada + deduplicació robusta)
   const aliasMap = construirAliasMapTrames();
@@ -11133,6 +11310,7 @@ async function iniciarFase12() {
   ESTAT.fase = 24;
   updateProgress(24);
   showCard('fase-24');
+  if (typeof renderChecklistSortida === 'function') renderChecklistSortida();
   setTimeout(() => document.getElementById('fase-24')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   document.getElementById('arcs-result').classList.add('hidden');
   document.getElementById('epileg-loader-wrap').classList.add('hidden');
@@ -12585,7 +12763,13 @@ Ritme metòdic i pausat en la investigació, amb pics d'acció breu, directa i b
     regles_dures: `• TO BRUTAL I EXPLÍCIT: La prosa ha de ser crua i directa, a l'estil de Stieg Larsson. No endolceixis les escenes denses ni la visceralitat psicològica.
 • DIÀLEGS AL GRA: No allarguis les converses. Quan la tensió o el subtext ja ha quedat clar per al lector, talla l'escena immediatament.
 • ECONOMIA PSICOLÒGICA: No repeteixis estructures de pensament (racionalització, càlcul). Un cop el lector entén com processa la informació un personatge, no ho tornis a descriure.
-`
+`,
+    criteris_excellencia: [
+      "La violència té conseqüència institucional o social dins la trama, mai és gratuïta",
+      "La investigació avança per documents, fonts i procediments versemblants",
+      "Cap heroïcitat gratuïta: el cost físic i mental dels personatges és visible",
+      "Crítica social concreta integrada al text sense discurs explícit"
+    ]
   },
   tolkien: {
     nom: 'J.R.R. Tolkien',
@@ -12604,7 +12788,13 @@ Temes centrals: la corrupció del poder i la tentació dels anells, el pes de la
 Llenguatge solemne però accessible: frases llargues i rítmiques, construccions arcaiques mesurades, èmfasi en els noms propis com a portadors de destí.
 La natura com a presència viva i moral: boscos, rius i muntanyes tenen memòria, voluntat i opinió sobre els esdeveniments dels mortals.
 El mal té pes físic i sensorial: no s'explica, es percep en l'aire que s'espesseix, la llum que s'apaga, el silenci sobtat dels ocells i la por als ulls dels animals.`,
-    intensitat: "INTENSITAT NARRATIVA (MODE TOLKIEN): Prioritza gravetat mítica, memòria del paisatge i pes moral de les decisions. La tensió no ha de ser sempre frenètica: alterna amplitud èpica, respiració lírica i conseqüència històrica."
+    intensitat: "INTENSITAT NARRATIVA (MODE TOLKIEN): Prioritza gravetat mítica, memòria del paisatge i pes moral de les decisions. La tensió no ha de ser sempre frenètica: alterna amplitud èpica, respiració lírica i conseqüència històrica.",
+    criteris_excellencia: [
+      "El llenguatge crea món: topònims i noms propis amb memòria i coherència fonològica",
+      "Hi ha un moment d'eucatàstrofe, o el seu cost es fa físicament present",
+      "Cap anacronisme contemporani ni topònim o nom del món real",
+      "La natura té presència moral activa en alguna escena"
+    ]
   },
   dick: {
     nom: 'Philip K. Dick',
@@ -12623,7 +12813,13 @@ Distopia quotidiana i desgastada: el futur és una extensió deteriorada del pre
 Canvis sobtats i irreversibles de realitat: una frase, un objecte, una conversa trenquen el marc que el lector creia ferm. No es recupera l'estat anterior.
 Protagonistes ordinaris —venedors, taxistes, policies de baixa graduació— que descobreixen que el món que habiten és una construcció i han de decidir si prefereixen la mentida còmoda o la veritat devastadora.
 Prosa àgil, nerviosa i plena de diàleg: les espirals de pensament paranoic del protagonista s'intercalen amb l'acció sense aturar el ritme.
-Empatia com a única brúixola moral: en un món on res és real, la capacitat de sentir el dolor de l'altre és l'únic criteri per distingir l'humà de la màquina.`
+Empatia com a única brúixola moral: en un món on res és real, la capacitat de sentir el dolor de l'altre és l'únic criteri per distingir l'humà de la màquina.`,
+    criteris_excellencia: [
+      "La realitat s'esquerda almenys un cop i no es resol del tot",
+      "El sistema (estat, corporació, tecnologia) menteix de manera verificable dins la trama",
+      "La paranoia és funcional i quotidiana, mai histriònica",
+      "L'empatia funciona com a criteri moral en alguna decisió del capítol"
+    ]
   },
   castaneda: {
     nom: 'Carlos Castaneda',
@@ -12643,7 +12839,13 @@ El món natural com a text viu: cada animal, planta, vent o lloc porta intenció
 Diàleg com a vehicle principal de l'ensenyament: les converses entre aprenent i mestre marquen el ritme i transformen la percepció del lector.
 Tensió irresoluble entre la racionalitat occidental del protagonista i la "realitat separada" que se li ofereix: el text no resol aquesta tensió, la manté viva fins al final.
 El desert, la nit, els somnis lúcids i les plantes de poder com a espais on les fronteres entre mons es fan permeables.`,
-    intensitat: "INTENSITAT NARRATIVA (MODE CASTANEDA): Prioritza desplaçament perceptiu, ambigüitat ontològica i procés iniciàtic. La tensió pot ser interior i cognitiva: sostén silencis, paradoxes i fractures de percepció sense accelerar artificialment l'acció."
+    intensitat: "INTENSITAT NARRATIVA (MODE CASTANEDA): Prioritza desplaçament perceptiu, ambigüitat ontològica i procés iniciàtic. La tensió pot ser interior i cognitiva: sostén silencis, paradoxes i fractures de percepció sense accelerar artificialment l'acció.",
+    criteris_excellencia: [
+      "Tensió mestre-deixeble amb lliçó implícita, mai explicada directament",
+      "La percepció alterada té regles internes coherents i precisió sensorial",
+      "L'escèptic dubta de debò: la racionalitat oposa resistència real",
+      "El món natural actua com a text viu amb intenció i missatge"
+    ]
   }
 };
 
@@ -13312,6 +13514,86 @@ async function exportarNovella(titol, caps, estructura, epileg) {
   await obrirGoogleDocsPerImportar(contingut, nomTxt);
 }
 
+
+// ═══════════════════════════════════════════════════════════
+//  ETAPA E.1 — Contractes de validació de sortides LLM
+//  Cap dada estructurada entra a ESTAT sense passar el seu esquema.
+// ═══════════════════════════════════════════════════════════
+const ESQUEMES_LLM = {
+  escaleta_capitol: {
+    descripcio: 'Escaleta de capítol (nou flux)',
+    validar(d) {
+      const errors = [];
+      if (!d || typeof d !== 'object' || Array.isArray(d)) return ['La resposta no és un objecte JSON'];
+      if (!d.funcio || typeof d.funcio !== 'string') errors.push('falta "funcio"');
+      if (!d.detonant_emocional_escena || typeof d.detonant_emocional_escena !== 'string') errors.push('falta "detonant_emocional_escena"');
+      if (!d.primera_frase || typeof d.primera_frase !== 'string') errors.push('falta "primera_frase"');
+      if (!d.darrera_imatge || typeof d.darrera_imatge !== 'string') errors.push('falta "darrera_imatge"');
+      if (!d.ganxo_final || typeof d.ganxo_final !== 'object') errors.push('falta "ganxo_final"');
+      else if (!d.ganxo_final.tipus) errors.push('falta "ganxo_final.tipus"');
+      if (!d.estat_final_personatges || typeof d.estat_final_personatges !== 'object') errors.push('falta "estat_final_personatges"');
+      return errors;
+    }
+  },
+  fils_narratius: {
+    descripcio: 'Actualització de fils narratius post-capítol',
+    validar(d) {
+      if (!d || typeof d !== 'object' || Array.isArray(d)) return ['La resposta no és un objecte JSON'];
+      const errors = [];
+      ['nous_fils_oberts', 'fils_tancats_en_aquest_capitol'].forEach(camp => {
+        if (d[camp] !== undefined && !Array.isArray(d[camp])) errors.push(`"${camp}" no és una llista`);
+      });
+      return errors;
+    }
+  },
+  informe_excellencia: {
+    descripcio: "Informe d'excel·lència per capítol",
+    validar(d) {
+      if (!d || typeof d !== 'object') return ['La resposta no és un objecte JSON'];
+      if (!Array.isArray(d.criteris) || d.criteris.length === 0) return ['falta la llista "criteris"'];
+      const errors = [];
+      d.criteris.forEach((c, i) => {
+        if (!c || typeof c !== 'object') { errors.push(`criteri ${i + 1} no és un objecte`); return; }
+        if (typeof c.compleix !== 'boolean') errors.push(`criteri ${i + 1}: falta "compleix" (booleà)`);
+        if (!c.criteri) errors.push(`criteri ${i + 1}: falta "criteri"`);
+      });
+      return errors;
+    }
+  }
+};
+
+function validarEsquemaLLM(schemaId, dades) {
+  const sch = ESQUEMES_LLM[schemaId];
+  if (!sch) return { ok: true, errors: [] };
+  const errors = sch.validar(dades) || [];
+  return { ok: errors.length === 0, errors };
+}
+
+function registrarErrorValidacioLLM(schemaId, errors) {
+  ESTAT._errorsValidacioLLM = Array.isArray(ESTAT._errorsValidacioLLM) ? ESTAT._errorsValidacioLLM : [];
+  ESTAT._errorsValidacioLLM.push({ schemaId, errors: errors.slice(0, 6), quanISO: new Date().toISOString() });
+  console.error(`⛔ [validacioLLM] ${schemaId} invàlid després de reintent:`, errors);
+}
+
+// Crida + parseig + validació amb UN reintent (el motiu de l'error s'injecta
+// al reintent). Si torna a fallar: registre i aturada neta (ok:false), mai
+// continuar amb dades corruptes.
+async function generarJsonValidat(schemaId, ferCrida) {
+  let raw = await ferCrida('');
+  let dades = parseJsonRobust(raw);
+  let v = dades ? validarEsquemaLLM(schemaId, dades) : { ok: false, errors: ['resposta no parsejable com a JSON'] };
+  if (v.ok) return { ok: true, dades, reintents: 0 };
+
+  const motiu = v.errors.join('; ');
+  console.warn(`⚠️ [validacioLLM] ${schemaId} invàlid (${motiu}). Reintentant amb el motiu injectat…`);
+  raw = await ferCrida(motiu);
+  dades = parseJsonRobust(raw);
+  v = dades ? validarEsquemaLLM(schemaId, dades) : { ok: false, errors: ['resposta no parsejable com a JSON'] };
+  if (v.ok) return { ok: true, dades, reintents: 1 };
+
+  registrarErrorValidacioLLM(schemaId, v.errors);
+  return { ok: false, dades: null, errors: v.errors, reintents: 1 };
+}
 
 // ═══════════════════════════════════════════════════════════
 //  UTILITAT: Parse robust de JSON (evita errors LLM)
@@ -17154,7 +17436,7 @@ Al final, afegeix "=== VERIFICACIÓ ===" i comprova:
   );
 }
 
-async function nouFlux_escaletaCapitol(capInfo, macronarrativaText, escaletesAnteriors, nkg, config, totalCapitols) {
+async function nouFlux_escaletaCapitol(capInfo, macronarrativaText, escaletesAnteriors, nkg, config, totalCapitols, motiuReintent = '') {
   const models = getModelConfig(config || USER_CONFIG || {});
   const filsOberts = (nkg && nkg.threads && Array.isArray(nkg.threads.oberts)) ? nkg.threads.oberts : [];
   const filsObertsText = filsOberts.length > 0 ? filsOberts.join(', ') : 'Cap';
@@ -17229,7 +17511,9 @@ Instruccions per al ganxo:
 ${instruccioGanxo}
 La intensitat del ganxo ha de ser ≥ ${esPenultim ? 5 : intensitat}.
 
-OBLIGATORI: Fusiona plot i drama intern. El camp "detonant_emocional_escena" ha de ser específic i accionable; no acceptis formulacions genèriques del tipus "record del passat" o "patiment intern".`
+OBLIGATORI: Fusiona plot i drama intern. El camp "detonant_emocional_escena" ha de ser específic i accionable; no acceptis formulacions genèriques del tipus "record del passat" o "patiment intern".${motiuReintent ? `
+
+ATENCIÓ — REINTENT: la teva resposta anterior era invàlida (${motiuReintent}). Corregeix exactament aquests problemes i retorna el JSON complet i vàlid.` : ''}`
   }];
   return await nouFluxCall(
     msgs,

@@ -156,7 +156,28 @@ happy-path manual, i registre a CODI_UTIL_FUNCIONANT.md.
 
 ---
 
-### Etapa E — Capa d'excel·lència: validació transversal i tancament de qualitat
+### Etapa E — Capa d'excel·lència: validació transversal i tancament de qualitat ✅ FETA
+
+Implementat:
+- **E.1**: `ESQUEMES_LLM` + `validarEsquemaLLM` + `generarJsonValidat` (parseig robust +
+  validació + 1 reintent amb el motiu injectat + aturada neta i registre a
+  `ESTAT._errorsValidacioLLM`). Connectat a: escaleta de capítol (aturada dura del flux,
+  abans continuava amb `{}` buit en silenci), fils narratius (conserva l'estat anterior
+  i avisa) i informe d'excel·lència. Esquemes pendents d'estendre: `ksn`,
+  `nkg_personatge` (el parseig robust ja els cobreix; afegir-los quan es toquin).
+- **E.2**: `registrarContradiccioTardana()` / `tancarContradiccioTardana()`: obre un fil
+  tipat `error-continuïtat` d'alta prioritat per reconciliar cap endavant, sense tocar
+  capítols bloquejats. Nota: el ganxo automàtic des del jutge queda pendent perquè
+  `aplicarCorreccionsJutge` està desactivat (stub) al codi actual.
+- **E.3**: `checklistSortidaNovella()` + render a la fase 24 i al panell d'etapes
+  (fila 6): capítols complets, fils tancats, contradiccions reconciliades, validacions
+  LLM netes. El llibre no es considera acabat fins que tot és verd.
+- **E.4**: `criteris_excellencia` per perfil dins `PERFILS_AUTOR` + botó
+  "🏅 Informe d'excel·lència" a la fase 24: avaluació LLM per capítol amb sortida
+  estructurada validada (compleix/evidència/suggeriment), només informativa — mai
+  reescriptura automàtica.
+
+Disseny original de referència:
 
 Les etapes A–D fan el procés consistent; l'Etapa E el fa **fiable i excel·lent**. És una capa
 transversal (s'aplica a totes les etapes, no després d'elles) amb quatre peces:
