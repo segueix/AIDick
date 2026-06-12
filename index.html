@@ -2179,6 +2179,69 @@ function importarCopiaSeguretat(event) {
   reader.readAsText(file, 'utf-8');
 }
 
+// Restauració de la UI per al NOU FLUX (fases 'b1'…'b6'): re-renderitza les
+// llistes de cada pas a partir de les dades del snapshot. Sense això, una
+// còpia importada amb fase 'b#' no mostrava res i semblava que es començava
+// de nou (la lògica antiga només entenia fases numèriques).
+function restaurarInterficieNouFlux(fase) {
+  const num = parseInt(String(fase).slice(1), 10) || 1;
+
+  // Mostrar les cards b fins a l'actual; amagar tota la resta de fases
+  document.querySelectorAll('.card').forEach(c => {
+    if (c.id === 'card-config' || c.id === 'panell-etapes') return;
+    const mb = c.id.match(/^fase-b([1-6])$/);
+    if (mb) {
+      c.classList.toggle('hidden', parseInt(mb[1], 10) > num);
+    } else if (/^fase-/.test(c.id)) {
+      c.classList.add('hidden');
+    }
+  });
+
+  try {
+    if (ESTAT._finalsNouText) renderFinalsNou(ESTAT._finalsNouText);
+
+    if (num >= 2) {
+      const temesText = ESTAT._temesNouText
+        || (Array.isArray(ESTAT._temesNouLlista) && ESTAT._temesNouLlista.length
+            ? ESTAT._temesNouLlista.map((t, i) => `${i + 1}. ${t}`).join('\n')
+            : '');
+      if (temesText) renderTemesNou(temesText);
+    }
+
+    if (num >= 3 && ESTAT._personatgesNouText) {
+      renderPersonatgesNouProposals(ESTAT._personatgesNouText);
+    }
+
+    if (num >= 4) {
+      const monText = ESTAT._monNouVariantsText
+        || (ESTAT._monNouText ? `1. ${ESTAT._monNouText} (Recomanat)` : '');
+      if (monText) renderVariantsMonNou(monText);
+    }
+
+    if (num >= 5 && ESTAT._estructuraNouText) {
+      renderEstructuresNou(ESTAT._estructuraNouText);
+    }
+
+    if (num >= 6) {
+      const totalCaps = (ESTAT._estructuraCapitols || []).length;
+      const escaletes = Array.isArray(ESTAT._escaletes) ? ESTAT._escaletes : [];
+      if (totalCaps > 0 && escaletes.length >= totalCaps) {
+        const val = (typeof validarNKGPreparatPerCapitol1 === 'function')
+          ? validarNKGPreparatPerCapitol1(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {})
+          : { errors: [] };
+        mostrarResumNKGiTransicio(ESTAT._nkg || {}, escaletes, { errors: val.errors || [], warnings: [] }, ESTAT._modeCreacio || 'guiat');
+      } else {
+        toast("L'escaleta no està completa: torna a generar-la des de l'estructura.");
+      }
+    }
+  } catch (e) {
+    console.warn('Restauració nou flux:', e.message);
+  }
+
+  const cardActual = document.getElementById('fase-' + fase);
+  if (cardActual) setTimeout(() => cardActual.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+}
+
 function restaurarInterficieDesDeEstat() {
   hideCard('card-config');
   document.getElementById('progress-wrap').classList.remove('hidden');
@@ -2186,6 +2249,12 @@ function restaurarInterficieDesDeEstat() {
 
   const fase = ESTAT.fase;
   updateProgress(fase);
+
+  // Nou flux ('b1'…'b6'): restauració pròpia — la lògica numèrica de sota no s'hi aplica
+  if (typeof fase === 'string' && /^b[1-6]$/.test(fase)) {
+    restaurarInterficieNouFlux(fase);
+    return;
+  }
 
   // Mostrar totes les fases fins a la fase actual per poder reprendre
   // i re-treballar des de qualsevol punt del pipeline.
@@ -3845,6 +3914,7 @@ function renderTemesNou(text) {
   const wrapId = 'temes-nou-llista';
   const wrap = document.getElementById(wrapId);
   const raw = String(text || '').trim();
+  ESTAT._temesNouText = raw; // per poder restaurar la UI des d'una còpia
 
   const parseOpcionsTemesNou = (input) => {
     const normalized = String(input || '')
@@ -4198,6 +4268,7 @@ function renderVariantsMonNou(text) {
   const wrapId = 'mon-nou-llista';
   const wrap = document.getElementById(wrapId);
   const raw = String(text || '').trim();
+  ESTAT._monNouVariantsText = raw; // per poder restaurar la UI des d'una còpia
 
   const parseOpcionsMonNou = (input) => {
     const normalized = String(input || '')
