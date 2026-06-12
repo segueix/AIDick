@@ -51,13 +51,17 @@ dels dos fluxos: dues apps a mig fer en lloc d'una de sencera.
 
 ## 2. Estratègia proposada (5 etapes: A–D en ordre, E transversal)
 
-### Etapa A — Un sol flux d'entrada (la guanyem més gran amb el mínim esforç)
+### Etapa A — Un sol flux d'entrada (la guanyem més gran amb el mínim esforç) ✅ FETA
 
-1. **El nou flux (b1–b6) passa a ser l'únic camí de creació.**
-2. El flux clàssic (fase-1…6 + steps-bar de 25 píndoles) s'amaga de la UI
-   (no s'esborra encara el codi: només `hidden` + es deixa de linkar des de fase-0).
-3. `nkg_biblia.html` es congela: no s'hi migra res més fins que `index.html` estigui ordenat.
-   (Decisió explícita: reorganitzar **in situ**, no reescriure en paral·lel.)
+1. ✅ **El nou flux (b1–b6) passa a ser l'únic camí de creació.** El botó
+   "✨ Premisses (flux clàssic)" de fase-0 queda ocult (`hidden`); el codi de les
+   fases 1–6 es conserva per a projectes antics restaurats des de localStorage.
+2. ✅ La steps-bar de 25 píndoles queda oculta (`#steps-bar.hidden`); `updateProgress()`
+   continua operant sobre els elements ocults sense errors. L'Etapa B la substituirà
+   pel panell de 6 macro-etapes.
+3. ✅ `nkg_biblia.html` congelat amb avís al fitxer i al planning de
+   CODI_UTIL_FUNCIONANT.md. (Decisió explícita: reorganitzar **in situ**,
+   no reescriure en paral·lel.)
 
 ### Etapa B — De 25 passos a 6 etapes amb gating per dades
 

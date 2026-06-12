@@ -753,8 +753,12 @@
 </div>
 
 <!-- Progress -->
+<!-- Etapa A (ESTRATEGIA_REORGANITZACIO.md): la steps-bar de 25 píndoles segueix la numeració
+     del flux clàssic i s'amaga. L'Etapa B la substituirà per un panell de 6 macro-etapes
+     amb gating per dades (detectarFaltantsNKG). updateProgress() continua funcionant
+     sobre els elements ocults; no esborrar fins a l'Etapa B. -->
 <div id="progress-wrap" class="hidden">
-  <div class="progress-steps" id="steps-bar">
+  <div class="progress-steps hidden" id="steps-bar">
     <div class="step-pill active" data-step="0">Gènere</div>
     <div class="step-arrow">›</div>
     <div class="step-pill" data-step="1">Premissa</div>
@@ -881,7 +885,10 @@
     </select>
 
     <div class="btn-row" style="margin-top:16px;">
-      <button class="btn btn-ghost" onclick="iniciarFase1()">✨ Premisses (flux clàssic)</button>
+      <!-- Etapa A (ESTRATEGIA_REORGANITZACIO.md): el flux clàssic (fases 1-6) queda amagat.
+           El nou flux (b1-b6) és l'únic camí de creació. El codi es manté per a projectes
+           antics restaurats des de localStorage; no esborrar fins a l'Etapa D. -->
+      <button class="btn btn-ghost hidden" onclick="iniciarFase1()">✨ Premisses (flux clàssic)</button>
       <button class="btn btn-primary" onclick="iniciarNovaCreacio()">Confirmar i analitzar estil</button>
     </div>
   </div>

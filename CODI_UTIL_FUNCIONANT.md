@@ -87,6 +87,12 @@ Una peça entra aquí si compleix **tots** aquests punts:
 
 ## Planning de migració `index.html` → `nkg_biblia.html` (fase a fase)
 
+> ⚠️ **CONGELAT (Etapa A — ESTRATEGIA_REORGANITZACIO.md).** La migració paral·lela a
+> `nkg_biblia.html` queda aturada: la reorganització es fa in situ a `index.html`
+> (un sol flux, 6 macro-etapes, perfils d'autor) i la reducció de mida es farà
+> extraient mòduls purs (Etapa D), no duplicant l'app. Aquest planning es conserva
+> només com a referència històrica.
+
 > Objectiu: migrar només codi útil i estable, marcant cada fase com a feta.
 
 ### Regla UX obligatòria (abans de començar)
