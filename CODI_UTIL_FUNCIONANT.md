@@ -74,6 +74,27 @@ Una peça entra aquí si compleix **tots** aquests punts:
 
 ---
 
+## Mòduls extrets (Etapa D — consolidats i funcionant)
+
+### `perfils_autor.js`
+- **Responsabilitat única**: registre `PERFILS_AUTOR` (larsson/tolkien/dick/castaneda) i utilitats d'estil/ambientació.
+- **Conté**: `PERFILS_AUTOR`, `obtenirPerfilAutorId`, `obtenirAutorIdProjecte`, `reglaAmbientacioAutor`, `getGenreStyle`.
+- **Dependències globals**: llegeix `ESTAT` en temps d'execució (cap dependència de DOM).
+- **Contracte**: funcions de lectura pura; retornen strings/ids, mai muten estat.
+- **Checks mínims**: `node --check` net; `obtenirPerfilAutorId('univers Tolkien')` → `'tolkien'`; `getGenreStyle('')` retorna bloc genèric.
+
+### `nkg_core.js`
+- **Responsabilitat única**: nucli NKG + contractes de validació LLM (Etapa E.1) + parseig robust.
+- **Conté**: `crearNKG`, `detectarFaltantsNKG`, `validarNKGPreparatPerCapitol1`, `normalitzarVeuAvancada`, `parseJsonRobust`, `ESQUEMES_LLM`, `validarEsquemaLLM`, `registrarErrorValidacioLLM`, `generarJsonValidat`.
+- **Dependències globals**: `registrarErrorValidacioLLM` escriu a `ESTAT._errorsValidacioLLM` (runtime); la resta és pur.
+- **Contracte**: `crearNKG()` retorna l'estructura buida; `detectarFaltantsNKG(nkg, biblia)` retorna llista d'errors; `generarJsonValidat(schemaId, ferCrida)` retorna `{ok, dades|errors}` amb 1 reintent.
+- **Checks mínims**: `node --check` net; `detectarFaltantsNKG({})` → `['NKG no inicialitzat.']`; `parseJsonRobust('{"a":1}')` → objecte.
+
+> **Càrrega**: tots dos via `<script src>` just abans del primer bloc inline d'`index.html`
+> (línia ~1671). L'app ja NO funciona com a fitxer únic: cal copiar els 3 fitxers junts.
+> Pendent (pas 3 del pla original): `prompts.js` — les funcions de prompt criden
+> `nouFluxCall`/`callLLMMulti` i toquen ESTAT; extreure-les requereix més cura.
+
 ## Full de ruta de reducció de mida (pràctic)
 
 1. **Consolidar** aquí una peça cada cop que es toqui i quedi estable.
@@ -86,6 +107,12 @@ Una peça entra aquí si compleix **tots** aquests punts:
 
 
 ## Planning de migració `index.html` → `nkg_biblia.html` (fase a fase)
+
+> ⚠️ **CONGELAT (Etapa A — ESTRATEGIA_REORGANITZACIO.md).** La migració paral·lela a
+> `nkg_biblia.html` queda aturada: la reorganització es fa in situ a `index.html`
+> (un sol flux, 6 macro-etapes, perfils d'autor) i la reducció de mida es farà
+> extraient mòduls purs (Etapa D), no duplicant l'app. Aquest planning es conserva
+> només com a referència històrica.
 
 > Objectiu: migrar només codi útil i estable, marcant cada fase com a feta.
 

@@ -620,7 +620,7 @@
   <label class="field-label" for="config-provider">Proveïdor</label>
   <select id="config-provider" onchange="actualitzarConfigProvider()">
     <option value="anthropic">Anthropic (Claude) — Sistema dual Sonnet + Opus</option>
-    <option value="openai">OpenAI (GPT-4o)</option>
+    <option value="openai">OpenAI (GPT-5)</option>
     <option value="gemini">Google (Gemini 1.5)</option>
   </select>
 
@@ -716,7 +716,7 @@
   <!-- Camp únic per a OpenAI / Gemini -->
   <div id="config-single-model-field" class="config-section hidden">
     <label class="field-label" for="config-model-single">Model</label>
-    <input type="text" id="config-model-single" placeholder="gpt-4o" value="gpt-4o">
+    <input type="text" id="config-model-single" placeholder="gpt-5-mini" value="gpt-5-mini">
   </div>
 
   <label class="field-label" for="anthropicApiKey">🔑 Anthropic API Key</label>
@@ -728,18 +728,9 @@
   <label class="field-label" for="openaiApiKey" style="margin-top:6px;">🔑 OpenAI API Key <span style="color:var(--text2);font-size:.78rem;">(opcional — per a models GPT)</span></label>
   <input type="password" id="openaiApiKey" placeholder="sk-..." oninput="guardarClausAPI()">
 
-  <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
-    <h3 style="margin:0 0 10px;font-size:1em;">🎭 Estil i To Global del Projecte</h3>
-
-    <label class="field-label" for="config-genere">Gènere Literari</label>
-    <input type="text" id="config-genere" value="Thriller / Nordic Noir" placeholder="ex: Ciència-Ficció, Nordic Noir...">
-
-    <label class="field-label" for="config-autor">Autor de Referència</label>
-    <input type="text" id="config-autor" value="Stieg Larsson" placeholder="ex: Stieg Larsson, Tolkien...">
-
-    <label class="field-label" for="config-focus-climax">Focus del Clímax (Cost acumulat)</label>
-    <input type="text" id="config-focus-climax" value="Cost físic extrem, esgotament mental, entorns freds i hostils, cinisme" placeholder="ex: Esgotament físic, xoc moral...">
-  </div>
+  <!-- Etapa A+: la secció "🎭 Estil i To Global del Projecte" (gènere, autor de
+       referència, focus del clímax) s'ha mogut al formulari de creació narrativa
+       (fase-0, secció B), al costat del selector d'univers. -->
 
   <div class="btn-row">
     <button id="btn-guardar-nou" class="btn btn-primary" onclick="guardarIComencar()">Guardar i Començar Nou</button>
@@ -753,8 +744,12 @@
 </div>
 
 <!-- Progress -->
+<!-- Etapa A (ESTRATEGIA_REORGANITZACIO.md): la steps-bar de 25 píndoles segueix la numeració
+     del flux clàssic i s'amaga. L'Etapa B la substituirà per un panell de 6 macro-etapes
+     amb gating per dades (detectarFaltantsNKG). updateProgress() continua funcionant
+     sobre els elements ocults; no esborrar fins a l'Etapa B. -->
 <div id="progress-wrap" class="hidden">
-  <div class="progress-steps" id="steps-bar">
+  <div class="progress-steps hidden" id="steps-bar">
     <div class="step-pill active" data-step="0">Gènere</div>
     <div class="step-arrow">›</div>
     <div class="step-pill" data-step="1">Premissa</div>
@@ -807,6 +802,15 @@
   </div>
 </div>
 
+<!-- Etapa B (ESTRATEGIA_REORGANITZACIO.md): panell de 6 macro-etapes amb gating
+     per dades (detectarFaltantsNKG / validarNKGPreparatPerCapitol1), substitueix
+     la steps-bar de 25 píndoles. Es renderitza des de renderPanellEtapes(). -->
+<div class="card hidden" id="panell-etapes">
+  <h2><span class="icon">🧭</span> Progrés de la novel·la</h2>
+  <p style="color:var(--text2);font-size:.85rem;margin-bottom:12px;">L'estat de cada etapa es calcula a partir de les dades reals del projecte, no de l'ordre de clics.</p>
+  <div id="panell-etapes-cos"></div>
+</div>
+
 <!-- FASE 0: Selecció de gènere -->
 <div class="card hidden" id="fase-0">
   <h2><span class="icon">🖊️</span> Crear nova novel·la</h2>
@@ -820,13 +824,34 @@
   <!-- Formulari de nova creació (hidden fins que es clica el botó) -->
   <div id="nova-creacio-form" class="hidden" style="margin-top:16px;">
     <label class="field-label" for="sel-tematica">Univers narratiu base</label>
-    <select id="sel-tematica">
+    <select id="sel-tematica" onchange="sincronitzarEstilAmbUnivers()">
       <option value="">— Selecciona un univers —</option>
       <option value="univers Larsson (Stieg Larsson) — evita tòpics">Stieg Larsson — univers noir i crítica sistèmica (evita tòpics)</option>
       <option value="univers Philip K. Dick — evita tòpics">Philip K. Dick — univers distòpic/paranoic (evita tòpics)</option>
       <option value="univers Castaneda (Carlos Castaneda) — evita tòpics">Carlos Castaneda — univers xamànic i percepció (evita tòpics)</option>
       <option value="univers Tolkien (J.R.R. Tolkien) — evita tòpics">J.R.R. Tolkien — univers èpic i mitopoètic (evita tòpics)</option>
     </select>
+
+    <!-- 🎭 Estil i To Global del Projecte (mogut des de la configuració d'API).
+         En triar l'univers, aquests camps es preomplen per a l'autor; sempre editables. -->
+    <div style="margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);">
+      <div style="font-weight:700;margin-bottom:8px;">🎭 Estil i To Global del Projecte</div>
+
+      <label class="field-label" for="config-autor">Autor de Referència</label>
+      <select id="config-autor" onchange="aplicarPrefillAutor()">
+        <option value="Stieg Larsson" selected>Stieg Larsson</option>
+        <option value="Philip K. Dick">Philip K. Dick</option>
+        <option value="Carlos Castaneda">Carlos Castaneda</option>
+        <option value="J.R.R. Tolkien">J.R.R. Tolkien</option>
+        <option value="">— Veu original (cap autor de referència) —</option>
+      </select>
+
+      <label class="field-label" for="config-genere" style="margin-top:8px;">Gènere Literari</label>
+      <input type="text" id="config-genere" value="Thriller / Nordic Noir" placeholder="ex: Ciència-Ficció, Nordic Noir...">
+
+      <label class="field-label" for="config-focus-climax" style="margin-top:8px;">Focus del Clímax (Cost acumulat)</label>
+      <input type="text" id="config-focus-climax" value="Cost físic extrem, esgotament mental, entorns freds i hostils, cinisme" placeholder="ex: Esgotament físic, xoc moral...">
+    </div>
 
     <div style="margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);">
       <div style="font-weight:700;margin-bottom:8px;">🧬 Creador de Veu Literària Original</div>
@@ -881,7 +906,10 @@
     </select>
 
     <div class="btn-row" style="margin-top:16px;">
-      <button class="btn btn-ghost" onclick="iniciarFase1()">✨ Premisses (flux clàssic)</button>
+      <!-- Etapa A (ESTRATEGIA_REORGANITZACIO.md): el flux clàssic (fases 1-6) queda amagat.
+           El nou flux (b1-b6) és l'únic camí de creació. El codi es manté per a projectes
+           antics restaurats des de localStorage; no esborrar fins a l'Etapa D. -->
+      <button class="btn btn-ghost hidden" onclick="iniciarFase1()">✨ Premisses (flux clàssic)</button>
       <button class="btn btn-primary" onclick="iniciarNovaCreacio()">Confirmar i analitzar estil</button>
     </div>
   </div>
@@ -1556,6 +1584,8 @@
 <div class="card hidden" id="fase-24">
   <h2><span class="icon">📋</span> Control d'Arcs Narratius <span class="badge-model badge-opus">Opus</span></h2>
   <p style="color:var(--text2);font-size:.9rem;margin-bottom:18px;">Opus avalua la novel·la a partir dels resums — sense llegir el cos íntegre — per estalviar tokens.</p>
+  <!-- Etapa E.3: porta de sortida obligatòria -->
+  <div id="checklist-sortida" style="margin-bottom:16px;"></div>
   <div class="loader-wrap" id="loader-24">
     <div class="spinner" style="border-top-color:#60a5fa;"></div>
     <span>🔵 Opus analitzant els arcs narratius…</span>
@@ -1565,7 +1595,10 @@
     <div id="termometre-veritat" style="margin-top:16px;"></div>
     <div class="btn-row" style="margin-top:20px;">
       <button class="btn btn-primary hidden" id="btn-epileg" onclick="escriureEpileg()">✨ Escriure Epíleg Resolutiu <span class="badge-model badge-sonnet">Sonnet</span></button>
+      <!-- Etapa E.4: avaluació informativa per perfil d'autor, mai reescriu -->
+      <button class="btn btn-secondary" id="btn-informe-excellencia" onclick="generarInformeExcellencia()">🏅 Informe d'excel·lència</button>
     </div>
+    <div id="informe-excellencia-cos" class="hidden" style="margin-top:14px;"></div>
   </div>
   <div id="epileg-loader-wrap" class="hidden" style="padding:20px 0;border-top:1px solid var(--border);margin-top:20px;">
     <div style="display:flex;align-items:center;gap:10px;color:var(--text2);font-size:.88rem;margin-bottom:14px;">
@@ -1634,6 +1667,9 @@
 <!-- ══════════════════════════════════════════════════════════
      FRONTEND — utilitats i lògica de navegació
      ══════════════════════════════════════════════════════════ -->
+<!-- Etapa D: mòduls purs extrets (vegeu CODI_UTIL_FUNCIONANT.md) -->
+<script src="perfils_autor.js"></script>
+<script src="nkg_core.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 //  UTILITATS
@@ -2275,6 +2311,303 @@ function updateProgress(fase) {
     if (s < fase)  el.classList.add('done');
     if (s === fase) el.classList.add('active');
   });
+  if (typeof renderPanellEtapes === 'function') renderPanellEtapes();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PANELL DE 6 MACRO-ETAPES (Etapa B — gating per dades)
+// ═══════════════════════════════════════════════════════════
+
+function calcularEstatEtapes() {
+  const cfgOk = !!USER_CONFIG;
+  const fonamentsOk = !!(ESTAT._estructuraCapitols && ESTAT._estructuraCapitols.length > 0);
+  let faltants = [];
+  if (fonamentsOk && typeof detectarFaltantsNKG === 'function') {
+    try { faltants = detectarFaltantsNKG(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {}) || []; } catch (e) { console.warn('detectarFaltantsNKG:', e.message); }
+  }
+  const nkgOk = fonamentsOk && faltants.length === 0;
+  let validacio = { ok: false, errors: [] };
+  if (fonamentsOk && typeof validarNKGPreparatPerCapitol1 === 'function') {
+    try { validacio = validarNKGPreparatPerCapitol1(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {}) || validacio; } catch (e) { console.warn('validarNKGPreparatPerCapitol1:', e.message); }
+  }
+  const totalCaps = (ESTAT._estructuraCapitols || []).length;
+  const capsEscrits = (ESTAT._capitols_generats || []).filter(Boolean).length;
+  const escripturaOk = totalCaps > 0 && capsEscrits >= totalCaps;
+  return { cfgOk, fonamentsOk, faltants, nkgOk, validacio, totalCaps, capsEscrits, escripturaOk };
+}
+
+function renderPanellEtapes() {
+  const panell = document.getElementById('panell-etapes');
+  const cos = document.getElementById('panell-etapes-cos');
+  if (!panell || !cos) return;
+
+  const st = calcularEstatEtapes();
+  if (!st.cfgOk && ESTAT.fase === 0) { panell.classList.add('hidden'); return; }
+  panell.classList.remove('hidden');
+
+  const etapes = [
+    {
+      nom: '⚙️ 1. Configuració', desc: 'API, models i estil global',
+      feta: st.cfgOk, bloquejada: false, detall: st.cfgOk ? 'Models configurats' : 'Falta confirmar models i claus API',
+      boto: { label: 'Obrir configuració', accio: 'etapaObrirConfiguracio()', actiu: true }
+    },
+    {
+      nom: '🏛️ 2. Fonaments', desc: 'Final, tema, personatges, món, estructura i escaleta',
+      feta: st.fonamentsOk, bloquejada: !st.cfgOk,
+      detall: st.fonamentsOk ? `Estructura de ${st.totalCaps} capítols creada` : 'Pendent de crear la novel·la',
+      boto: { label: st.fonamentsOk ? 'Revisar' : 'Continuar fonaments', accio: 'etapaContinuarFonaments()', actiu: st.cfgOk }
+    },
+    {
+      nom: '📖 3. Bíblia + NKG', desc: 'Backstory, trets, objectes, mapa i regles del món',
+      feta: st.nkgOk, bloquejada: !st.fonamentsOk,
+      detall: !st.fonamentsOk ? 'Cal completar els fonaments' : (st.nkgOk ? 'NKG complet' : `${st.faltants.length} dada/es pendents`),
+      boto: { label: 'Completar automàticament', accio: 'etapaCompletarNKG(this)', actiu: st.fonamentsOk && !st.nkgOk }
+    },
+    {
+      nom: '🏗️ 4. Arquitectura', desc: 'Perspectiva, cronologia i veu validades per a capítol 1',
+      feta: st.validacio.ok, bloquejada: !st.fonamentsOk,
+      detall: !st.fonamentsOk ? 'Cal completar els fonaments' : (st.validacio.ok ? 'Validació en verd' : (st.validacio.errors || []).slice(0, 2).join(' · ') || 'Pendent de validar'),
+      boto: { label: 'Validar preparació', accio: 'etapaValidarArquitectura()', actiu: st.fonamentsOk }
+    },
+    {
+      nom: '✍️ 5. Escriptura', desc: 'Capítols amb jutge de coherència i humanització',
+      feta: st.escripturaOk, bloquejada: !st.validacio.ok && st.capsEscrits === 0,
+      detall: st.totalCaps > 0 ? `${st.capsEscrits}/${st.totalCaps} capítols escrits` : 'Pendent',
+      boto: st.capsEscrits > 0
+        ? { label: "Anar a l'escriptura", accio: 'etapaAnarEscriptura()', actiu: true }
+        : { label: 'Començar a escriure', accio: 'etapaComencarEscriptura()', actiu: st.validacio.ok }
+    },
+    (() => {
+      const chk = (typeof checklistSortidaNovella === 'function') ? checklistSortidaNovella() : [];
+      const verds = chk.filter(i => i.ok).length;
+      return {
+        nom: '🔍 6. Revisió i export', desc: "Control d'arcs, checklist de sortida i descàrregues",
+        feta: chk.length > 0 && verds === chk.length, bloquejada: !st.escripturaOk,
+        detall: st.escripturaOk ? `Checklist de sortida: ${verds}/${chk.length} en verd` : 'Cal acabar tots els capítols',
+        boto: { label: "Control d'arcs", accio: 'etapaAnarRevisio()', actiu: st.escripturaOk }
+      };
+    })()
+  ];
+
+  cos.innerHTML = etapes.map(e => {
+    const icona = e.feta ? '✅' : (e.bloquejada ? '🔒' : '🟡');
+    const boto = e.boto && e.boto.actiu
+      ? `<button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;white-space:nowrap;" onclick="${e.boto.accio}">${e.boto.label}</button>`
+      : '';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 4px;border-bottom:1px solid var(--border);${e.bloquejada ? 'opacity:.55;' : ''}">
+      <div>
+        <div style="font-weight:700;font-size:.92rem;">${icona} ${e.nom}</div>
+        <div style="color:var(--text2);font-size:.8rem;">${e.desc} — <span style="font-style:italic;">${e.detall}</span></div>
+      </div>
+      ${boto}
+    </div>`;
+  }).join('');
+}
+
+function etapaObrirConfiguracio() {
+  showCard('card-config');
+  document.getElementById('card-config')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function etapaContinuarFonaments() {
+  if (typeof ESTAT.fase === 'string' && ESTAT.fase.startsWith('b')) {
+    showCard('fase-' + ESTAT.fase);
+    document.getElementById('fase-' + ESTAT.fase)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  showCard('fase-0');
+  if (typeof mostrarFormNovaCreacio === 'function') mostrarFormNovaCreacio();
+  document.getElementById('fase-0')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function etapaCompletarNKG(btn) {
+  if (typeof autocompletarNKGSilent !== 'function') { toast('Compleció automàtica no disponible.'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Completant…'; }
+  try {
+    await autocompletarNKGSilent(msg => toast(msg));
+    toast('Compleció NKG acabada.');
+  } catch (err) {
+    console.error('etapaCompletarNKG:', err);
+    toast('Error completant NKG: ' + err.message);
+  }
+  renderPanellEtapes();
+}
+
+function etapaValidarArquitectura() {
+  const st = calcularEstatEtapes();
+  if (st.validacio.ok) {
+    toast('✅ NKG validat: tot a punt per començar el capítol 1.');
+  } else {
+    toast('Falten: ' + ((st.validacio.errors || []).slice(0, 3).join(' · ') || 'dades per validar'));
+  }
+  renderPanellEtapes();
+}
+
+function etapaComencarEscriptura() {
+  if (typeof iniciarFase11 === 'function') iniciarFase11();
+}
+
+function etapaAnarEscriptura() {
+  showCard('fase-23');
+  document.getElementById('fase-23')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function etapaAnarRevisio() {
+  if (typeof iniciarFase12 === 'function') iniciarFase12();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ETAPA E.2 — Contradiccions tardanes (reconciliació cap endavant)
+//  Compatible amb la immutabilitat: mai es reescriu un capítol bloquejat;
+//  s'obre un fil 'error-continuïtat' que el capítol següent ha de reconciliar.
+// ═══════════════════════════════════════════════════════════
+function registrarContradiccioTardana(descripcio, capitolOrigen, capitolDetectat) {
+  ESTAT._contradiccionsTardanes = Array.isArray(ESTAT._contradiccionsTardanes) ? ESTAT._contradiccionsTardanes : [];
+  const id = 'errcont_' + Date.now() + '_' + ESTAT._contradiccionsTardanes.length;
+  ESTAT._contradiccionsTardanes.push({
+    id, descripcio: String(descripcio || ''), capitolOrigen, capitolDetectat,
+    estat: 'oberta', creatISO: new Date().toISOString()
+  });
+  if (ESTAT.llibreRegistre && Array.isArray(ESTAT.llibreRegistre.fils_oberts)) {
+    ESTAT.llibreRegistre.fils_oberts.push({
+      id,
+      descripcio: `Reconciliar cap endavant: ${String(descripcio || '')}`,
+      categoria: 'error-continuïtat',
+      prioritat: 'alta',
+      capitol_origen: capitolOrigen,
+      estat: 'obert'
+    });
+  }
+  toast('⚠️ Contradicció tardana registrada: el proper capítol l\'haurà de reconciliar.');
+  renderPanellEtapes();
+  return id;
+}
+
+function tancarContradiccioTardana(id) {
+  const c = (ESTAT._contradiccionsTardanes || []).find(x => x.id === id);
+  if (c) c.estat = 'reconciliada';
+  renderPanellEtapes();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ETAPA E.3 — Checklist de sortida (porta obligatòria de l'etapa 6)
+// ═══════════════════════════════════════════════════════════
+function checklistSortidaNovella() {
+  const reg = ESTAT.llibreRegistre || {};
+  const filsOberts = (Array.isArray(reg.fils_oberts) ? reg.fils_oberts : []).filter(Boolean);
+  const total = (ESTAT._estructuraCapitols || []).length;
+  const escrits = (ESTAT._capitols_generats || []).filter(Boolean).length;
+  const contradiccions = (ESTAT._contradiccionsTardanes || []).filter(c => c.estat === 'oberta');
+  const errorsVal = ESTAT._errorsValidacioLLM || [];
+  return [
+    {
+      nom: 'Capítols complets',
+      ok: total > 0 && escrits >= total,
+      detall: `${escrits}/${total}`
+    },
+    {
+      nom: 'Fils narratius tancats',
+      ok: filsOberts.length === 0,
+      detall: filsOberts.length === 0
+        ? 'tots tancats'
+        : `${filsOberts.length} oberts — tanca'ls o justifica'ls com a final obert volgut`
+    },
+    {
+      nom: 'Contradiccions reconciliades',
+      ok: contradiccions.length === 0,
+      detall: contradiccions.length === 0 ? 'cap pendent' : `${contradiccions.length} obertes`
+    },
+    {
+      nom: 'Validacions LLM netes',
+      ok: errorsVal.length === 0,
+      detall: errorsVal.length === 0 ? 'cap error registrat' : `${errorsVal.length} errors de validació (consola)`
+    }
+  ];
+}
+
+function renderChecklistSortida() {
+  const wrap = document.getElementById('checklist-sortida');
+  if (!wrap) return;
+  const items = checklistSortidaNovella();
+  const verds = items.filter(i => i.ok).length;
+  wrap.innerHTML = `
+    <div style="padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);">
+      <div style="font-weight:700;margin-bottom:8px;">📋 Checklist de sortida — ${verds}/${items.length} en verd</div>
+      ${items.map(i => `<div style="font-size:.86rem;padding:3px 0;">${i.ok ? '✅' : '❌'} <strong>${escHtml(i.nom)}</strong> — <span style="color:var(--text2);">${escHtml(i.detall)}</span></div>`).join('')}
+      ${verds === items.length
+        ? '<div style="margin-top:8px;color:var(--ok,#2eb67d);font-size:.86rem;">El llibre compleix la porta de sortida.</div>'
+        : '<div style="margin-top:8px;color:var(--text2);font-size:.86rem;">El llibre no es considera acabat fins que tot el checklist és verd.</div>'}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ETAPA E.4 — Informe d'excel·lència per perfil d'autor
+//  Avaluació informativa per capítol: MAI reescriu res automàticament.
+// ═══════════════════════════════════════════════════════════
+function renderInformeExcellenciaHtml(resultats) {
+  if (!resultats.length) return '';
+  return resultats.map(r => {
+    if (!r.ok) {
+      return `<div style="margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;"><strong>Capítol ${r.capitol}</strong> — <span style="color:var(--text2);">avaluació no disponible (${escHtml(r.error || 'error')})</span></div>`;
+    }
+    const files = (r.criteris || []).map(c => `
+      <div style="font-size:.84rem;padding:4px 0;border-top:1px dashed var(--border);">
+        ${c.compleix ? '✅' : '❌'} ${escHtml(c.criteri || '')}
+        ${c.evidencia ? `<div style="color:var(--text2);padding-left:22px;">Evidència: ${escHtml(c.evidencia)}</div>` : ''}
+        ${!c.compleix && c.suggeriment ? `<div style="color:var(--text2);padding-left:22px;">Suggeriment: ${escHtml(c.suggeriment)}</div>` : ''}
+      </div>`).join('');
+    const compleix = (r.criteris || []).filter(c => c.compleix).length;
+    return `<div style="margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;">
+      <strong>Capítol ${r.capitol}</strong> — ${compleix}/${(r.criteris || []).length} criteris
+      ${files}
+    </div>`;
+  }).join('');
+}
+
+async function generarInformeExcellencia() {
+  const idPerfil = obtenirAutorIdProjecte();
+  const perfil = (idPerfil && PERFILS_AUTOR[idPerfil]) || null;
+  const criteris = (perfil && perfil.criteris_excellencia) || [];
+  if (criteris.length === 0) { toast("Aquest projecte no té perfil d'autor amb criteris d'excel·lència."); return; }
+  const caps = ESTAT._capitols_generats || [];
+  if (caps.filter(Boolean).length === 0) { toast('Encara no hi ha capítols escrits.'); return; }
+
+  const wrap = document.getElementById('informe-excellencia-cos');
+  const btn = document.getElementById('btn-informe-excellencia');
+  if (btn) { btn.disabled = true; btn.textContent = 'Avaluant…'; }
+  if (wrap) wrap.classList.remove('hidden');
+
+  const models = getModelConfig(USER_CONFIG);
+  const resultats = [];
+  for (let i = 0; i < caps.length; i++) {
+    const text = String(caps[i] || '').trim();
+    if (!text) continue;
+    if (wrap) wrap.innerHTML = `<p style="color:var(--text2);font-size:.86rem;">🏅 Avaluant capítol ${i + 1} de ${caps.length} segons el llistó ${escHtml(perfil.nom)}…</p>` + renderInformeExcellenciaHtml(resultats);
+    const prompt = `Ets un crític literari expert en l'obra de ${perfil.nom}. Avalua si aquest capítol compleix cada criteri d'excel·lència. Sigues exigent: "compleix" només amb evidència clara al text.
+
+CRITERIS:
+${criteris.map((c, n) => `${n + 1}. ${c}`).join('\n')}
+
+CAPÍTOL ${i + 1} (fragment):
+${text.substring(0, 6000)}
+
+Retorna EXCLUSIVAMENT JSON vàlid:
+{"criteris":[{"criteri":"resum curt del criteri","compleix":true,"evidencia":"cita o descripció concreta (1 frase)","suggeriment":"millora concreta si no compleix, o cadena buida"}]}`;
+    try {
+      const resVal = await generarJsonValidat('informe_excellencia', motiu => callLLMMulti(
+        [{ role: 'user', content: prompt + (motiu ? `\n\nATENCIÓ — REINTENT: la resposta anterior era invàlida (${motiu}). Retorna el JSON complet i vàlid.` : '') }],
+        'Ets un crític literari rigorós. Respon EXCLUSIVAMENT JSON vàlid.',
+        Object.assign({}, USER_CONFIG, { maxTokens: 1400, model: models.modelArquitecte }),
+        'arquitectura'
+      ));
+      resultats.push({ capitol: i + 1, ok: resVal.ok, criteris: resVal.ok ? resVal.dades.criteris : [], error: resVal.ok ? '' : (resVal.errors || []).join('; ') });
+    } catch (err) {
+      resultats.push({ capitol: i + 1, ok: false, criteris: [], error: err.message });
+    }
+  }
+  if (wrap) wrap.innerHTML = renderInformeExcellenciaHtml(resultats);
+  if (btn) { btn.disabled = false; btn.textContent = "🏅 Informe d'excel·lència"; }
+  toast("Informe d'excel·lència completat. És informatiu: cap reescriptura automàtica.");
 }
 
 function compteParaules(text) {
@@ -2424,7 +2757,7 @@ const ESTAT = {
 // ═══════════════════════════════════════════════════════════
 const MODEL_DEFAULTS = {
   anthropic: { generacio: 'claude-sonnet-4-6', arquitectura: 'claude-opus-4-6' },
-  openai:    { single: 'gpt-4o' },
+  openai:    { single: 'gpt-5-mini' },
   gemini:    { single: 'gemini-1.5-pro' }
 };
 
@@ -2485,6 +2818,24 @@ const MODEL_REGISTRY = {
     qualitat: { draft: 80, prosa: 78, arquitectura: 82, extraccio: 85 },
     velocitat: 'rapida',
     notes: 'Fort en raonament i codi. Català acceptable però no natiu. Preu competitiu.'
+  },
+  'gpt-5-mini': {
+    nom: 'GPT-5 Mini', nomCurt: 'GPT-5 Mini',
+    proveidor: 'openai',
+    input_per_m: 0.25, output_per_m: 2.00,
+    context_max: 400000, max_output: 16384,
+    qualitat: { draft: 78, prosa: 74, arquitectura: 74, extraccio: 84 },
+    velocitat: 'molt_rapida',
+    notes: 'Model mini econòmic per a generació creativa i draft.'
+  },
+  'gpt-5.4-mini': {
+    nom: 'GPT-5.4 Mini', nomCurt: 'GPT-5.4 Mini',
+    proveidor: 'openai',
+    input_per_m: 0.30, output_per_m: 2.40,
+    context_max: 400000, max_output: 16384,
+    qualitat: { draft: 80, prosa: 76, arquitectura: 82, extraccio: 86 },
+    velocitat: 'molt_rapida',
+    notes: 'Mini de nova generació, fort en raonament: adequat per a arquitectura i revisió.'
   }
 };
 
@@ -2545,7 +2896,7 @@ function aplicarPreset(preset) {
     'equilibrat': { draft: 'claude-sonnet-4-6',         generacio: 'claude-sonnet-4-6', arquitecte: 'claude-sonnet-4-6' },
     'premium':    { draft: 'claude-sonnet-4-6',         generacio: 'claude-sonnet-4-6', arquitecte: 'claude-opus-4-6'  },
     'maxim':      { draft: 'claude-sonnet-4-6',         generacio: 'claude-opus-4-6',   arquitecte: 'claude-opus-4-6'  },
-    'barat_gpt':  { draft: 'gpt-5.2',                  generacio: 'gpt-5.2',           arquitecte: 'gpt-5.2'          },
+    'barat_gpt':  { draft: 'gpt-5-mini',               generacio: 'gpt-5-mini',        arquitecte: 'gpt-5.4-mini'     },
     'gemini':     { draft: 'gemini-3-flash-preview',    generacio: 'gemini-3-flash-preview', arquitecte: 'gemini-3-pro-preview' }
   };
   const p = presets[preset];
@@ -2591,7 +2942,7 @@ function actualitzarConfigProvider() {
   const defaults = {
     anthropic: { draft: 'claude-haiku-4-5-20251001', generacio: 'claude-sonnet-4-6', arquitectura: 'claude-opus-4-6' },
     gemini:    { draft: 'gemini-3-flash-preview',    generacio: 'gemini-3-flash-preview', arquitectura: 'gemini-3-flash-preview' },
-    openai:    { draft: 'gpt-5.2',                   generacio: 'gpt-4o-mini',            arquitectura: 'gpt-4o' }
+    openai:    { draft: 'gpt-5-mini',                generacio: 'gpt-5-mini',             arquitectura: 'gpt-5.4-mini' }
   };
   const p = defaults[provider] || defaults.anthropic;
 
@@ -2712,6 +3063,7 @@ function guardarIComencar() {
     hideCard('card-config');
     document.getElementById('progress-wrap').classList.remove('hidden');
     showCard('fase-0');
+    renderPanellEtapes();
     toast('Configuració guardada.');
   } catch (err) {
     console.error('Error guardant configuració:', err);
@@ -2990,6 +3342,29 @@ ${perfilOriginal.nota_usuari ? `<br>Nota de veu: <em>${escHtml(perfilOriginal.no
 
 // ─── CANVI G: iniciarNovaCreacio amb anàlisi d'estil ─────────────────────────
 
+// 🎭 Estil i To Global: preompliment per autor de referència (camps sempre editables).
+// Etapa C: els valors viuen al registre únic PERFILS_AUTOR (segon bloc de script).
+function aplicarPrefillAutor() {
+  const autor = document.getElementById('config-autor')?.value || '';
+  const id = (typeof obtenirPerfilAutorId === 'function') ? obtenirPerfilAutorId(autor) : '';
+  const prefill = (id && PERFILS_AUTOR[id] && PERFILS_AUTOR[id].prefill) || null;
+  if (!prefill) return;
+  const genereEl = document.getElementById('config-genere');
+  const focusEl  = document.getElementById('config-focus-climax');
+  if (genereEl) genereEl.value = prefill.genere;
+  if (focusEl)  focusEl.value  = prefill.focus;
+}
+
+function sincronitzarEstilAmbUnivers() {
+  const univers = document.getElementById('sel-tematica')?.value || '';
+  const autorEl = document.getElementById('config-autor');
+  if (!autorEl || !univers) return;
+  const id = (typeof obtenirPerfilAutorId === 'function') ? obtenirPerfilAutorId(univers) : '';
+  if (!id || !PERFILS_AUTOR[id]) return;
+  autorEl.value = PERFILS_AUTOR[id].nom;
+  aplicarPrefillAutor();
+}
+
 function mostrarFormNovaCreacio() {
   const form   = document.getElementById('nova-creacio-form');
   const botons = document.getElementById('fase-0-botons');
@@ -3018,6 +3393,17 @@ async function iniciarNovaCreacio() {
   ESTAT._nkg = crearNKG();
   ESTAT._modeCreacio = 'guiat';
   ESTAT._autoRedaccioMode = false;
+
+  // El bloc "Estil i To Global" viu ara en aquest formulari: cal capturar els
+  // valors aquí (guardarIComencar s'executa abans que l'usuari els pugui editar).
+  ESTAT.configProjecte = {
+    genere: document.getElementById('config-genere')?.value || '',
+    autor_referencia: document.getElementById('config-autor')?.value || '',
+    focus_climax: document.getElementById('config-focus-climax')?.value || ''
+  };
+  // Etapa C: id de perfil únic per a tot el pipeline (l'univers mana; si no
+  // matxeja cap perfil, es deriva de l'autor de referència).
+  ESTAT._autorPerfilId = obtenirPerfilAutorId(univers) || obtenirPerfilAutorId(ESTAT.configProjecte.autor_referencia);
 
   const resumWrap  = document.getElementById('analisi-resum-wrap');
   const loaderWrap = document.getElementById('analisi-loader-wrap');
@@ -4232,38 +4618,6 @@ function validarNKGComplet(nkg, capitolsEscaleta) {
   return { valid: true, errors: [], warnings };
 }
 
-function validarNKGPreparatPerCapitol1(nkg, biblia = {}) {
-  const faltants = detectarFaltantsNKG(nkg, biblia);
-  return { ok: faltants.length === 0, errors: faltants };
-}
-
-function detectarFaltantsNKG(nkg = {}, biblia = {}) {
-  const errors = [];
-  if (!nkg || Object.keys(nkg).length === 0) return ['NKG no inicialitzat.'];
-  const bs = nkg.macronarrativa && nkg.macronarrativa.backstory_canonic;
-  if (!bs || !Array.isArray(bs.fets_previs) || bs.fets_previs.length === 0) errors.push('Falten fets previs de backstory canònic.');
-  if (!Array.isArray(nkg.relacions) || nkg.relacions.length === 0) errors.push('Falta graf de relacions.');
-  if (!nkg.objectes || Object.keys(nkg.objectes).length === 0) errors.push('Falten objectes narratius.');
-  if (!nkg.llocs || Object.keys(nkg.llocs).length < 3) errors.push('Mapa de llocs insuficient.');
-  if (!Array.isArray(biblia.regles_mon) || biblia.regles_mon.length === 0) errors.push('Falten regles del món.');
-  const perspectiva = (((nkg.context_creacio || {}).estil || {}).perspectiva || {});
-  const cronologia = ((nkg.context_creacio || {}).cronologia || {});
-  if (!perspectiva.tipus) errors.push('Falta tipus de perspectiva narrativa.');
-  if (!Array.isArray(perspectiva.pov_per_capitol) || perspectiva.pov_per_capitol.length === 0) errors.push('Falta POV per capítol.');
-  if (!Array.isArray(cronologia.per_capitol) || cronologia.per_capitol.length === 0) errors.push('Falta cronologia per capítol.');
-  const pers = Object.values(nkg.personatges || {});
-  if (pers.length === 0) errors.push('No hi ha personatges al NKG.');
-  pers.forEach(p => {
-    const t = p.trets_immutables || {};
-    if (!t.aspecte_fisic || !t.ocupacio || !t.tret_definitori) errors.push(`${p.nom || 'Personatge'} sense trets immutables complets.`);
-    const veu = normalitzarVeuAvancada(p.veu || {});
-    if (!Array.isArray(veu.exemples_narratius) || veu.exemples_narratius.length < 2) errors.push(`${p.nom || 'Personatge'} sense exemples narratius de veu.`);
-    if (!Array.isArray(veu.vocabulari_recurrent) || veu.vocabulari_recurrent.length < 3) errors.push(`${p.nom || 'Personatge'} sense vocabulari recurrent suficient.`);
-  });
-  return errors;
-}
-
-
 function obtenirAccioGeneracioPerFaltant(faltant = '') {
   const f = String(faltant || '').toLowerCase();
   if (f.includes('backstory') || f.includes('graf de relacions')) return { id: 'backstory_relacions', label: 'Generar' };
@@ -4465,8 +4819,16 @@ async function iniciarEscaletaSeqNou() {
     const escaletesAnteriors = ESTAT._escaletes.slice();
 
     try {
-      const raw = await nouFlux_escaletaCapitol(capInfo, macronarrativaText, escaletesAnteriors, ESTAT._nkg, USER_CONFIG, n);
-      const dades = parseJsonRobust(raw) || {};
+      // Etapa E.1: validació amb esquema + 1 reintent; mai continuar amb {} buit.
+      const resVal = await generarJsonValidat('escaleta_capitol', motiu =>
+        nouFlux_escaletaCapitol(capInfo, macronarrativaText, escaletesAnteriors, ESTAT._nkg, USER_CONFIG, n, motiu)
+      );
+      if (!resVal.ok) {
+        hideLoader('b6');
+        toast(`⛔ Escaleta del capítol ${idx + 1} invàlida després del reintent (${(resVal.errors || []).join(' · ')}). Flux aturat: torna a generar l'escaleta.`);
+        return;
+      }
+      const dades = resVal.dades;
 
       // Parsejar i validar ganxo_final
       const ganxoRaw = dades.ganxo_final && typeof dades.ganxo_final === 'object' ? dades.ganxo_final : null;
@@ -7500,18 +7862,6 @@ async function iniciarFasePerspectivaCronologia() {
 }
 
 
-function normalitzarVeuAvancada(veu = {}) {
-  const longitudValida = ['curtes_telegrafiques', 'mitjanes', 'llargues_subordinades'];
-  const existMaiDiria = Array.isArray(veu.mai_diria) ? veu.mai_diria : (veu.mai_diria ? String(veu.mai_diria).split(/[,;]+/).map(x => x.trim()).filter(Boolean) : []);
-  const vocabProhibit = Array.isArray(veu.vocabulari_prohibit) ? veu.vocabulari_prohibit : [];
-  return Object.assign({}, veu, {
-    exemples_narratius: Array.isArray(veu.exemples_narratius) ? veu.exemples_narratius.map(x => String(x || '').trim()).filter(Boolean).slice(0, 3) : [],
-    vocabulari_recurrent: Array.isArray(veu.vocabulari_recurrent) ? veu.vocabulari_recurrent.map(x => String(x || '').trim()).filter(Boolean).slice(0, 12) : [],
-    vocabulari_prohibit: [...new Set([...vocabProhibit, ...existMaiDiria].map(x => String(x || '').trim()).filter(Boolean))].slice(0, 12),
-    longitud_frases: longitudValida.includes(veu.longitud_frases) ? veu.longitud_frases : 'mitjanes'
-  });
-}
-
 function veuMaiDiriaText(veu = {}) {
   const val = veu && veu.mai_diria;
   return Array.isArray(val) ? val.join(', ') : String(val || '');
@@ -8477,6 +8827,7 @@ Forbidden: ${forbidden.join(', ')}`;
 }
 
 function renderLlistaCapitols() {
+  if (typeof renderPanellEtapes === 'function') renderPanellEtapes();
   const wrap  = document.getElementById('capitol-llista');
   const total = ESTAT._estructuraCapitols.length;
   document.getElementById('capitol-progress-text').textContent = `${total} capítols planificats`;
@@ -10716,15 +11067,21 @@ Retorna EXCLUSIVAMENT JSON vàlid:
   }];
 
   const models = getModelConfig(userConfig || USER_CONFIG);
-  const raw = await callLLMMulti(
-    msgs,
+  // Etapa E.1: validació amb esquema + 1 reintent. Si falla, no es toca el
+  // registre de fils (es conserva l'estat anterior) i queda constància visible.
+  const resVal = await generarJsonValidat('fils_narratius', motiu => callLLMMulti(
+    motiu
+      ? [{ role: 'user', content: msgs[0].content + `\n\nATENCIÓ — REINTENT: la resposta anterior era invàlida (${motiu}). Retorna el JSON complet i vàlid.` }]
+      : msgs,
     'Ets un analista narratiu. Respon EXCLUSIVAMENT JSON vàlid.',
     Object.assign({}, userConfig || USER_CONFIG, { maxTokens: 600, model: models.modelArquitecte }),
     'arquitectura'
-  );
-
-  const dades = parseJsonRobust(raw);
-  if (!dades) return;
+  ));
+  if (!resVal.ok) {
+    toast(`⚠️ Fils narratius del capítol ${idx + 1} no actualitzats (resposta invàlida). Es conserva l'estat anterior.`);
+    return;
+  }
+  const dades = resVal.dades;
 
   // Actualitzar fils oberts/tancats (estructura tipada + deduplicació robusta)
   const aliasMap = construirAliasMapTrames();
@@ -10930,6 +11287,7 @@ async function iniciarFase12() {
   ESTAT.fase = 24;
   updateProgress(24);
   showCard('fase-24');
+  if (typeof renderChecklistSortida === 'function') renderChecklistSortida();
   setTimeout(() => document.getElementById('fase-24')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   document.getElementById('arcs-result').classList.add('hidden');
   document.getElementById('epileg-loader-wrap').classList.add('hidden');
@@ -11667,7 +12025,7 @@ const PROVIDER_DEFAULTS = {
   },
   openai: {
     apiUrl: 'https://api.openai.com/v1/chat/completions',
-    model: 'gpt-4o'
+    model: 'gpt-5-mini'
   },
   gemini: {
     apiUrlBase: 'https://generativelanguage.googleapis.com/v1beta/models',
@@ -12356,74 +12714,6 @@ Escrius EXCLUSIVAMENT en català. Mai inclous paraules, frases ni comentaris en 
 ONOMÀSTICA I MÓN D'AUTOR: Conserva els noms propis, topònims, institucions, codis culturals i atmosfera del món particular de l'autor/gènere de referència. No facis 'adaptació catalana' de noms, llocs o contextos si no és una decisió narrativa explícita de l'usuari.
 Escriu directament el text.`;
 
-// ─── Extensió d'estil per autor (reutilitzable per conte i novel·la) ───
-function getGenreStyle(tematica) {
-  const isLarsson   = tematica && /larsson|noir|negr[ae]|nòrdi/i.test(tematica);
-  const isTolkien   = tematica && /tolkien|fantàstic|fantastic|èpic/i.test(tematica);
-  const isDick      = tematica && /philip k\. dick|philip.*dick|dick/i.test(tematica);
-  const isCastaneda = tematica && /castaneda|xamànic/i.test(tematica);
-
-  if (isLarsson) return `
-
-── ESTIL STIEG LARSSON ──
-AMBIENTACIÓ I PERSONATGES (OBLIGATORI): L'acció i els personatges han de ser nòrdics/escandinaus. Mantén noms, topònims, institucions, clima i codis socials del nord d'Europa. Evita desplaçar el marc a contextos mediterranis o llatinoamericans.
-Pensament i visió del món: Larsson era periodista d'investigació i antifeixista militant. Les seves obres neixen de la convicció que la violència contra les dones i la corrupció institucional són sistèmiques, no excepcions. Escrius des d'aquesta consciència política sense abanderats ni discursos.
-Prosa directa i funcional, carregada de detall procedimental: cada acció d'investigació —una trucada, un arxiu consultat, una font protegida— s'explica amb lògica interna creïble i concreta.
-L'entorn nòrdic (hivern escandinau, foscor, aïllament geogràfic i social) actua com a personatge amb pes propi: el fred és moral tant com climàtic.
-Secrets familiars soterrats durant dècades que quan surten a la llum destapen patrons de violència i complicitat que ningú volia veure.
-Protagonistes traumatitzats amb una obstinació quasi patològica: no investiguen per heroisme sinó perquè no poden parar, la ferida personal és el motor.
-Crítica social concreta i documentada integrada a la trama: noms d'institucions, mecanismes de poder, estadístiques de violència que apareixen de forma natural al text.
-Estructura de revelació progressiva: el que semblava un cas aïllat obre pas a un sistema podrit que implica tothom.
-Ritme metòdic i pausat en la investigació, amb pics d'acció breu, directa i brutal quan la violència irromp.`;
-
-  if (isTolkien) return `
-
-── ESTIL J.R.R. TOLKIEN ──
-AMBIENTACIÓ I PERSONATGES (OBLIGATORI): Els personatges i el món han de ser imaginaris dins l'òrbita tolkieniana (Terra Mitjana-like): races, regnes, llengües, mites i geografia pròpia de fantasia èpica. Evita marcs contemporanis realistes.
-Pensament i visió del món: Tolkien era filòleg, catòlic i veterà de la Primera Guerra Mundial. El seu univers neix de la convicció que el llenguatge crea realitat, que el bé i el mal existeixen com a forces còsmiques, i que la humilitat dels petits pot transformar la història. Escrius des d'aquesta fe en la bellesa i el sacrifici.
-Prosa èpica, lírica i detallada: les descripcions de paisatge i arquitectura transmeten profunditat i antiguitat immemorial, com si el món existís des d'abans que comencés la història.
-Univers tolkienià complet: races (Eldar, Khazad, hobits, homes, orcs, ents), geografies amb nom i memòria pròpia, llenguatges inventats amb fonologia coherent, cançons i poemes intercalats quan l'escena ho demana.
-Temes centrals: la corrupció del poder i la tentació dels anells, el pes de la responsabilitat sobre les espatlles dels humils, la camaraderia com a valor suprem, la bellesa efímera davant el pas implacable del temps i l'oblit.
-Llenguatge solemne però accessible: frases llargues i rítmiques, construccions arcaiques mesurades, èmfasi en els noms propis com a portadors de destí.
-La natura com a presència viva i moral: boscos, rius i muntanyes tenen memòria, voluntat i opinió sobre els esdeveniments dels mortals.
-El mal té pes físic i sensorial: no s'explica, es percep en l'aire que s'espesseix, la llum que s'apaga, el silenci sobtat dels ocells i la por als ulls dels animals.`;
-
-  if (isDick) return `
-
-── ESTIL PHILIP K. DICK ──
-AMBIENTACIÓ I PERSONATGES (OBLIGATORI): L'ambientació i els personatges han de ser nord-americans (Estats Units): ciutats, suburbis, burocràcies, corporacions i codis culturals propis del context nord-americà, encara que sigui en clau distòpica/futurista.
-Pensament i visió del món: Dick era un paranoic funcional fascinat per la gnosi, les drogues, la simulació i la pregunta de si alguna cosa és real. Les seves obres neixen de la convicció que la realitat és una capa prima que pot trencar-se en qualsevol moment i que el sistema —qualsevol sistema— menteix. Escrius des d'aquesta desconfiança radical.
-Paranoia com a estat cognitiu del protagonista i del lector: les institucions (estat, corporacions, androïdes, drogues prescrites) manipulen la percepció; ningú sap mai si el que veu és real o induït.
-Les drogues —legals, il·legals, prescrites per l'estat— com a eina de control social i com a porta ambigua a altres realitats: poden revelar la veritat o ser la mentida més sofisticada.
-Distopia quotidiana i desgastada: el futur és una extensió deteriorada del present, amb publicitat agressiva, burocràcia kafkiana, androïdes indistingibles dels humans i guerres consumides en segon pla.
-Canvis sobtats i irreversibles de realitat: una frase, un objecte, una conversa trenquen el marc que el lector creia ferm. No es recupera l'estat anterior.
-Protagonistes ordinaris —venedors, taxistes, policies de baixa graduació— que descobreixen que el món que habiten és una construcció i han de decidir si prefereixen la mentida còmoda o la veritat devastadora.
-Prosa àgil, nerviosa i plena de diàleg: les espirals de pensament paranoic del protagonista s'intercalen amb l'acció sense aturar el ritme.
-Empatia com a única brúixola moral: en un món on res és real, la capacitat de sentir el dolor de l'altre és l'únic criteri per distingir l'humà de la màquina.`;
-
-  if (isCastaneda) return `
-
-── ESTIL CARLOS CASTANEDA ──
-AMBIENTACIÓ I PERSONATGES (OBLIGATORI): L'ambientació i els personatges han de ser mexicans, amb context cultural i territorial de Mèxic (desert, serres, pobles, ciutats, llenguatge i cosmovisions locals), sense desplaçar-ho a marcs genèrics.
-Pensament i visió del món: Castaneda partia de la tradició tolteca i xamànica per demostrar que la realitat ordinària és un acord social, no una veritat absoluta. Les seves obres neixen de la convicció que la percepció es pot estendre més enllà dels límits racionals i que hi ha un "punt d'assemblatge" que pot moure's. Escrius des d'aquesta epistemologia alternativa.
-Marc antropològic o periodístic que es dissol progressivament: el narrador arriba com a investigador racional i occidental i surt transformat per experiències que la seva formació no pot contenir.
-Relació mestre-aprenent com a eix narratiu: el personatge guia (el bruixot, el nagual, el curandero) no explica mai directament, ensenya a través de tasques impossibles, silencis deliberats, paradoxes i situacions límit.
-Els estats alterats de consciència —induïts per plantes de poder, per privació sensorial, per esforç físic extrem o per la voluntat del mestre— es descriuen amb precisió sensorial absoluta: colors, sons, sensacions corporals, distorsions temporals. No s'expliquen des de fora, es viuen des de dins.
-El món natural com a text viu: cada animal, planta, vent o lloc porta intenció i missatge per als qui han après a llegir-los.
-Diàleg com a vehicle principal de l'ensenyament: les converses entre aprenent i mestre marquen el ritme i transformen la percepció del lector.
-Tensió irresoluble entre la racionalitat occidental del protagonista i la "realitat separada" que se li ofereix: el text no resol aquesta tensió, la manté viva fins al final.
-El desert, la nit, els somnis lúcids i les plantes de poder com a espais on les fronteres entre mons es fan permeables.`;
-
-  // Per a QUALSEVOL autor no reconegut: crear ambientació en el seu món propi
-  return `
-
-── AMBIENTACIÓ I MÓN DE L'AUTOR ──
-AMBIENTACIÓ (OBLIGATORI): Crea l'ambientació en el món propi de l'autor/gènere de referència (${tematica || 'no especificat'}). Mantén els noms propis, topònims, institucions, clima, codis socials i culturals coherents amb l'univers literari de l'autor.
-NO facis cap mena d'adaptació a Catalunya ni al context català: els noms dels personatges, els llocs, les institucions i els codis culturals han de ser fidels al món de l'autor original.
-El paisatge, l'arquitectura, el clima i l'atmosfera social han de funcionar com a personatges amb pes propi dins la narració.
-La llengua d'escriptura és el català, però l'univers narratiu és el de l'autor de referència — no el transposeu.`;
-}
-
 // ─── System prompt dinàmic per gènere (conte breu) ──────────
 function getSystemPrompt(tematica) {
   return SYSTEM_DEFAULT + '\n\n' + buildDirectivaEstilEmocional() + getGenreStyle(tematica);
@@ -12472,7 +12762,7 @@ Format ESTRICTE (res més, sense cap introducció):
 
 // ─── FASE 3: 5 protagonistes ─────────────────────────────────
 async function fase3_personatges(premissaTriada, estilDesc, history, userConfig, tematica) {
-  const isNoir = tematica && /larsson|noir|negr[ae]|nòrdi/i.test(tematica);
+  const isNoir = obtenirPerfilAutorId(tematica) === 'larsson';
 
   const protagonistePrompt = isNoir
     ? `Genera 5 protagonistes possibles per a aquest conte NEGRE NÒRDIC.
@@ -12576,7 +12866,7 @@ Format ESTRICTE (5 opcions, res més):
 // ─── ESCRIPTURA: Generació per parts ─────────────────────────
 async function escriureContePart(partNum, totalParts, paraulesPerPart, finalTriat, estilDesc, history, userConfig, tematica) {
   const pp     = parseInt(paraulesPerPart) || 750;
-  const isNoir = tematica && /larsson|noir|negr[ae]|nòrdi/i.test(tematica);
+  const isNoir = obtenirPerfilAutorId(tematica) === 'larsson';
 
   const noirExtra = isNoir
     ? `\nESTIL NORDIC NOIR OBLIGATORI per a aquesta part:
@@ -13043,217 +13333,13 @@ async function exportarNovella(titol, caps, estructura, epileg) {
 }
 
 
-// ═══════════════════════════════════════════════════════════
-//  UTILITAT: Parse robust de JSON (evita errors LLM)
-// ═══════════════════════════════════════════════════════════
-function parseJsonRobust(text, expectedKeys = []) {
-  if (!text || typeof text !== 'string') {
-    console.error("⛔ [parseJsonRobust] Error: El text d'entrada és buit o no és un string.");
-    return null;
-  }
-  const s = text.trim();
-
-  function netejarCandidate(candidate = '') {
-    return String(candidate || '')
-      .replace(/[“”]/g, '"')
-      .replace(/[‘’]/g, "'")
-      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
-      .replace(/,\s*([}\]])/g, '$1')
-      .trim();
-  }
-
-  function tancarJsonIncomplet(candidate = '') {
-    const src = String(candidate || '');
-    if (!src) return src;
-
-    const stack = [];
-    let inString = false;
-    let escaped = false;
-
-    for (let i = 0; i < src.length; i++) {
-      const ch = src[i];
-
-      if (inString) {
-        if (escaped) {
-          escaped = false;
-          continue;
-        }
-        if (ch === '\\') { escaped = true; continue; }
-        if (ch === '"') { inString = false; }
-        continue;
-      }
-
-      if (ch === '"') { inString = true; continue; }
-      if (ch === '{') stack.push('}');
-      else if (ch === '[') stack.push(']');
-      else if ((ch === '}' || ch === ']') && stack.length > 0 && stack[stack.length - 1] === ch) stack.pop();
-    }
-
-    let out = src;
-    if (inString) out += '"';
-    while (stack.length > 0) out += stack.pop();
-    return out;
-  }
-
-  // Escapa salts de línia literals dins strings JSON (l'LLM a vegades en genera)
-  function escaparNovaLiniaEnStrings(src) {
-    let out = '';
-    let inStr = false;
-    let escaped = false;
-    for (let i = 0; i < src.length; i++) {
-      const ch = src[i];
-      if (inStr) {
-        if (escaped) { escaped = false; out += ch; continue; }
-        if (ch === '\\') { escaped = true; out += ch; continue; }
-        if (ch === '"') { inStr = false; out += ch; continue; }
-        if (ch === '\n') { out += '\\n'; continue; }
-        if (ch === '\r') { out += '\\r'; continue; }
-        if (ch === '\t') { out += '\\t'; continue; }
-        out += ch;
-      } else {
-        if (ch === '"') inStr = true;
-        out += ch;
-      }
-    }
-    return out;
-  }
-
-  // Elimina una clau penjant sense valor al final (p.ex. `"clau"}` → `}`)
-  function repararClauSenseValor(src) {
-    // Detecta patró: coma i/o espais, cometa, contingut, cometa, espais, tancament
-    return src.replace(/,\s*"[^"\\]*"\s*([}\]])/g, '$1')
-              .replace(/\{\s*"[^"\\]*"\s*\}/g, '{}');
-  }
-
-  function parseLenientJson(candidate) {
-    if (!candidate || typeof candidate !== 'string') return null;
-
-    const cleaned = netejarCandidate(candidate);
-    try { return JSON.parse(cleaned); } catch (e) {}
-
-    // Heurística: escapa salts de línia literals dins strings (l'LLM a vegades en genera)
-    const escapat = netejarCandidate(escaparNovaLiniaEnStrings(cleaned));
-    try { return JSON.parse(escapat); } catch (e) {}
-
-    // Heurística clau: si la resposta s'ha tallat, intentem tancar l'objecte/array i parsejar.
-    const repaired = netejarCandidate(tancarJsonIncomplet(escapat));
-    try { return JSON.parse(repaired); } catch (e) {}
-
-    // Heurística addicional: elimina clau penjant sense valor generada per truncació mid-key
-    const repairedNoKey = netejarCandidate(repararClauSenseValor(repaired));
-    try { return JSON.parse(repairedNoKey); } catch (e) { return null; }
-  }
-
-  function extreureObjectesJSONTopLevel(candidate = '') {
-    const txt = String(candidate || '');
-    const spans = [];
-    let inString = false;
-    let escaped = false;
-    let depth = 0;
-    let start = -1;
-
-    for (let i = 0; i < txt.length; i++) {
-      const ch = txt[i];
-      if (inString) {
-        if (escaped) { escaped = false; continue; }
-        if (ch === '\\') { escaped = true; continue; }
-        if (ch === '"') inString = false;
-        continue;
-      }
-
-      if (ch === '"') { inString = true; continue; }
-      if (ch === '{') {
-        if (depth === 0) start = i;
-        depth += 1;
-        continue;
-      }
-      if (ch === '}') {
-        if (depth > 0) depth -= 1;
-        if (depth === 0 && start >= 0) {
-          spans.push(txt.slice(start, i + 1));
-          start = -1;
-        }
-      }
-    }
-
-    return spans;
-  }
-
-  function validar(resultat, metode) {
-    if (!resultat) return null;
-    if (expectedKeys && expectedKeys.length > 0) {
-      const missing = expectedKeys.filter(k => !(k in resultat));
-      if (missing.length > 0) {
-        console.warn(`⚠️ [parseJsonRobust] JSON recuperat via ${metode}, però falten claus: ${missing.join(', ')} — es retorna igualment.`);
-      }
-    }
-    if (metode !== 'Directe') {
-      console.info(`✅ [parseJsonRobust] JSON recuperat amb èxit usant heurística: ${metode}`);
-    }
-    return resultat;
-  }
-
-  // 1. Parse directe
-  let direct = parseLenientJson(s);
-  if (direct) return validar(direct, 'Directe');
-
-  console.warn("⚠️ [parseJsonRobust] Fallada al parse directe. Intentant heurístiques...");
-
-  // 2. Bloc de codi markdown ```json ... ```
-  const codeMatch = s.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
-  if (codeMatch) {
-    let parsedCode = parseLenientJson(codeMatch[1].trim());
-    if (parsedCode) return validar(parsedCode, 'Markdown Block');
-  }
-
-  // 3. Primer objecte { ... } (també prova reparació si està truncat)
-  const objStart = s.indexOf('{');
-  const objEnd   = s.lastIndexOf('}');
-  if (objStart !== -1) {
-    const objectCandidate = objEnd > objStart ? s.slice(objStart, objEnd + 1) : s.slice(objStart);
-    let parsedObject = parseLenientJson(objectCandidate);
-    if (parsedObject) return validar(parsedObject, 'Extracció Objecte {}');
-  }
-
-  // 4. Primer array [ ... ] (també prova reparació si està truncat)
-  const arrStart = s.indexOf('[');
-  const arrEnd   = s.lastIndexOf(']');
-  if (arrStart !== -1) {
-    const arrayCandidate = arrEnd > arrStart ? s.slice(arrStart, arrEnd + 1) : s.slice(arrStart);
-    let parsedArray = parseLenientJson(arrayCandidate);
-    if (parsedArray) return validar(parsedArray, 'Extracció Array []');
-  }
-
-  // 5. Quan hi ha text extra abans/després o múltiples JSON consecutius, prova cada objecte top-level.
-  const objectesTop = extreureObjectesJSONTopLevel(s);
-  if (objectesTop.length > 0) {
-    const parsedCandidates = objectesTop
-      .map(c => parseLenientJson(c))
-      .filter(Boolean);
-    if (parsedCandidates.length > 0) {
-      if (expectedKeys && expectedKeys.length > 0) {
-        const ambClaus = parsedCandidates.find(obj => expectedKeys.every(k => k in obj));
-        if (ambClaus) return validar(ambClaus, 'Top-level Object Scan');
-      }
-      return validar(parsedCandidates[0], 'Top-level Object Scan');
-    }
-  }
-
-  console.error("⛔ [parseJsonRobust] Totes les heurístiques han fallat. No s'ha pogut extreure JSON. Text rebut:\n", s.substring(0, 300) + "...");
-  return null;
-}
 
 // ═══════════════════════════════════════════════════════════
 //  SYSTEM PROMPT per a novel·la
 // ═══════════════════════════════════════════════════════════
 function getSystemPromptNovella(tematica) {
-  const isLarsson = !!(tematica && /larsson|noir|negr[ae]|nòrdi/i.test(tematica));
-  const reglesEstilDures = isLarsson
-    ? `• TO BRUTAL I EXPLÍCIT: La prosa ha de ser crua i directa, a l'estil de Stieg Larsson. No endolceixis les escenes denses ni la visceralitat psicològica.
-• DIÀLEGS AL GRA: No allarguis les converses. Quan la tensió o el subtext ja ha quedat clar per al lector, talla l'escena immediatament.
-• ECONOMIA PSICOLÒGICA: No repeteixis estructures de pensament (racionalització, càlcul). Un cop el lector entén com processa la informació un personatge, no ho tornis a descriure.
-`
-    : '';
+  const idPerfil = obtenirPerfilAutorId(tematica) || obtenirAutorIdProjecte();
+  const reglesEstilDures = (idPerfil && PERFILS_AUTOR[idPerfil] && PERFILS_AUTOR[idPerfil].regles_dures) || '';
 
   const base = `Ets un novel·lista literari expert en català. Escrius novel·la amb profunditat psicològica, diàlegs vius i un ritme narratiu sostingut.
 Apliques les tècniques de Donna Tartt, Elena Ferrante i Carlos Ruiz Zafón: atmòsferes denses, personatges amb contradiccions genuïnes i trames que s'informen mútuament.
@@ -13762,14 +13848,11 @@ Si un element del capítol contradiu la macronarrativa, no l'escriguis.
       if (m.vocabulari) linies.push(`• Vocabulari: ${m.vocabulari}`);
       if (linies.length > 0) parts.push('\nMANUAL D\'ESTIL DE REFERÈNCIA:\n' + linies.join('\n'));
     }
-    const autorRef = String((ESTAT.configProjecte && ESTAT.configProjecte.autor_referencia) || '').toLowerCase();
-    const modeTolkien = /tolkien/.test(autorRef);
-    const modeCastaneda = /castaneda/.test(autorRef);
+    const idPerfilAutor = obtenirAutorIdProjecte();
     const tensioActiva = (ESTAT._corbaTensio || []).find(t => t.capitol === (Number(ESTAT._capitolActual || 0) + 1));
-    if (modeTolkien) {
-      parts.push('\nINTENSITAT NARRATIVA (MODE TOLKIEN): Prioritza gravetat mítica, memòria del paisatge i pes moral de les decisions. La tensió no ha de ser sempre frenètica: alterna amplitud èpica, respiració lírica i conseqüència històrica.');
-    } else if (modeCastaneda) {
-      parts.push("\nINTENSITAT NARRATIVA (MODE CASTANEDA): Prioritza desplaçament perceptiu, ambigüitat ontològica i procés iniciàtic. La tensió pot ser interior i cognitiva: sostén silencis, paradoxes i fractures de percepció sense accelerar artificialment l'acció.");
+    const intensitatPerfil = (idPerfilAutor && PERFILS_AUTOR[idPerfilAutor] && PERFILS_AUTOR[idPerfilAutor].intensitat) || '';
+    if (intensitatPerfil) {
+      parts.push('\n' + intensitatPerfil);
     } else if (tensioActiva && Number(tensioActiva.nivell) > 7) {
       parts.push("\nCONTROL DE CONTRAST SENSORIAL (NKG>7): Trenca qualsevol fredor comptable amb detalls viscerals o orgànics (olors, suor, brutícia, reaccions físiques involuntàries). Quan la tensió és alta, aquests detalls són OBLIGATORIS i han d'entrar dins l'acció.");
     } else {
@@ -14835,9 +14918,9 @@ CRÍTIC: Han de ser EXACTAMENT ${capsQueFalten} capítols. L'últim (${capsEsper
 // ═══════════════════════════════════════════════════════════
 function generarInstruccionsGanxoFinalCapitol(idx) {
   const esUltimCapitol = idx >= ((ESTAT._estructuraCapitols && ESTAT._estructuraCapitols.length) ? ESTAT._estructuraCapitols.length - 1 : 0);
-  const autorRef = String((ESTAT.configProjecte && ESTAT.configProjecte.autor_referencia) || '').toLowerCase();
-  const modeTolkien = /tolkien/.test(autorRef);
-  const modeCastaneda = /castaneda/.test(autorRef);
+  const idPerfilAutor = obtenirAutorIdProjecte();
+  const modeTolkien = idPerfilAutor === 'tolkien';
+  const modeCastaneda = idPerfilAutor === 'castaneda';
   const oberts = (ESTAT.llibreRegistre && Array.isArray(ESTAT.llibreRegistre.fils_oberts))
     ? ESTAT.llibreRegistre.fils_oberts.filter(Boolean)
     : [];
@@ -16590,6 +16673,7 @@ async function nouFlux_finals(perfilAutor, autor, to, config) {
 AUTOR: ${autor}
 TO: ${to}
 PERFIL D'ESTIL: ${perfilAutor}
+${reglaAmbientacioAutor(autor)}
 
 Per a cada final, proporciona:
 TÍTOL: [títol evocador breu]
@@ -16653,6 +16737,7 @@ FINAL ESCOLLIT:
 ${endingText}
 
 AUTOR: ${autor}
+${reglaAmbientacioAutor(autor)}
 
 Per a cada tema:
 1. [Tema] — TENSIÓ: [conflicte de valors central] | PREGUNTA: [pregunta filosòfica que planteja] | NO ÉS: [allò que el tema NO tracta] | SUBTEXTUALITAT: [com apareix sense ser dit explícitament] (Recomanat)
@@ -16679,6 +16764,7 @@ TEMA:
 ${themeText}
 
 AUTOR: ${autor}
+${reglaAmbientacioAutor(autor)}
 
 Frase 1: El món inicial i el protagonista (situació de partida).
 Frase 2: L'esdeveniment que trenca l'equilibri.
@@ -16794,6 +16880,7 @@ FINAL: ${endingText}
 AUTOR: ${autor}
 
 INSTRUCCIÓ D'AMBIENTACIÓ: Els noms dels personatges han de ser coherents amb el món de l'autor (${autor}). NO facis adaptació a Catalunya — usa noms, cognoms i referències culturals pròpies de l'univers de l'autor.
+${reglaAmbientacioAutor(autor)}
 
 Per a cada proposta, inclou 3-4 personatges principals. Per a cada personatge:
 NOM: [nom]
@@ -16836,6 +16923,7 @@ Les 3 variants han de crear mons coherents amb l'univers literari de l'autor de 
 - Mantén noms propis, topònims, institucions, clima i codis socials fidels al món de l'autor.
 - NO facis adaptació a Catalunya: els llocs, noms i context cultural han de ser els de l'autor original.
 - El paisatge i l'atmosfera han de funcionar com a personatge amb pes narratiu propi.
+${reglaAmbientacioAutor(autor)}
 
 Per a cada variant:
 1. [Nom variant] — LLOC I ÈPOCA: [on i quan, dins l'univers de l'autor] | EXPRESSIÓ DEL TEMA: [com el món encarna el tema] | CONFLICTE NATURAL: [tensions inherents al món] | RESTRICCIONS: [lleis o limitacions d'aquest món] (Recomanat)
@@ -16864,7 +16952,7 @@ PERSONATGES (arcs): ${arcsResumit}
 MÓN: ${monText}
 AUTOR: ${autor}
 
-AMBIENTACIÓ: Mantén l'ambientació dins el món de l'autor (${autor}). NO facis adaptació a Catalunya.
+${reglaAmbientacioAutor(autor)}
 
 Per a cada estructura, genera una taula amb exactament ${nCaps} files:
 N | TÍTOL | FUNCIÓ NARRATIVA | INTENSITAT (1-5)
@@ -16887,7 +16975,7 @@ Al final, afegeix "=== VERIFICACIÓ ===" i comprova:
   );
 }
 
-async function nouFlux_escaletaCapitol(capInfo, macronarrativaText, escaletesAnteriors, nkg, config, totalCapitols) {
+async function nouFlux_escaletaCapitol(capInfo, macronarrativaText, escaletesAnteriors, nkg, config, totalCapitols, motiuReintent = '') {
   const models = getModelConfig(config || USER_CONFIG || {});
   const filsOberts = (nkg && nkg.threads && Array.isArray(nkg.threads.oberts)) ? nkg.threads.oberts : [];
   const filsObertsText = filsOberts.length > 0 ? filsOberts.join(', ') : 'Cap';
@@ -16938,6 +17026,7 @@ ${escaletesText}
 
 FERIDA NUCLEAR (personatges):
 ${JSON.stringify((ESTAT._perfilsPersonatges || {}), null, 2).substring(0, 1600)}
+${reglaAmbientacioAutor(ESTAT.tematica)}
 
 Retorna EXCLUSIVAMENT JSON vàlid:
 {
@@ -16961,7 +17050,9 @@ Instruccions per al ganxo:
 ${instruccioGanxo}
 La intensitat del ganxo ha de ser ≥ ${esPenultim ? 5 : intensitat}.
 
-OBLIGATORI: Fusiona plot i drama intern. El camp "detonant_emocional_escena" ha de ser específic i accionable; no acceptis formulacions genèriques del tipus "record del passat" o "patiment intern".`
+OBLIGATORI: Fusiona plot i drama intern. El camp "detonant_emocional_escena" ha de ser específic i accionable; no acceptis formulacions genèriques del tipus "record del passat" o "patiment intern".${motiuReintent ? `
+
+ATENCIÓ — REINTENT: la teva resposta anterior era invàlida (${motiuReintent}). Corregeix exactament aquests problemes i retorna el JSON complet i vàlid.` : ''}`
   }];
   return await nouFluxCall(
     msgs,
@@ -16975,60 +17066,6 @@ OBLIGATORI: Fusiona plot i drama intern. El camp "detonant_emocional_escena" ha 
 // ═══════════════════════════════════════════════════════════
 //  NKG v5: Narrative Knowledge Graph
 // ═══════════════════════════════════════════════════════════
-
-function crearNKG() {
-  return {
-    macronarrativa: {
-      synopsis_core: "",
-      theme: "",
-      ending: {
-        emocio_final_lector: "",
-        desti_protagonista: "",
-        imatge_o_escena_final: "",
-        veritat_que_es_revela: ""
-      },
-      backstory_canonic: {
-        fets_previs: [],
-        cronologia_previa: []
-      },
-      thematic_count: 0,
-      thematic_count_max: 3
-    },
-    threads: {
-      oberts: [],
-      tancats: [],
-      pendents_resolucio: []
-    },
-    personatges: {},
-    llocs: {},
-    mapa_adjacencies: [],
-    objectes: {},
-    fets_canonics: [],
-    esdeveniments: [],
-    relacions: [], // { personatge_a, personatge_b, tipus, descripcio, coneixement_mutu, evolucio }
-    timeline_accions: [], // [{ capitol, personatge, accio, hora_aproximada, ubicacio }]
-    timeline_objectes: [], // Registre de moviment d'objectes: C3E2: [Claus] Personatge A -> Personatge B (motiu)
-    timeline_personatges: [], // Registre de canvis de personatge: ubicació/roba/estat per escena
-    context_creacio: {
-      estil: {
-        perspectiva: {
-          tipus: 'tercera_limitada',
-          pov_per_capitol: [],
-          restriccions_informacio: ''
-        }
-      },
-      cronologia: {
-        data_inici_historia: '',
-        duracio_total_estimada: '',
-        per_capitol: []
-      }
-    },
-    transicions_capitols: [], // Regles de pas capítol->capítol per evitar salts i pèrdua de continuïtat
-    beats_gastats: [], // Registre de beats narratius consumits (anti-repetició dramàtica)
-    ultima_actualitzacio: { capitol: 0, escena: 0 },
-    versio: 5
-  };
-}
 
 function nkgNormalitzarNom(nom) {
   if (!nom) return '';
@@ -19686,6 +19723,8 @@ document.addEventListener('DOMContentLoaded', function() {
   comprovarProjecteGuardat();
   // Actualitzar visibilitat dels botons de config segons si hi ha projecte actiu
   actualitzarVisibilitatBotonsConfig();
+  // Panell de macro-etapes (Etapa B): estat inicial segons dades del projecte
+  if (typeof renderPanellEtapes === 'function') renderPanellEtapes();
 });
 
 </script>
