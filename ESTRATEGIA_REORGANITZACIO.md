@@ -98,7 +98,19 @@ només cal fer-lo el mecanisme central en lloc d'un apèndix).
 Això recupera la comoditat del mode automàtic (un botó per etapa) sense perdre la
 visibilitat manual que es va voler amb `18f8475`.
 
-### Etapa C — Perfils d'autor com a dada de primera classe
+### Etapa C — Perfils d'autor com a dada de primera classe ✅ FETA
+
+Implementat: registre únic `PERFILS_AUTOR` (larsson/tolkien/dick/castaneda) amb
+`nom`, `deteccio`, `prefill` (gènere+focus), `ambientacio`, `estil` (bloc complet),
+`regles_dures` (Larsson) i `intensitat` (Tolkien/Castaneda). Dues funcions úniques:
+`obtenirPerfilAutorId(text)` (detecció) i `obtenirAutorIdProjecte()` (punt de veritat,
+amb fallback per a snapshots antics via `autor_referencia`/`tematica`).
+`ESTAT._autorPerfilId` es fixa a `iniciarNovaCreacio`. Refactoritzats tots els
+consumidors: `getGenreStyle`, `getSystemPromptNovella`, `reglaAmbientacioAutor`,
+`fase3_personatges`, `escriureContePart`, intensitat narrativa i ganxos de capítol,
+preompliment del formulari. **Zero regex de detecció fora del registre.**
+
+Disseny original de referència:
 
 Substituir els 3 mecanismes actuals per **un únic objecte de configuració**, triat una sola
 vegada a l'etapa 1 i injectat a cada prompt segons l'etapa:

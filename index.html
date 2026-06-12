@@ -3158,29 +3158,12 @@ ${perfilOriginal.nota_usuari ? `<br>Nota de veu: <em>${escHtml(perfilOriginal.no
 
 // ─── CANVI G: iniciarNovaCreacio amb anàlisi d'estil ─────────────────────────
 
-// 🎭 Estil i To Global: preompliment per autor de referència (camps sempre editables)
-const PREFILL_PER_AUTOR = {
-  'Stieg Larsson': {
-    genere: 'Thriller / Nordic Noir',
-    focus: 'Cost físic extrem, esgotament mental, entorns freds i hostils, cinisme'
-  },
-  'Philip K. Dick': {
-    genere: 'Ciència-ficció distòpica / paranoica',
-    focus: 'Col·lapse de la realitat, paranoia funcional, cost psíquic de descobrir la veritat'
-  },
-  'Carlos Castaneda': {
-    genere: 'Realisme xamànic / relat iniciàtic',
-    focus: 'Desgast perceptiu, por al desconegut, dissolució del jo racional'
-  },
-  'J.R.R. Tolkien': {
-    genere: 'Fantasia èpica / mitopoètica',
-    focus: 'Sacrifici, pes moral de les decisions, esperança fràgil davant la foscor'
-  }
-};
-
+// 🎭 Estil i To Global: preompliment per autor de referència (camps sempre editables).
+// Etapa C: els valors viuen al registre únic PERFILS_AUTOR (segon bloc de script).
 function aplicarPrefillAutor() {
   const autor = document.getElementById('config-autor')?.value || '';
-  const prefill = PREFILL_PER_AUTOR[autor];
+  const id = (typeof obtenirPerfilAutorId === 'function') ? obtenirPerfilAutorId(autor) : '';
+  const prefill = (id && PERFILS_AUTOR[id] && PERFILS_AUTOR[id].prefill) || null;
   if (!prefill) return;
   const genereEl = document.getElementById('config-genere');
   const focusEl  = document.getElementById('config-focus-climax');
@@ -3189,16 +3172,12 @@ function aplicarPrefillAutor() {
 }
 
 function sincronitzarEstilAmbUnivers() {
-  const univers = (document.getElementById('sel-tematica')?.value || '').toLowerCase();
+  const univers = document.getElementById('sel-tematica')?.value || '';
   const autorEl = document.getElementById('config-autor');
   if (!autorEl || !univers) return;
-  let autor = '';
-  if (/larsson/.test(univers)) autor = 'Stieg Larsson';
-  else if (/dick/.test(univers)) autor = 'Philip K. Dick';
-  else if (/castaneda/.test(univers)) autor = 'Carlos Castaneda';
-  else if (/tolkien/.test(univers)) autor = 'J.R.R. Tolkien';
-  if (!autor) return;
-  autorEl.value = autor;
+  const id = (typeof obtenirPerfilAutorId === 'function') ? obtenirPerfilAutorId(univers) : '';
+  if (!id || !PERFILS_AUTOR[id]) return;
+  autorEl.value = PERFILS_AUTOR[id].nom;
   aplicarPrefillAutor();
 }
 
@@ -3238,6 +3217,9 @@ async function iniciarNovaCreacio() {
     autor_referencia: document.getElementById('config-autor')?.value || '',
     focus_climax: document.getElementById('config-focus-climax')?.value || ''
   };
+  // Etapa C: id de perfil únic per a tot el pipeline (l'univers mana; si no
+  // matxeja cap perfil, es deriva de l'autor de referència).
+  ESTAT._autorPerfilId = obtenirPerfilAutorId(univers) || obtenirPerfilAutorId(ESTAT.configProjecte.autor_referencia);
 
   const resumWrap  = document.getElementById('analisi-resum-wrap');
   const loaderWrap = document.getElementById('analisi-loader-wrap');
@@ -12577,35 +12559,20 @@ Escrius EXCLUSIVAMENT en català. Mai inclous paraules, frases ni comentaris en 
 ONOMÀSTICA I MÓN D'AUTOR: Conserva els noms propis, topònims, institucions, codis culturals i atmosfera del món particular de l'autor/gènere de referència. No facis 'adaptació catalana' de noms, llocs o contextos si no és una decisió narrativa explícita de l'usuari.
 Escriu directament el text.`;
 
-// ─── Regla d'ambientació per autor: el món narrat és SEMPRE el de l'autor ───
-function reglaAmbientacioAutor(autor) {
-  const a = String(autor || '').toLowerCase();
-  let univers = "l'univers literari propi de l'autor o gènere de referència (mai el context local de la llengua de redacció)";
-  if (/larsson|noir|negr[ae]|nòrdi/.test(a)) {
-    univers = "la Suècia de Stieg Larsson: Estocolm, província sueca, redaccions, jutjats i serveis socials, hiverns nòrdics; noms i cognoms suecs, topònims i institucions sueques";
-  } else if (/dick/.test(a)) {
-    univers = "els EUA distòpics de Philip K. Dick: Califòrnia futurista, megacorporacions, suburbis decadents, colònies fora-món; noms anglosaxons, topònims i marques nord-americanes o inventades";
-  } else if (/castaneda|xamànic/.test(a)) {
-    univers = "el Mèxic de Carlos Castaneda: desert de Sonora, Oaxaca, mercats, muntanyes i xaparral; noms mexicans i yaquis, topònims mexicans";
-  } else if (/tolkien|fantàstic|fantastic|èpic/.test(a)) {
-    univers = "un món secundari de fantasia èpica a l'òrbita de Tolkien: races, regnes, llengües i geografia inventades amb coherència interna; CAP topònim ni nom del món real";
-  }
-  return `
-REGLA D'AMBIENTACIÓ INVIOLABLE:
-L'ambientació, els topònims, els noms de personatges, les institucions i els codis culturals han de ser SEMPRE els de ${univers}.
-PROHIBIT situar l'acció a Catalunya o als Països Catalans, usar topònims catalans (Barcelona, Girona, l'Empordà...) o noms de persona catalans. La llengua de redacció és el català, però el món narrat és el de l'autor de referència.`;
-}
-
-// ─── Extensió d'estil per autor (reutilitzable per conte i novel·la) ───
-function getGenreStyle(tematica) {
-  const isLarsson   = tematica && /larsson|noir|negr[ae]|nòrdi/i.test(tematica);
-  const isTolkien   = tematica && /tolkien|fantàstic|fantastic|èpic/i.test(tematica);
-  const isDick      = tematica && /philip k\. dick|philip.*dick|dick/i.test(tematica);
-  const isCastaneda = tematica && /castaneda|xamànic/i.test(tematica);
-
-  if (isLarsson) return `
-
-── ESTIL STIEG LARSSON ──
+// ═══════════════════════════════════════════════════════════
+//  PERFILS_AUTOR (Etapa C) — registre únic de perfils d'autor
+//  Tota detecció i injecció d'estil/ambientació surt d'aquí.
+// ═══════════════════════════════════════════════════════════
+const PERFILS_AUTOR = {
+  larsson: {
+    nom: 'Stieg Larsson',
+    deteccio: /larsson|noir|negr[ae]|nòrdi/i,
+    prefill: {
+      genere: 'Thriller / Nordic Noir',
+      focus: 'Cost físic extrem, esgotament mental, entorns freds i hostils, cinisme'
+    },
+    ambientacio: "la Suècia de Stieg Larsson: Estocolm, província sueca, redaccions, jutjats i serveis socials, hiverns nòrdics; noms i cognoms suecs, topònims i institucions sueques",
+    estil: `── ESTIL STIEG LARSSON ──
 AMBIENTACIÓ I PERSONATGES (OBLIGATORI): L'acció i els personatges han de ser nòrdics/escandinaus. Mantén noms, topònims, institucions, clima i codis socials del nord d'Europa. Evita desplaçar el marc a contextos mediterranis o llatinoamericans.
 Pensament i visió del món: Larsson era periodista d'investigació i antifeixista militant. Les seves obres neixen de la convicció que la violència contra les dones i la corrupció institucional són sistèmiques, no excepcions. Escrius des d'aquesta consciència política sense abanderats ni discursos.
 Prosa directa i funcional, carregada de detall procedimental: cada acció d'investigació —una trucada, un arxiu consultat, una font protegida— s'explica amb lògica interna creïble i concreta.
@@ -12614,11 +12581,21 @@ Secrets familiars soterrats durant dècades que quan surten a la llum destapen p
 Protagonistes traumatitzats amb una obstinació quasi patològica: no investiguen per heroisme sinó perquè no poden parar, la ferida personal és el motor.
 Crítica social concreta i documentada integrada a la trama: noms d'institucions, mecanismes de poder, estadístiques de violència que apareixen de forma natural al text.
 Estructura de revelació progressiva: el que semblava un cas aïllat obre pas a un sistema podrit que implica tothom.
-Ritme metòdic i pausat en la investigació, amb pics d'acció breu, directa i brutal quan la violència irromp.`;
-
-  if (isTolkien) return `
-
-── ESTIL J.R.R. TOLKIEN ──
+Ritme metòdic i pausat en la investigació, amb pics d'acció breu, directa i brutal quan la violència irromp.`,
+    regles_dures: `• TO BRUTAL I EXPLÍCIT: La prosa ha de ser crua i directa, a l'estil de Stieg Larsson. No endolceixis les escenes denses ni la visceralitat psicològica.
+• DIÀLEGS AL GRA: No allarguis les converses. Quan la tensió o el subtext ja ha quedat clar per al lector, talla l'escena immediatament.
+• ECONOMIA PSICOLÒGICA: No repeteixis estructures de pensament (racionalització, càlcul). Un cop el lector entén com processa la informació un personatge, no ho tornis a descriure.
+`
+  },
+  tolkien: {
+    nom: 'J.R.R. Tolkien',
+    deteccio: /tolkien|fantàstic|fantastic|èpic/i,
+    prefill: {
+      genere: 'Fantasia èpica / mitopoètica',
+      focus: 'Sacrifici, pes moral de les decisions, esperança fràgil davant la foscor'
+    },
+    ambientacio: "un món secundari de fantasia èpica a l'òrbita de Tolkien: races, regnes, llengües i geografia inventades amb coherència interna; CAP topònim ni nom del món real",
+    estil: `── ESTIL J.R.R. TOLKIEN ──
 AMBIENTACIÓ I PERSONATGES (OBLIGATORI): Els personatges i el món han de ser imaginaris dins l'òrbita tolkieniana (Terra Mitjana-like): races, regnes, llengües, mites i geografia pròpia de fantasia èpica. Evita marcs contemporanis realistes.
 Pensament i visió del món: Tolkien era filòleg, catòlic i veterà de la Primera Guerra Mundial. El seu univers neix de la convicció que el llenguatge crea realitat, que el bé i el mal existeixen com a forces còsmiques, i que la humilitat dels petits pot transformar la història. Escrius des d'aquesta fe en la bellesa i el sacrifici.
 Prosa èpica, lírica i detallada: les descripcions de paisatge i arquitectura transmeten profunditat i antiguitat immemorial, com si el món existís des d'abans que comencés la història.
@@ -12626,11 +12603,18 @@ Univers tolkienià complet: races (Eldar, Khazad, hobits, homes, orcs, ents), ge
 Temes centrals: la corrupció del poder i la tentació dels anells, el pes de la responsabilitat sobre les espatlles dels humils, la camaraderia com a valor suprem, la bellesa efímera davant el pas implacable del temps i l'oblit.
 Llenguatge solemne però accessible: frases llargues i rítmiques, construccions arcaiques mesurades, èmfasi en els noms propis com a portadors de destí.
 La natura com a presència viva i moral: boscos, rius i muntanyes tenen memòria, voluntat i opinió sobre els esdeveniments dels mortals.
-El mal té pes físic i sensorial: no s'explica, es percep en l'aire que s'espesseix, la llum que s'apaga, el silenci sobtat dels ocells i la por als ulls dels animals.`;
-
-  if (isDick) return `
-
-── ESTIL PHILIP K. DICK ──
+El mal té pes físic i sensorial: no s'explica, es percep en l'aire que s'espesseix, la llum que s'apaga, el silenci sobtat dels ocells i la por als ulls dels animals.`,
+    intensitat: "INTENSITAT NARRATIVA (MODE TOLKIEN): Prioritza gravetat mítica, memòria del paisatge i pes moral de les decisions. La tensió no ha de ser sempre frenètica: alterna amplitud èpica, respiració lírica i conseqüència històrica."
+  },
+  dick: {
+    nom: 'Philip K. Dick',
+    deteccio: /philip k\. dick|philip.*dick|dick/i,
+    prefill: {
+      genere: 'Ciència-ficció distòpica / paranoica',
+      focus: 'Col·lapse de la realitat, paranoia funcional, cost psíquic de descobrir la veritat'
+    },
+    ambientacio: "els EUA distòpics de Philip K. Dick: Califòrnia futurista, megacorporacions, suburbis decadents, colònies fora-món; noms anglosaxons, topònims i marques nord-americanes o inventades",
+    estil: `── ESTIL PHILIP K. DICK ──
 AMBIENTACIÓ I PERSONATGES (OBLIGATORI): L'ambientació i els personatges han de ser nord-americans (Estats Units): ciutats, suburbis, burocràcies, corporacions i codis culturals propis del context nord-americà, encara que sigui en clau distòpica/futurista.
 Pensament i visió del món: Dick era un paranoic funcional fascinat per la gnosi, les drogues, la simulació i la pregunta de si alguna cosa és real. Les seves obres neixen de la convicció que la realitat és una capa prima que pot trencar-se en qualsevol moment i que el sistema —qualsevol sistema— menteix. Escrius des d'aquesta desconfiança radical.
 Paranoia com a estat cognitiu del protagonista i del lector: les institucions (estat, corporacions, androïdes, drogues prescrites) manipulen la percepció; ningú sap mai si el que veu és real o induït.
@@ -12639,11 +12623,17 @@ Distopia quotidiana i desgastada: el futur és una extensió deteriorada del pre
 Canvis sobtats i irreversibles de realitat: una frase, un objecte, una conversa trenquen el marc que el lector creia ferm. No es recupera l'estat anterior.
 Protagonistes ordinaris —venedors, taxistes, policies de baixa graduació— que descobreixen que el món que habiten és una construcció i han de decidir si prefereixen la mentida còmoda o la veritat devastadora.
 Prosa àgil, nerviosa i plena de diàleg: les espirals de pensament paranoic del protagonista s'intercalen amb l'acció sense aturar el ritme.
-Empatia com a única brúixola moral: en un món on res és real, la capacitat de sentir el dolor de l'altre és l'únic criteri per distingir l'humà de la màquina.`;
-
-  if (isCastaneda) return `
-
-── ESTIL CARLOS CASTANEDA ──
+Empatia com a única brúixola moral: en un món on res és real, la capacitat de sentir el dolor de l'altre és l'únic criteri per distingir l'humà de la màquina.`
+  },
+  castaneda: {
+    nom: 'Carlos Castaneda',
+    deteccio: /castaneda|xamànic/i,
+    prefill: {
+      genere: 'Realisme xamànic / relat iniciàtic',
+      focus: 'Desgast perceptiu, por al desconegut, dissolució del jo racional'
+    },
+    ambientacio: "el Mèxic de Carlos Castaneda: desert de Sonora, Oaxaca, mercats, muntanyes i xaparral; noms mexicans i yaquis, topònims mexicans",
+    estil: `── ESTIL CARLOS CASTANEDA ──
 AMBIENTACIÓ I PERSONATGES (OBLIGATORI): L'ambientació i els personatges han de ser mexicans, amb context cultural i territorial de Mèxic (desert, serres, pobles, ciutats, llenguatge i cosmovisions locals), sense desplaçar-ho a marcs genèrics.
 Pensament i visió del món: Castaneda partia de la tradició tolteca i xamànica per demostrar que la realitat ordinària és un acord social, no una veritat absoluta. Les seves obres neixen de la convicció que la percepció es pot estendre més enllà dels límits racionals i que hi ha un "punt d'assemblatge" que pot moure's. Escrius des d'aquesta epistemologia alternativa.
 Marc antropològic o periodístic que es dissol progressivament: el narrador arriba com a investigador racional i occidental i surt transformat per experiències que la seva formació no pot contenir.
@@ -12652,7 +12642,47 @@ Els estats alterats de consciència —induïts per plantes de poder, per privac
 El món natural com a text viu: cada animal, planta, vent o lloc porta intenció i missatge per als qui han après a llegir-los.
 Diàleg com a vehicle principal de l'ensenyament: les converses entre aprenent i mestre marquen el ritme i transformen la percepció del lector.
 Tensió irresoluble entre la racionalitat occidental del protagonista i la "realitat separada" que se li ofereix: el text no resol aquesta tensió, la manté viva fins al final.
-El desert, la nit, els somnis lúcids i les plantes de poder com a espais on les fronteres entre mons es fan permeables.`;
+El desert, la nit, els somnis lúcids i les plantes de poder com a espais on les fronteres entre mons es fan permeables.`,
+    intensitat: "INTENSITAT NARRATIVA (MODE CASTANEDA): Prioritza desplaçament perceptiu, ambigüitat ontològica i procés iniciàtic. La tensió pot ser interior i cognitiva: sostén silencis, paradoxes i fractures de percepció sense accelerar artificialment l'acció."
+  }
+};
+
+// Detecta l'id de perfil a partir de qualsevol text (univers, autor lliure, tematica)
+function obtenirPerfilAutorId(text) {
+  const t = String(text || '');
+  if (!t) return '';
+  for (const id of Object.keys(PERFILS_AUTOR)) {
+    if (PERFILS_AUTOR[id].deteccio.test(t)) return id;
+  }
+  return '';
+}
+
+// Punt únic de veritat del perfil del projecte actual.
+// Compatibilitat amb snapshots antics: si no hi ha id explícit, es deriva
+// d'autor_referencia o de tematica (els camps que ja existien).
+function obtenirAutorIdProjecte() {
+  if (ESTAT && typeof ESTAT._autorPerfilId === 'string' && ESTAT._autorPerfilId) return ESTAT._autorPerfilId;
+  const autorRef = (ESTAT && ESTAT.configProjecte && ESTAT.configProjecte.autor_referencia) || '';
+  return obtenirPerfilAutorId(autorRef) || obtenirPerfilAutorId((ESTAT && ESTAT.tematica) || '');
+}
+
+// ─── Regla d'ambientació per autor: el món narrat és SEMPRE el de l'autor ───
+function reglaAmbientacioAutor(autor) {
+  const id = obtenirPerfilAutorId(autor) || obtenirAutorIdProjecte();
+  const univers = (id && PERFILS_AUTOR[id])
+    ? PERFILS_AUTOR[id].ambientacio
+    : "l'univers literari propi de l'autor o gènere de referència (mai el context local de la llengua de redacció)";
+  return `
+REGLA D'AMBIENTACIÓ INVIOLABLE:
+L'ambientació, els topònims, els noms de personatges, les institucions i els codis culturals han de ser SEMPRE els de ${univers}.
+PROHIBIT situar l'acció a Catalunya o als Països Catalans, usar topònims catalans (Barcelona, Girona, l'Empordà...) o noms de persona catalans. La llengua de redacció és el català, però el món narrat és el de l'autor de referència.`;
+}
+
+// ─── Extensió d'estil per autor (reutilitzable per conte i novel·la) ───
+// Etapa C: llegeix del registre PERFILS_AUTOR; les regex disperses han desaparegut.
+function getGenreStyle(tematica) {
+  const id = obtenirPerfilAutorId(tematica) || obtenirAutorIdProjecte();
+  if (id && PERFILS_AUTOR[id]) return '\n\n' + PERFILS_AUTOR[id].estil;
 
   // Per a QUALSEVOL autor no reconegut: crear ambientació en el seu món propi
   return `
@@ -12712,7 +12742,7 @@ Format ESTRICTE (res més, sense cap introducció):
 
 // ─── FASE 3: 5 protagonistes ─────────────────────────────────
 async function fase3_personatges(premissaTriada, estilDesc, history, userConfig, tematica) {
-  const isNoir = tematica && /larsson|noir|negr[ae]|nòrdi/i.test(tematica);
+  const isNoir = obtenirPerfilAutorId(tematica) === 'larsson';
 
   const protagonistePrompt = isNoir
     ? `Genera 5 protagonistes possibles per a aquest conte NEGRE NÒRDIC.
@@ -12816,7 +12846,7 @@ Format ESTRICTE (5 opcions, res més):
 // ─── ESCRIPTURA: Generació per parts ─────────────────────────
 async function escriureContePart(partNum, totalParts, paraulesPerPart, finalTriat, estilDesc, history, userConfig, tematica) {
   const pp     = parseInt(paraulesPerPart) || 750;
-  const isNoir = tematica && /larsson|noir|negr[ae]|nòrdi/i.test(tematica);
+  const isNoir = obtenirPerfilAutorId(tematica) === 'larsson';
 
   const noirExtra = isNoir
     ? `\nESTIL NORDIC NOIR OBLIGATORI per a aquesta part:
@@ -13487,13 +13517,8 @@ function parseJsonRobust(text, expectedKeys = []) {
 //  SYSTEM PROMPT per a novel·la
 // ═══════════════════════════════════════════════════════════
 function getSystemPromptNovella(tematica) {
-  const isLarsson = !!(tematica && /larsson|noir|negr[ae]|nòrdi/i.test(tematica));
-  const reglesEstilDures = isLarsson
-    ? `• TO BRUTAL I EXPLÍCIT: La prosa ha de ser crua i directa, a l'estil de Stieg Larsson. No endolceixis les escenes denses ni la visceralitat psicològica.
-• DIÀLEGS AL GRA: No allarguis les converses. Quan la tensió o el subtext ja ha quedat clar per al lector, talla l'escena immediatament.
-• ECONOMIA PSICOLÒGICA: No repeteixis estructures de pensament (racionalització, càlcul). Un cop el lector entén com processa la informació un personatge, no ho tornis a descriure.
-`
-    : '';
+  const idPerfil = obtenirPerfilAutorId(tematica) || obtenirAutorIdProjecte();
+  const reglesEstilDures = (idPerfil && PERFILS_AUTOR[idPerfil] && PERFILS_AUTOR[idPerfil].regles_dures) || '';
 
   const base = `Ets un novel·lista literari expert en català. Escrius novel·la amb profunditat psicològica, diàlegs vius i un ritme narratiu sostingut.
 Apliques les tècniques de Donna Tartt, Elena Ferrante i Carlos Ruiz Zafón: atmòsferes denses, personatges amb contradiccions genuïnes i trames que s'informen mútuament.
@@ -14002,14 +14027,11 @@ Si un element del capítol contradiu la macronarrativa, no l'escriguis.
       if (m.vocabulari) linies.push(`• Vocabulari: ${m.vocabulari}`);
       if (linies.length > 0) parts.push('\nMANUAL D\'ESTIL DE REFERÈNCIA:\n' + linies.join('\n'));
     }
-    const autorRef = String((ESTAT.configProjecte && ESTAT.configProjecte.autor_referencia) || '').toLowerCase();
-    const modeTolkien = /tolkien/.test(autorRef);
-    const modeCastaneda = /castaneda/.test(autorRef);
+    const idPerfilAutor = obtenirAutorIdProjecte();
     const tensioActiva = (ESTAT._corbaTensio || []).find(t => t.capitol === (Number(ESTAT._capitolActual || 0) + 1));
-    if (modeTolkien) {
-      parts.push('\nINTENSITAT NARRATIVA (MODE TOLKIEN): Prioritza gravetat mítica, memòria del paisatge i pes moral de les decisions. La tensió no ha de ser sempre frenètica: alterna amplitud èpica, respiració lírica i conseqüència històrica.');
-    } else if (modeCastaneda) {
-      parts.push("\nINTENSITAT NARRATIVA (MODE CASTANEDA): Prioritza desplaçament perceptiu, ambigüitat ontològica i procés iniciàtic. La tensió pot ser interior i cognitiva: sostén silencis, paradoxes i fractures de percepció sense accelerar artificialment l'acció.");
+    const intensitatPerfil = (idPerfilAutor && PERFILS_AUTOR[idPerfilAutor] && PERFILS_AUTOR[idPerfilAutor].intensitat) || '';
+    if (intensitatPerfil) {
+      parts.push('\n' + intensitatPerfil);
     } else if (tensioActiva && Number(tensioActiva.nivell) > 7) {
       parts.push("\nCONTROL DE CONTRAST SENSORIAL (NKG>7): Trenca qualsevol fredor comptable amb detalls viscerals o orgànics (olors, suor, brutícia, reaccions físiques involuntàries). Quan la tensió és alta, aquests detalls són OBLIGATORIS i han d'entrar dins l'acció.");
     } else {
@@ -15075,9 +15097,9 @@ CRÍTIC: Han de ser EXACTAMENT ${capsQueFalten} capítols. L'últim (${capsEsper
 // ═══════════════════════════════════════════════════════════
 function generarInstruccionsGanxoFinalCapitol(idx) {
   const esUltimCapitol = idx >= ((ESTAT._estructuraCapitols && ESTAT._estructuraCapitols.length) ? ESTAT._estructuraCapitols.length - 1 : 0);
-  const autorRef = String((ESTAT.configProjecte && ESTAT.configProjecte.autor_referencia) || '').toLowerCase();
-  const modeTolkien = /tolkien/.test(autorRef);
-  const modeCastaneda = /castaneda/.test(autorRef);
+  const idPerfilAutor = obtenirAutorIdProjecte();
+  const modeTolkien = idPerfilAutor === 'tolkien';
+  const modeCastaneda = idPerfilAutor === 'castaneda';
   const oberts = (ESTAT.llibreRegistre && Array.isArray(ESTAT.llibreRegistre.fils_oberts))
     ? ESTAT.llibreRegistre.fils_oberts.filter(Boolean)
     : [];
