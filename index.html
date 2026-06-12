@@ -802,6 +802,15 @@
   </div>
 </div>
 
+<!-- Etapa B (ESTRATEGIA_REORGANITZACIO.md): panell de 6 macro-etapes amb gating
+     per dades (detectarFaltantsNKG / validarNKGPreparatPerCapitol1), substitueix
+     la steps-bar de 25 píndoles. Es renderitza des de renderPanellEtapes(). -->
+<div class="card hidden" id="panell-etapes">
+  <h2><span class="icon">🧭</span> Progrés de la novel·la</h2>
+  <p style="color:var(--text2);font-size:.85rem;margin-bottom:12px;">L'estat de cada etapa es calcula a partir de les dades reals del projecte, no de l'ordre de clics.</p>
+  <div id="panell-etapes-cos"></div>
+</div>
+
 <!-- FASE 0: Selecció de gènere -->
 <div class="card hidden" id="fase-0">
   <h2><span class="icon">🖊️</span> Crear nova novel·la</h2>
@@ -2294,6 +2303,145 @@ function updateProgress(fase) {
     if (s < fase)  el.classList.add('done');
     if (s === fase) el.classList.add('active');
   });
+  if (typeof renderPanellEtapes === 'function') renderPanellEtapes();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PANELL DE 6 MACRO-ETAPES (Etapa B — gating per dades)
+// ═══════════════════════════════════════════════════════════
+
+function calcularEstatEtapes() {
+  const cfgOk = !!USER_CONFIG;
+  const fonamentsOk = !!(ESTAT._estructuraCapitols && ESTAT._estructuraCapitols.length > 0);
+  let faltants = [];
+  if (fonamentsOk && typeof detectarFaltantsNKG === 'function') {
+    try { faltants = detectarFaltantsNKG(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {}) || []; } catch (e) { console.warn('detectarFaltantsNKG:', e.message); }
+  }
+  const nkgOk = fonamentsOk && faltants.length === 0;
+  let validacio = { ok: false, errors: [] };
+  if (fonamentsOk && typeof validarNKGPreparatPerCapitol1 === 'function') {
+    try { validacio = validarNKGPreparatPerCapitol1(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {}) || validacio; } catch (e) { console.warn('validarNKGPreparatPerCapitol1:', e.message); }
+  }
+  const totalCaps = (ESTAT._estructuraCapitols || []).length;
+  const capsEscrits = (ESTAT._capitols_generats || []).filter(Boolean).length;
+  const escripturaOk = totalCaps > 0 && capsEscrits >= totalCaps;
+  return { cfgOk, fonamentsOk, faltants, nkgOk, validacio, totalCaps, capsEscrits, escripturaOk };
+}
+
+function renderPanellEtapes() {
+  const panell = document.getElementById('panell-etapes');
+  const cos = document.getElementById('panell-etapes-cos');
+  if (!panell || !cos) return;
+
+  const st = calcularEstatEtapes();
+  if (!st.cfgOk && ESTAT.fase === 0) { panell.classList.add('hidden'); return; }
+  panell.classList.remove('hidden');
+
+  const etapes = [
+    {
+      nom: '⚙️ 1. Configuració', desc: 'API, models i estil global',
+      feta: st.cfgOk, bloquejada: false, detall: st.cfgOk ? 'Models configurats' : 'Falta confirmar models i claus API',
+      boto: { label: 'Obrir configuració', accio: 'etapaObrirConfiguracio()', actiu: true }
+    },
+    {
+      nom: '🏛️ 2. Fonaments', desc: 'Final, tema, personatges, món, estructura i escaleta',
+      feta: st.fonamentsOk, bloquejada: !st.cfgOk,
+      detall: st.fonamentsOk ? `Estructura de ${st.totalCaps} capítols creada` : 'Pendent de crear la novel·la',
+      boto: { label: st.fonamentsOk ? 'Revisar' : 'Continuar fonaments', accio: 'etapaContinuarFonaments()', actiu: st.cfgOk }
+    },
+    {
+      nom: '📖 3. Bíblia + NKG', desc: 'Backstory, trets, objectes, mapa i regles del món',
+      feta: st.nkgOk, bloquejada: !st.fonamentsOk,
+      detall: !st.fonamentsOk ? 'Cal completar els fonaments' : (st.nkgOk ? 'NKG complet' : `${st.faltants.length} dada/es pendents`),
+      boto: { label: 'Completar automàticament', accio: 'etapaCompletarNKG(this)', actiu: st.fonamentsOk && !st.nkgOk }
+    },
+    {
+      nom: '🏗️ 4. Arquitectura', desc: 'Perspectiva, cronologia i veu validades per a capítol 1',
+      feta: st.validacio.ok, bloquejada: !st.fonamentsOk,
+      detall: !st.fonamentsOk ? 'Cal completar els fonaments' : (st.validacio.ok ? 'Validació en verd' : (st.validacio.errors || []).slice(0, 2).join(' · ') || 'Pendent de validar'),
+      boto: { label: 'Validar preparació', accio: 'etapaValidarArquitectura()', actiu: st.fonamentsOk }
+    },
+    {
+      nom: '✍️ 5. Escriptura', desc: 'Capítols amb jutge de coherència i humanització',
+      feta: st.escripturaOk, bloquejada: !st.validacio.ok && st.capsEscrits === 0,
+      detall: st.totalCaps > 0 ? `${st.capsEscrits}/${st.totalCaps} capítols escrits` : 'Pendent',
+      boto: st.capsEscrits > 0
+        ? { label: "Anar a l'escriptura", accio: 'etapaAnarEscriptura()', actiu: true }
+        : { label: 'Començar a escriure', accio: 'etapaComencarEscriptura()', actiu: st.validacio.ok }
+    },
+    {
+      nom: '🔍 6. Revisió i export', desc: "Control d'arcs, epíleg i descàrregues",
+      feta: false, bloquejada: !st.escripturaOk,
+      detall: st.escripturaOk ? 'Disponible' : 'Cal acabar tots els capítols',
+      boto: { label: "Control d'arcs", accio: 'etapaAnarRevisio()', actiu: st.escripturaOk }
+    }
+  ];
+
+  cos.innerHTML = etapes.map(e => {
+    const icona = e.feta ? '✅' : (e.bloquejada ? '🔒' : '🟡');
+    const boto = e.boto && e.boto.actiu
+      ? `<button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;white-space:nowrap;" onclick="${e.boto.accio}">${e.boto.label}</button>`
+      : '';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 4px;border-bottom:1px solid var(--border);${e.bloquejada ? 'opacity:.55;' : ''}">
+      <div>
+        <div style="font-weight:700;font-size:.92rem;">${icona} ${e.nom}</div>
+        <div style="color:var(--text2);font-size:.8rem;">${e.desc} — <span style="font-style:italic;">${e.detall}</span></div>
+      </div>
+      ${boto}
+    </div>`;
+  }).join('');
+}
+
+function etapaObrirConfiguracio() {
+  showCard('card-config');
+  document.getElementById('card-config')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function etapaContinuarFonaments() {
+  if (typeof ESTAT.fase === 'string' && ESTAT.fase.startsWith('b')) {
+    showCard('fase-' + ESTAT.fase);
+    document.getElementById('fase-' + ESTAT.fase)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  showCard('fase-0');
+  if (typeof mostrarFormNovaCreacio === 'function') mostrarFormNovaCreacio();
+  document.getElementById('fase-0')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function etapaCompletarNKG(btn) {
+  if (typeof autocompletarNKGSilent !== 'function') { toast('Compleció automàtica no disponible.'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Completant…'; }
+  try {
+    await autocompletarNKGSilent(msg => toast(msg));
+    toast('Compleció NKG acabada.');
+  } catch (err) {
+    console.error('etapaCompletarNKG:', err);
+    toast('Error completant NKG: ' + err.message);
+  }
+  renderPanellEtapes();
+}
+
+function etapaValidarArquitectura() {
+  const st = calcularEstatEtapes();
+  if (st.validacio.ok) {
+    toast('✅ NKG validat: tot a punt per començar el capítol 1.');
+  } else {
+    toast('Falten: ' + ((st.validacio.errors || []).slice(0, 3).join(' · ') || 'dades per validar'));
+  }
+  renderPanellEtapes();
+}
+
+function etapaComencarEscriptura() {
+  if (typeof iniciarFase11 === 'function') iniciarFase11();
+}
+
+function etapaAnarEscriptura() {
+  showCard('fase-23');
+  document.getElementById('fase-23')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function etapaAnarRevisio() {
+  if (typeof iniciarFase12 === 'function') iniciarFase12();
 }
 
 function compteParaules(text) {
@@ -2731,6 +2879,7 @@ function guardarIComencar() {
     hideCard('card-config');
     document.getElementById('progress-wrap').classList.remove('hidden');
     showCard('fase-0');
+    renderPanellEtapes();
     toast('Configuració guardada.');
   } catch (err) {
     console.error('Error guardant configuració:', err);
@@ -8548,6 +8697,7 @@ Forbidden: ${forbidden.join(', ')}`;
 }
 
 function renderLlistaCapitols() {
+  if (typeof renderPanellEtapes === 'function') renderPanellEtapes();
   const wrap  = document.getElementById('capitol-llista');
   const total = ESTAT._estructuraCapitols.length;
   document.getElementById('capitol-progress-text').textContent = `${total} capítols planificats`;
@@ -12426,6 +12576,25 @@ DIÀLEGS — SEPARACIÓ DE PARÀGRAFS: És OBLIGATORI fer un punt i a part (nova
 Escrius EXCLUSIVAMENT en català. Mai inclous paraules, frases ni comentaris en anglès o cap altra llengua. Mai afegeixes notes meta, indicacions de número de part ni cap text fora de la narració literària.
 ONOMÀSTICA I MÓN D'AUTOR: Conserva els noms propis, topònims, institucions, codis culturals i atmosfera del món particular de l'autor/gènere de referència. No facis 'adaptació catalana' de noms, llocs o contextos si no és una decisió narrativa explícita de l'usuari.
 Escriu directament el text.`;
+
+// ─── Regla d'ambientació per autor: el món narrat és SEMPRE el de l'autor ───
+function reglaAmbientacioAutor(autor) {
+  const a = String(autor || '').toLowerCase();
+  let univers = "l'univers literari propi de l'autor o gènere de referència (mai el context local de la llengua de redacció)";
+  if (/larsson|noir|negr[ae]|nòrdi/.test(a)) {
+    univers = "la Suècia de Stieg Larsson: Estocolm, província sueca, redaccions, jutjats i serveis socials, hiverns nòrdics; noms i cognoms suecs, topònims i institucions sueques";
+  } else if (/dick/.test(a)) {
+    univers = "els EUA distòpics de Philip K. Dick: Califòrnia futurista, megacorporacions, suburbis decadents, colònies fora-món; noms anglosaxons, topònims i marques nord-americanes o inventades";
+  } else if (/castaneda|xamànic/.test(a)) {
+    univers = "el Mèxic de Carlos Castaneda: desert de Sonora, Oaxaca, mercats, muntanyes i xaparral; noms mexicans i yaquis, topònims mexicans";
+  } else if (/tolkien|fantàstic|fantastic|èpic/.test(a)) {
+    univers = "un món secundari de fantasia èpica a l'òrbita de Tolkien: races, regnes, llengües i geografia inventades amb coherència interna; CAP topònim ni nom del món real";
+  }
+  return `
+REGLA D'AMBIENTACIÓ INVIOLABLE:
+L'ambientació, els topònims, els noms de personatges, les institucions i els codis culturals han de ser SEMPRE els de ${univers}.
+PROHIBIT situar l'acció a Catalunya o als Països Catalans, usar topònims catalans (Barcelona, Girona, l'Empordà...) o noms de persona catalans. La llengua de redacció és el català, però el món narrat és el de l'autor de referència.`;
+}
 
 // ─── Extensió d'estil per autor (reutilitzable per conte i novel·la) ───
 function getGenreStyle(tematica) {
@@ -16661,6 +16830,7 @@ async function nouFlux_finals(perfilAutor, autor, to, config) {
 AUTOR: ${autor}
 TO: ${to}
 PERFIL D'ESTIL: ${perfilAutor}
+${reglaAmbientacioAutor(autor)}
 
 Per a cada final, proporciona:
 TÍTOL: [títol evocador breu]
@@ -16724,6 +16894,7 @@ FINAL ESCOLLIT:
 ${endingText}
 
 AUTOR: ${autor}
+${reglaAmbientacioAutor(autor)}
 
 Per a cada tema:
 1. [Tema] — TENSIÓ: [conflicte de valors central] | PREGUNTA: [pregunta filosòfica que planteja] | NO ÉS: [allò que el tema NO tracta] | SUBTEXTUALITAT: [com apareix sense ser dit explícitament] (Recomanat)
@@ -16750,6 +16921,7 @@ TEMA:
 ${themeText}
 
 AUTOR: ${autor}
+${reglaAmbientacioAutor(autor)}
 
 Frase 1: El món inicial i el protagonista (situació de partida).
 Frase 2: L'esdeveniment que trenca l'equilibri.
@@ -16865,6 +17037,7 @@ FINAL: ${endingText}
 AUTOR: ${autor}
 
 INSTRUCCIÓ D'AMBIENTACIÓ: Els noms dels personatges han de ser coherents amb el món de l'autor (${autor}). NO facis adaptació a Catalunya — usa noms, cognoms i referències culturals pròpies de l'univers de l'autor.
+${reglaAmbientacioAutor(autor)}
 
 Per a cada proposta, inclou 3-4 personatges principals. Per a cada personatge:
 NOM: [nom]
@@ -16907,6 +17080,7 @@ Les 3 variants han de crear mons coherents amb l'univers literari de l'autor de 
 - Mantén noms propis, topònims, institucions, clima i codis socials fidels al món de l'autor.
 - NO facis adaptació a Catalunya: els llocs, noms i context cultural han de ser els de l'autor original.
 - El paisatge i l'atmosfera han de funcionar com a personatge amb pes narratiu propi.
+${reglaAmbientacioAutor(autor)}
 
 Per a cada variant:
 1. [Nom variant] — LLOC I ÈPOCA: [on i quan, dins l'univers de l'autor] | EXPRESSIÓ DEL TEMA: [com el món encarna el tema] | CONFLICTE NATURAL: [tensions inherents al món] | RESTRICCIONS: [lleis o limitacions d'aquest món] (Recomanat)
@@ -16935,7 +17109,7 @@ PERSONATGES (arcs): ${arcsResumit}
 MÓN: ${monText}
 AUTOR: ${autor}
 
-AMBIENTACIÓ: Mantén l'ambientació dins el món de l'autor (${autor}). NO facis adaptació a Catalunya.
+${reglaAmbientacioAutor(autor)}
 
 Per a cada estructura, genera una taula amb exactament ${nCaps} files:
 N | TÍTOL | FUNCIÓ NARRATIVA | INTENSITAT (1-5)
@@ -17009,6 +17183,7 @@ ${escaletesText}
 
 FERIDA NUCLEAR (personatges):
 ${JSON.stringify((ESTAT._perfilsPersonatges || {}), null, 2).substring(0, 1600)}
+${reglaAmbientacioAutor(ESTAT.tematica)}
 
 Retorna EXCLUSIVAMENT JSON vàlid:
 {
@@ -19757,6 +19932,8 @@ document.addEventListener('DOMContentLoaded', function() {
   comprovarProjecteGuardat();
   // Actualitzar visibilitat dels botons de config segons si hi ha projecte actiu
   actualitzarVisibilitatBotonsConfig();
+  // Panell de macro-etapes (Etapa B): estat inicial segons dades del projecte
+  if (typeof renderPanellEtapes === 'function') renderPanellEtapes();
 });
 
 </script>

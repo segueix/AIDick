@@ -63,11 +63,23 @@ dels dos fluxos: dues apps a mig fer en lloc d'una de sencera.
    CODI_UTIL_FUNCIONANT.md. (Decisió explícita: reorganitzar **in situ**,
    no reescriure en paral·lel.)
 
-### Etapa B — De 25 passos a 6 etapes amb gating per dades
+### Etapa B — De 25 passos a 6 etapes amb gating per dades ✅ FETA
 
-Agrupar les fases en **6 macro-etapes** visibles com a acordions, cadascuna amb un botó
-"Completar etapa" (que executa en seqüència els passos interns que faltin) i amb el detall
-de passos desplegable per a control manual fi:
+Implementat com a **panell "Progrés de la novel·la"** (`#panell-etapes`,
+`renderPanellEtapes()`): 6 macro-etapes amb estat calculat de les dades reals
+(✅ feta / 🟡 en curs / 🔒 bloquejada), comptadors (faltants NKG, capítols n/m) i un botó
+d'acció per etapa (obrir configuració, continuar fonaments, completar NKG automàticament,
+validar arquitectura, escriure, control d'arcs). Es refresca a cada `updateProgress()`,
+a l'arrencada, en reprendre projecte i a cada capítol escrit. Les cards de fase existents
+fan de "detall" per al control manual fi.
+
+**Inclòs també (avançament de l'Etapa C):** `reglaAmbientacioAutor()` injectada als 7
+prompts del nou flux (finals, tema, sinopsi, personatges, món, estructura, escaleta):
+l'ambientació, els topònims i els noms són SEMPRE els de l'univers de l'autor (Suècia per
+Larsson, EUA distòpics per Dick, Mèxic/Sonora per Castaneda, món secundari per Tolkien) —
+mai adaptats a Catalunya, tot i escriure en català.
+
+Macro-etapes definides:
 
 | Macro-etapa | Conté les fases actuals | Porta d'entrada |
 |---|---|---|
