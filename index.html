@@ -12529,9 +12529,11 @@ function buildOpenAIPayload(messages, systemPrompt, model, maxTokens) {
   if (isGPT5Model(finalModel)) {
     // GPT-5: el raonament intern consumeix max_completion_tokens. Si el límit
     // és just, el model esgota el pressupost raonant i retorna contingut BUIT
-    // amb finish_reason 'length'. Minimitzem el raonament (escriptura creativa)
+    // amb finish_reason 'length'. Reduïm el raonament (escriptura creativa)
     // i donem marge extra perquè el contingut sempre hi càpiga.
-    payload.reasoning_effort = 'minimal';
+    // 'low' és el valor comú entre variants gpt-5 (uns accepten 'minimal',
+    // altres 'none'…'xhigh'); si un model el rebutja, el fallback el treu.
+    payload.reasoning_effort = 'low';
     if (typeof maxTokens === 'number' && Number.isFinite(maxTokens)) {
       payload.max_completion_tokens = maxTokens + 2048;
     }
@@ -12562,15 +12564,24 @@ async function fetchOpenAIWithFallback(payload, apiKey) {
     return await parseJsonResponse(raw, 'OpenAI');
   };
 
-  let result = await request(payload);
+  // parseJsonResponse LLANÇA en HTTP >= 400: capturem perquè els fallbacks
+  // (reasoning_effort no suportat, camps de tokens) també s'apliquin a
+  // errors HTTP, no només a respostes amb camp error.
+  const intentar = async (requestPayload) => {
+    try { return await request(requestPayload); }
+    catch (err) { return { error: { message: err.message || String(err) } }; }
+  };
 
-  // Fallback: model que no suporta reasoning_effort → reintenta sense el camp
+  let result = await intentar(payload);
+
+  // Fallback: model que no suporta reasoning_effort (o el valor concret) → sense el camp
   if (result.error && payload.reasoning_effort) {
     const message = String(result.error.message || '').toLowerCase();
-    if (message.includes('reasoning_effort') || message.includes('unsupported parameter') || message.includes('unknown parameter')) {
+    if (message.includes('reasoning_effort') || message.includes('unsupported parameter') || message.includes('unknown parameter') || message.includes('unsupported value')) {
+      console.warn(`[OpenAI] reasoning_effort no acceptat (${payload.model}). Reintentant sense el paràmetre…`);
       const sensePar = Object.assign({}, payload);
       delete sensePar.reasoning_effort;
-      result = await request(sensePar);
+      result = await intentar(sensePar);
     }
   }
 
@@ -12578,7 +12589,7 @@ async function fetchOpenAIWithFallback(payload, apiKey) {
     const message = String(result.error.message || '').toLowerCase();
     const tokenFieldUnsupported = message.includes('max_tokens') || message.includes('max_completion_tokens');
     if (tokenFieldUnsupported) {
-      result = await request(removeOpenAITokenLimits(payload));
+      result = await intentar(removeOpenAITokenLimits(payload));
     }
   }
 
