@@ -76,6 +76,8 @@ Cada capítol té un objecte `llibreRegistre.capitols[idx].ksn` amb:
 ## Restriccions generals per a qualsevol canvi
 
 - No refactoritzar funcions que no estiguin explícitament mencionades al prompt.
-- No dividir `index.html` en múltiples fitxers tret que s'indiqui.
+- `index.html` carrega dos mòduls purs extrets (Etapa D): `perfils_autor.js` (perfils
+  d'autor, estil, ambientació) i `nkg_core.js` (nucli NKG, validació LLM, parseig JSON).
+  Els tres fitxers van junts. No extreure més mòduls tret que s'indiqui.
 - No canviar el comportament de fases anteriors a l'escriptura de capítols (món, personatges, trames, escaleta) tret que s'indiqui.
 - Preservar compatibilitat amb snapshots existents a localStorage.

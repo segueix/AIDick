@@ -141,7 +141,17 @@ dins d'aquest objecte; les ≥5 deteccions per regex es redueixen a una sola lec
 `ESTAT.configuracio.autorPerfilId`. Mantenir `perfil_autor` (text) com a camp derivat per
 compatibilitat amb snapshots de localStorage.
 
-### Etapa D — Reducció de mida, només quan tot funcioni
+### Etapa D — Reducció de mida, només quan tot funcioni ✅ FETA (2 de 3 mòduls)
+
+Implementat: `perfils_autor.js` (registre + detecció + ambientació + estil) i
+`nkg_core.js` (crearNKG, detectarFaltantsNKG, validarNKGPreparatPerCapitol1,
+normalitzarVeuAvancada, parseJsonRobust + capa de validació E.1), carregats amb
+`<script src>` abans dels blocs inline. Inventari i checks a CODI_UTIL_FUNCIONANT.md.
+**Atenció: l'app ja no és un fitxer únic — cal desplegar els 3 fitxers junts.**
+Pendent deliberat: `prompts.js` (les funcions de prompt toquen `nouFluxCall`/ESTAT;
+extreure-les requereix una passada pròpia amb proves d'app en marxa).
+
+Pla original de referència:
 
 Seguir el full de ruta de CODI_UTIL_FUNCIONANT.md però amb aquest matís: **extreure mòduls
 d'`index.html`, no migrar a un HTML nou**. Ordre segur:
