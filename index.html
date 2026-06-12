@@ -7363,6 +7363,19 @@ function normalitzarCronologiaNarrativa(raw = {}) {
 }
 
 
+// Restaurada: el commit 2c96203 la va substituir per error per
+// normalitzarTemperaturaEntrada i la fase 21 (Perspectiva i Cronologia)
+// quedava encallada amb "normalitzarTimelineAccio is not defined".
+function normalitzarTimelineAccio(raw = {}) {
+  return {
+    capitol: Math.max(1, Number(raw.capitol) || 1),
+    personatge: nkgNormalitzarNom(raw.personatge || ''),
+    accio: String(raw.accio || '').trim(),
+    hora_aproximada: String(raw.hora_aproximada || '').trim(),
+    ubicacio: nkgNormalitzarNom(raw.ubicacio || '')
+  };
+}
+
 function normalitzarTemperaturaEntrada(raw = {}, idx = 0) {
   const r = raw || {};
   return {
