@@ -620,7 +620,7 @@
   <label class="field-label" for="config-provider">Proveïdor</label>
   <select id="config-provider" onchange="actualitzarConfigProvider()">
     <option value="anthropic">Anthropic (Claude) — Sistema dual Sonnet + Opus</option>
-    <option value="openai">OpenAI (GPT-4o)</option>
+    <option value="openai">OpenAI (GPT-5)</option>
     <option value="gemini">Google (Gemini 1.5)</option>
   </select>
 
@@ -716,7 +716,7 @@
   <!-- Camp únic per a OpenAI / Gemini -->
   <div id="config-single-model-field" class="config-section hidden">
     <label class="field-label" for="config-model-single">Model</label>
-    <input type="text" id="config-model-single" placeholder="gpt-4o" value="gpt-4o">
+    <input type="text" id="config-model-single" placeholder="gpt-5-mini" value="gpt-5-mini">
   </div>
 
   <label class="field-label" for="anthropicApiKey">🔑 Anthropic API Key</label>
@@ -2757,7 +2757,7 @@ const ESTAT = {
 // ═══════════════════════════════════════════════════════════
 const MODEL_DEFAULTS = {
   anthropic: { generacio: 'claude-sonnet-4-6', arquitectura: 'claude-opus-4-6' },
-  openai:    { single: 'gpt-4o' },
+  openai:    { single: 'gpt-5-mini' },
   gemini:    { single: 'gemini-1.5-pro' }
 };
 
@@ -2818,6 +2818,24 @@ const MODEL_REGISTRY = {
     qualitat: { draft: 80, prosa: 78, arquitectura: 82, extraccio: 85 },
     velocitat: 'rapida',
     notes: 'Fort en raonament i codi. Català acceptable però no natiu. Preu competitiu.'
+  },
+  'gpt-5-mini': {
+    nom: 'GPT-5 Mini', nomCurt: 'GPT-5 Mini',
+    proveidor: 'openai',
+    input_per_m: 0.25, output_per_m: 2.00,
+    context_max: 400000, max_output: 16384,
+    qualitat: { draft: 78, prosa: 74, arquitectura: 74, extraccio: 84 },
+    velocitat: 'molt_rapida',
+    notes: 'Model mini econòmic per a generació creativa i draft.'
+  },
+  'gpt-5.4-mini': {
+    nom: 'GPT-5.4 Mini', nomCurt: 'GPT-5.4 Mini',
+    proveidor: 'openai',
+    input_per_m: 0.30, output_per_m: 2.40,
+    context_max: 400000, max_output: 16384,
+    qualitat: { draft: 80, prosa: 76, arquitectura: 82, extraccio: 86 },
+    velocitat: 'molt_rapida',
+    notes: 'Mini de nova generació, fort en raonament: adequat per a arquitectura i revisió.'
   }
 };
 
@@ -2878,7 +2896,7 @@ function aplicarPreset(preset) {
     'equilibrat': { draft: 'claude-sonnet-4-6',         generacio: 'claude-sonnet-4-6', arquitecte: 'claude-sonnet-4-6' },
     'premium':    { draft: 'claude-sonnet-4-6',         generacio: 'claude-sonnet-4-6', arquitecte: 'claude-opus-4-6'  },
     'maxim':      { draft: 'claude-sonnet-4-6',         generacio: 'claude-opus-4-6',   arquitecte: 'claude-opus-4-6'  },
-    'barat_gpt':  { draft: 'gpt-5.2',                  generacio: 'gpt-5.2',           arquitecte: 'gpt-5.2'          },
+    'barat_gpt':  { draft: 'gpt-5-mini',               generacio: 'gpt-5-mini',        arquitecte: 'gpt-5.4-mini'     },
     'gemini':     { draft: 'gemini-3-flash-preview',    generacio: 'gemini-3-flash-preview', arquitecte: 'gemini-3-pro-preview' }
   };
   const p = presets[preset];
@@ -2924,7 +2942,7 @@ function actualitzarConfigProvider() {
   const defaults = {
     anthropic: { draft: 'claude-haiku-4-5-20251001', generacio: 'claude-sonnet-4-6', arquitectura: 'claude-opus-4-6' },
     gemini:    { draft: 'gemini-3-flash-preview',    generacio: 'gemini-3-flash-preview', arquitectura: 'gemini-3-flash-preview' },
-    openai:    { draft: 'gpt-5.2',                   generacio: 'gpt-4o-mini',            arquitectura: 'gpt-4o' }
+    openai:    { draft: 'gpt-5-mini',                generacio: 'gpt-5-mini',             arquitectura: 'gpt-5.4-mini' }
   };
   const p = defaults[provider] || defaults.anthropic;
 
@@ -12007,7 +12025,7 @@ const PROVIDER_DEFAULTS = {
   },
   openai: {
     apiUrl: 'https://api.openai.com/v1/chat/completions',
-    model: 'gpt-4o'
+    model: 'gpt-5-mini'
   },
   gemini: {
     apiUrlBase: 'https://generativelanguage.googleapis.com/v1beta/models',
