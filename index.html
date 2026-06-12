@@ -12526,9 +12526,17 @@ function buildOpenAIPayload(messages, systemPrompt, model, maxTokens) {
     messages: buildOpenAIMessages(messages, systemPrompt)
   };
 
-  if (typeof maxTokens === 'number' && Number.isFinite(maxTokens)) {
-    if (isGPT5Model(finalModel)) payload.max_completion_tokens = maxTokens;
-    else payload.max_tokens = maxTokens;
+  if (isGPT5Model(finalModel)) {
+    // GPT-5: el raonament intern consumeix max_completion_tokens. Si el límit
+    // és just, el model esgota el pressupost raonant i retorna contingut BUIT
+    // amb finish_reason 'length'. Minimitzem el raonament (escriptura creativa)
+    // i donem marge extra perquè el contingut sempre hi càpiga.
+    payload.reasoning_effort = 'minimal';
+    if (typeof maxTokens === 'number' && Number.isFinite(maxTokens)) {
+      payload.max_completion_tokens = maxTokens + 2048;
+    }
+  } else if (typeof maxTokens === 'number' && Number.isFinite(maxTokens)) {
+    payload.max_tokens = maxTokens;
   }
 
   return payload;
@@ -12555,6 +12563,17 @@ async function fetchOpenAIWithFallback(payload, apiKey) {
   };
 
   let result = await request(payload);
+
+  // Fallback: model que no suporta reasoning_effort → reintenta sense el camp
+  if (result.error && payload.reasoning_effort) {
+    const message = String(result.error.message || '').toLowerCase();
+    if (message.includes('reasoning_effort') || message.includes('unsupported parameter') || message.includes('unknown parameter')) {
+      const sensePar = Object.assign({}, payload);
+      delete sensePar.reasoning_effort;
+      result = await request(sensePar);
+    }
+  }
+
   if (result.error && (payload.max_tokens || payload.max_completion_tokens)) {
     const message = String(result.error.message || '').toLowerCase();
     const tokenFieldUnsupported = message.includes('max_tokens') || message.includes('max_completion_tokens');
@@ -12566,18 +12585,33 @@ async function fetchOpenAIWithFallback(payload, apiKey) {
   return result;
 }
 
+// GPT-5: si el raonament esgota el límit, l'API retorna contingut buit amb
+// finish_reason 'length' (sense error). Detectem aquest cas i reintentem un
+// cop sense límit de tokens perquè el contingut real pugui sortir.
+async function executarOpenAIAmbControlBuit(payload, apiKey) {
+  let result = await fetchOpenAIWithFallback(payload, apiKey);
+  if (result.error) throw new Error(result.error.message || "Error desconegut d'OpenAI.");
+  let analitzat = analitzarRespostaGenerica(result, 'openai');
+  if (!String(analitzat.text || '').trim() && analitzat.textIncomplet && (payload.max_completion_tokens || payload.max_tokens)) {
+    console.warn('[OpenAI] Contingut buit per límit de tokens (raonament GPT-5). Reintentant sense límit…');
+    result = await fetchOpenAIWithFallback(removeOpenAITokenLimits(payload), apiKey);
+    if (result.error) throw new Error(result.error.message || "Error desconegut d'OpenAI.");
+    analitzat = analitzarRespostaGenerica(result, 'openai');
+  }
+  if (!String(analitzat.text || '').trim()) {
+    throw new Error("OpenAI ha retornat una resposta buida (límit de tokens de raonament). Torna-ho a provar o puja el límit de tokens.");
+  }
+  return analitzat;
+}
+
 async function callOpenAI(messages, systemPrompt, apiKey, model, maxTokens) {
   const payload = buildOpenAIPayload(messages, systemPrompt, model, maxTokens);
-  const result = await fetchOpenAIWithFallback(payload, apiKey);
-  if (result.error) throw new Error(result.error.message || "Error desconegut d'OpenAI.");
-  return analitzarRespostaGenerica(result, 'openai').text;
+  return (await executarOpenAIAmbControlBuit(payload, apiKey)).text;
 }
 
 async function callOpenAIWithFinishReason(messages, systemPrompt, apiKey, model, maxTokens) {
   const payload = buildOpenAIPayload(messages, systemPrompt, model, maxTokens);
-  const result = await fetchOpenAIWithFallback(payload, apiKey);
-  if (result.error) throw new Error(result.error.message || "Error desconegut d'OpenAI.");
-  return analitzarRespostaGenerica(result, 'openai');
+  return await executarOpenAIAmbControlBuit(payload, apiKey);
 }
 
 // ─── Google Gemini ──────────────────────────────────────────
