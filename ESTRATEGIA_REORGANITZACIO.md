@@ -49,7 +49,7 @@ dels dos fluxos: dues apps a mig fer en lloc d'una de sencera.
 
 ---
 
-## 2. Estratègia proposada (4 etapes, en aquest ordre)
+## 2. Estratègia proposada (5 etapes: A–D en ordre, E transversal)
 
 ### Etapa A — Un sol flux d'entrada (la guanyem més gran amb el mínim esforç)
 
@@ -128,6 +128,79 @@ happy-path manual, i registre a CODI_UTIL_FUNCIONANT.md.
 
 ---
 
+### Etapa E — Capa d'excel·lència: validació transversal i tancament de qualitat
+
+Les etapes A–D fan el procés consistent; l'Etapa E el fa **fiable i excel·lent**. És una capa
+transversal (s'aplica a totes les etapes, no després d'elles) amb quatre peces:
+
+#### E.1 Contracte de validació a cada crida LLM
+
+Tota crida que esperi dades estructurades passa per un únic embolcall:
+
+```js
+async function callLLMValidat(prompt, schemaId, userConfig, opts = {}) {
+  // 1. crida → 2. parseig JSON tolerant (extreu bloc ```json si cal)
+  // 3. validació contra ESQUEMES[schemaId] (camps obligatoris, tipus, límits)
+  // 4. si falla: reintent ÚNIC amb el motiu de l'error injectat al prompt
+  // 5. si torna a fallar: aturar l'etapa amb error visible (mai continuar amb dades corruptes)
+}
+```
+
+- `ESQUEMES` és un registre central de validadors per a cada sortida del pipeline
+  (NKG, KSN, fils, escaleta, waypoints…). Es comença pels 5 més crítics:
+  `ksn`, `fils_narratius`, `escaleta_capitol`, `nkg_personatge`, `estructura_novella`.
+- Regla dura: **cap funció del pipeline escriu a `ESTAT` dades que no hagin passat el seu
+  esquema**. El bug "Gemini retorna text en lloc de JSON" queda cobert per disseny.
+- Els validadors són funcions pures → van a `nkg_core.js` (Etapa D) i són testejables.
+
+#### E.2 Política d'errors cap endavant (compatible amb la immutabilitat)
+
+Les regles d'AGENT.md (jutge single-pass, capítols bloquejats immutables) es mantenen.
+La conseqüència — un error detectat tard no es pot corregir enrere — es gestiona així:
+
+1. **Endurir la porta abans del lock**: el jutge d'interval verifica KSN + fets canònics +
+   `constraints_next` del capítol anterior abans de bloquejar. Cap interval es bloqueja amb
+   contradiccions conegudes pendents.
+2. **Registre de contradiccions tardanes**: si una contradicció es detecta amb el capítol
+   d'origen ja bloquejat, s'obre un fil de categoria `error-continuïtat` (ja existeix al
+   model de fils) amb la instrucció de **reconciliar cap endavant**: el capítol següent
+   integra i explica la discrepància, com faria un autor humà.
+3. Aquest registre apareix al panell d'estat: cap error es perd en silenci.
+
+#### E.3 Control d'arcs obligatori i checklist de sortida
+
+La fase 24 (Control d'Arcs) passa de pas opcional a **porta de sortida de l'etapa 6**.
+El llibre no es dona per acabat fins que el checklist és verd:
+
+- [ ] Tots els fils en estat `tancat`, o `obert` amb justificació explícita (final obert volgut).
+- [ ] Tots els waypoints emocionals planificats tenen el seu senyal visible al text.
+- [ ] Cap fet canònic contradit (escaneig final KSN vs `canon_facts` acumulats).
+- [ ] Cronologia per capítol sense salts no intencionats (`time_anchor` consecutius).
+- [ ] Cost emocional dels ganxos de revelació pagat (no hi ha revelacions "gratis").
+
+#### E.4 Llistó d'excel·lència per autor (revisió estètica assistida)
+
+Després del control d'arcs, una passada final per capítol amb **criteris d'acceptació
+específics del perfil** (definits dins `PERFILS_AUTOR.criteris_excellencia`), avaluats per
+LLM amb sortida estructurada (`compleix: bool`, `evidencia`, `suggeriment`) — informativa,
+mai reescriptura automàtica (la decisió de retocar és humana, via mode manual):
+
+| Perfil | Exemples de criteris |
+|---|---|
+| Tolkien | el llenguatge crea món (topònims amb memòria), almenys un moment d'eucatàstrofe o el seu cost, cap anacronisme contemporani |
+| Dick | la realitat s'esquerda almenys un cop sense resoldre's del tot, el sistema menteix de manera verificable, paranoia funcional (no histriònica) |
+| Castaneda | tensió mestre-deixeble amb lliçó implícita, la percepció alterada té regles internes coherents, l'escèptic dubta de debò |
+| Larsson | la violència té conseqüència institucional, la investigació avança per documents/fonts versemblants, cap heroïcitat gratuïta |
+
+#### Criteri de fet de l'Etapa E
+
+- Els 5 esquemes crítics actius i cap escriptura a `ESTAT` sense validar.
+- Prova de resiliència: forçar una resposta malformada (mock) i verificar reintent + aturada neta.
+- Una novel·la curta (6–8 capítols) generada de punta a punta **per a cada un dels 4 perfils**
+  amb checklist E.3 verd i informe E.4 generat.
+
+---
+
 ## 3. Palanques de qualitat ja existents (no tocar, només connectar)
 
 Per al "llibre perfecte" ja hi ha les peces bones; l'estratègia és que **totes** rebin el
@@ -149,7 +222,7 @@ perfil d'autor de manera consistent:
 4. Substituir l'input de text lliure `config-autor` per un select amb els 4 perfils + "Veu original".
 5. Un panell d'estat únic i persistent ("On sóc? Què em falta?") alimentat per `detectarFaltantsNKG`.
 
-## 5. Criteri de fet (per a cada etapa A–D)
+## 5. Criteri de fet (per a cada etapa A–E)
 
 - `node --check` net dels blocs JS.
 - Càrrega en fred sense `ReferenceError`.
