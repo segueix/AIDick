@@ -422,13 +422,25 @@ function validarSceneContract(contracte) {
 function capitolSceneContractBloquejat(nkg, contracte) {
   const capitol = Number((contracte || {}).capitol || 0);
   if ((contracte || {}).locked === true || (contracte || {}).bloquejat === true) return true;
-  const locks = (nkg && typeof nkg === 'object') ? (nkg._capitolsLocked || nkg.capitols_locked || nkg.capitolsBloquejats) : null;
-  if (!locks || !capitol) return false;
+  const estat = (typeof ESTAT !== 'undefined' && ESTAT)
+    ? ESTAT
+    : ((typeof globalThis !== 'undefined' && globalThis.ESTAT) ? globalThis.ESTAT : null);
+  const fontsLocks = [
+    (nkg && typeof nkg === 'object') ? (nkg._capitolsLocked || nkg.capitols_locked || nkg.capitolsBloquejats) : null,
+    estat && estat._capitolsLocked,
+    estat && estat._chapterLocks
+  ].filter(Boolean);
+  if (!capitol || fontsLocks.length === 0) return false;
   const candidats = [capitol, capitol - 1, String(capitol), String(capitol - 1)];
-  return candidats.some(k => {
+  return fontsLocks.some(locks => candidats.some(k => {
     const lock = locks[k];
-    return lock === true || (lock && typeof lock === 'object' && lock.locked === true);
-  });
+    if (lock === true) return true;
+    if (!lock || typeof lock !== 'object') return false;
+    if (lock.locked === true) return true;
+    if (lock.lockState === 'final') return true;
+    if (lock.lockState === 'provisional') return true;
+    return false;
+  }));
 }
 
 function assegurarSceneContractsNKG(nkg) {
@@ -617,8 +629,7 @@ function detectarFaltantsNKG(nkg = {}, biblia = {}) {
     if (!Array.isArray(veu.exemples_narratius) || veu.exemples_narratius.length < 2) errors.push(`${p.nom || 'Personatge'} sense exemples narratius de veu.`);
     if (!Array.isArray(veu.vocabulari_recurrent) || veu.vocabulari_recurrent.length < 3) errors.push(`${p.nom || 'Personatge'} sense vocabulari recurrent suficient.`);
   });
-  const drama = detectarFaltantsDramaNKG(nkg, biblia);
-  return [...new Set([...errors, ...drama])];
+  return [...new Set(errors)];
 }
 
 

@@ -1961,11 +1961,11 @@ function calcularEstudiDebilitatsLocal(estat = ESTAT) {
 
   const motsAbstractes = ['sistema', 'narrativa', 'mecanisme', 'xarxa', 'protocol', 'coherència', 'control', 'estructura', 'tendència', 'validació', 'protecció'];
   const motiusRecurrents = ['carpeta', 'segell', 'tinta', 'signatura', 'cotxe oficial', 'gràfic', 'xifra', 'validació provisional'];
-  const verbsAccio = ['agafar', 'deixar', 'obrir', 'tancar', 'mirar', 'empènyer', 'signar', 'trencar', 'lliurar', 'amagar', 'entrar', 'sortir', 'posar', 'retirar'];
+  const arrelsAccio = ['agaf', 'deix', 'obr', 'tanc', 'mir', 'empeny', 'sign', 'trenc', 'lliur', 'amag', 'entr', 'sort', 'pos', 'retir'];
 
   const abstractesTotal = comptarLlista(motsAbstractes);
   const motiusTotal = comptarLlista(motiusRecurrents);
-  const accionsTotal = comptarLlista(verbsAccio);
+  const accionsTotal = arrelsAccio.reduce((acc, arrel) => acc + (textGlobal.match(new RegExp(`(^|[^a-zà-ÿ0-9])${arrel}[a-zà-ÿ]*`, 'giu')) || []).length, 0);
   const dialegGuions = (textGlobal.match(/(^|\n)\s*[—-]\s*[^\n]+/g) || []).length;
   const sceneContracts = Array.isArray(nkg.scene_contracts) ? nkg.scene_contracts : [];
   const sceneContractsIncomplets = sceneContracts.filter(c => {
@@ -1994,7 +1994,7 @@ function calcularEstudiDebilitatsLocal(estat = ESTAT) {
     const generic = /^(sobreviure|entendre|descobrir|ajudar|protegir|controlar|canviar|millorar)$/i;
     return !objectiusTxt || !secretsTxt || generic.test(objectiusTxt);
   });
-  const puntuacioBase = 9;
+  const puntuacioBase = 10;
   const penalitzacions = [
     perMil(abstractesTotal) > 18 ? 1.2 : 0,
     perMil(motiusTotal) > 10 ? 0.8 : 0,
@@ -2005,7 +2005,7 @@ function calcularEstudiDebilitatsLocal(estat = ESTAT) {
   ].reduce((a, b) => a + b, 0);
 
   const qualitatLiteraria9 = {
-    puntuacio_estimativa: Number(Math.max(1, Math.min(9, puntuacioBase - penalitzacions)).toFixed(1)),
+    puntuacio_estimativa: Number(Math.max(1, Math.min(10, puntuacioBase - penalitzacions)).toFixed(1)),
     abstractesa: {
       total: abstractesTotal,
       per_1000_paraules: perMil(abstractesTotal),
@@ -2295,7 +2295,7 @@ function exportarDiagnosticResums() {
   lines.push('  DIAGNÒSTIC LITERARI 9/10');
   lines.push('═══════════════════════════════════════════════════════════');
   lines.push('');
-  lines.push(`Puntuació estimativa: ${q9.puntuacio_estimativa != null ? q9.puntuacio_estimativa + '/9' : 'N/D'}`);
+  lines.push(`Puntuació estimativa: ${q9.puntuacio_estimativa != null ? q9.puntuacio_estimativa + '/10' : 'N/D'}`);
   lines.push(`Abstractesa: ${q9.abstractesa ? `${q9.abstractesa.per_1000_paraules} / 1000 paraules (${q9.abstractesa.exces ? 'excés' : 'acceptable'})` : 'N/D'}`);
   lines.push(`Repetició de motius: ${q9.repeticio_motius ? `${q9.repeticio_motius.per_1000_paraules} / 1000 paraules (${q9.repeticio_motius.exces ? 'massa repetits' : 'acceptable'})` : 'N/D'}`);
   lines.push(`Acció concreta: ${q9.accio_concreta ? `${q9.accio_concreta.per_1000_paraules} / 1000 paraules (${q9.accio_concreta.insuficient ? 'insuficient' : 'present'})` : 'N/D'}`);
@@ -2331,7 +2331,7 @@ function importarCopiaSeguretat(event) {
     try {
       const dades = JSON.parse(String(reader.result || '{}'));
       aplicarSnapshotProjecte(dades);
-      localStorage.setItem(CLAU_PROJECTE_ACTUAL, JSON.stringify(dades));
+      localStorage.setItem(CLAU_PROJECTE_ACTUAL, JSON.stringify(construirSnapshotProjecte()));
       toast(ESTAT._avisCompatibilitatSceneConflict
         ? 'Còpia importada. Aquest projecte és anterior al Scene Conflict Layer. Pots continuar, però per obtenir millor qualitat recomanem completar els motors dramàtics.'
         : 'Còpia importada correctament.');
@@ -4860,6 +4860,7 @@ function obtenirAccioGeneracioPerFaltant(faltant = '') {
   if (f.includes('objectes narratius')) return { id: 'objectes_narratius', label: 'Generar' };
   if (f.includes('mapa de llocs') || f.includes('regles del món')) return { id: 'llocs_regles', label: 'Anar al pas 17' };
   if (f.includes('tipus de perspectiva') || f.includes('pov per capítol') || f.includes('cronologia per capítol')) return { id: 'perspectiva_cronologia', label: 'Anar al pas 21' };
+  if (f.includes('contractes d’escena') || f.includes('contractes d\'escena') || f.includes('scene contracts') || f.includes('conflicte dramàtic') || f.includes('contracte d’escena')) return { id: 'scene_contracts', label: 'Completar' };
   if (f.includes('exemples narratius de veu') || f.includes('vocabulari recurrent')) return { id: 'veu_exemples', label: 'Generar' };
   return null;
 }
@@ -4897,6 +4898,8 @@ async function generarFaltantNKG(itemId, btnEl = null) {
       return;
     } else if (itemId === 'veu_exemples') {
       await generarVeuExemples(USER_CONFIG);
+    } else if (itemId === 'scene_contracts') {
+      await generarCompletarSceneContracts(USER_CONFIG, msg => console.log(msg));
     }
     toast('Element generat correctament.');
     mostrarVeuExemples((ESTAT._nkg && ESTAT._nkg.personatges) || {});
@@ -8379,6 +8382,20 @@ async function autocompletarNKGFaltantsManual() {
       }
     },
     {
+      etiqueta: 'Contractes d’escena dramàtics',
+      detecta: txt => txt.includes('contractes d’escena')
+        || txt.includes('contractes d\'escena')
+        || txt.includes('scene contracts')
+        || txt.includes('conflicte dramàtic')
+        || txt.includes('contracte d’escena')
+        || txt.includes('falten contractes d’escena'),
+      executar: async () => {
+        const onProgressIntern = msg => setStatus(`• ${msg}`);
+        await generarCompletarSceneContracts(USER_CONFIG, onProgressIntern);
+        mostrarFaltantsNKG();
+      }
+    },
+    {
       etiqueta: 'Veu i exemples narratius',
       detecta: txt => txt.includes('exemples narratius de veu') || txt.includes('vocabulari recurrent'),
       executar: async () => {
@@ -8395,7 +8412,8 @@ async function autocompletarNKGFaltantsManual() {
 
     while (intents < 3) {
       intents++;
-      const faltantsLlista = detectarFaltantsNKG(nkg, biblia);
+      const validacioActual = typeof validarNKGPreparatPerCapitol1 === 'function' ? validarNKGPreparatPerCapitol1(nkg, biblia) : { errors: detectarFaltantsNKG(nkg, biblia) };
+      const faltantsLlista = validacioActual.errors || [];
       const faltantsText = faltantsLlista.join(' | ').toLowerCase();
       const pendentsAra = passos.filter(p => p.detecta(faltantsText));
       if (pendentsAra.length === 0) break;
@@ -8408,15 +8426,16 @@ async function autocompletarNKGFaltantsManual() {
         mostrarFaltantsNKG();
       }
 
-      const restantsDespresPassada = detectarFaltantsNKG(nkg, biblia);
-      if (restantsDespresPassada.length === 0) break;
+      const valDespresPassada = typeof validarNKGPreparatPerCapitol1 === 'function' ? validarNKGPreparatPerCapitol1(nkg, biblia) : { errors: detectarFaltantsNKG(nkg, biblia) };
+      if ((valDespresPassada.errors || []).length === 0) break;
     }
 
     setStatus('Preparant paquet final NKG + Bíblia...');
     mostrarFaltantsNKG();
     mostrarVeuExemples(ESTAT._nkg.personatges || {});
 
-    const faltantsRestants = detectarFaltantsNKG(nkg, biblia);
+    const validacioFinal = typeof validarNKGPreparatPerCapitol1 === 'function' ? validarNKGPreparatPerCapitol1(nkg, biblia) : { errors: detectarFaltantsNKG(nkg, biblia) };
+    const faltantsRestants = validacioFinal.errors || [];
     if (faltantsRestants.length > 0) {
       toast(`Autocompleció finalitzada amb ${faltantsRestants.length} element(s) encara pendents.`);
     } else {
@@ -8882,6 +8901,124 @@ PROHIBICIONS D'ESCENA:
 - No repetir el mateix motiu simbòlic si no canvia de funció.
 - No fer que tots els personatges parlin amb la mateixa lògica.
 - No tancar una escena sense cost.`;
+}
+
+
+function contracteEscenaEsIncomplet(contracte) {
+  if (!contracte || typeof contracte !== 'object') return true;
+  const faltants = (typeof detectarFaltantsSceneContract === 'function') ? detectarFaltantsSceneContract(contracte) : [];
+  return contracte._incomplet === true || faltants.length > 0;
+}
+
+function completarSceneContractFallback(contracte = {}) {
+  const capitol = Number(contracte.capitol || 1);
+  const escena = Number(contracte.escena || 1);
+  const capInfo = (ESTAT._estructuraCapitols || [])[capitol - 1] || {};
+  const escInfo = ((ESTAT._escaletes || []).find(e => Number(e.capitol) === capitol)?.escenes || [])[escena - 1] || {};
+  const personatges = Array.isArray(escInfo.personatges) && escInfo.personatges.length
+    ? escInfo.personatges
+    : (Array.isArray(capInfo.personatges) ? capInfo.personatges : []);
+  const pov = contracte.pov || personatges[0] || Object.values((ESTAT._nkg || {}).personatges || {})[0]?.nom || 'POV pendent';
+  const objectiuBase = escInfo.funcio_narrativa || capInfo.resum || 'aconseguir un canvi concret dins l’escena';
+  const completat = Object.assign({}, contracte, {
+    id: contracte.id || `C${capitol}E${escena}`,
+    capitol,
+    escena,
+    pov,
+    personatges_presents: Array.isArray(contracte.personatges_presents) && contracte.personatges_presents.length ? contracte.personatges_presents : personatges,
+    objectiu_visible_pov: contracte.objectiu_visible_pov || objectiuBase,
+    obstacle_concret: contracte.obstacle_concret || 'Un altre personatge, norma o objecte impedeix aconseguir l’objectiu sense pagar un preu visible.',
+    asimetria_poder: contracte.asimetria_poder || 'El POV no té tota la informació, l’autoritat o el control de l’espai.',
+    decisio_irreversible: contracte.decisio_irreversible || 'El POV pren una decisió que no pot desfer sense perdre confiança, temps o aliances.',
+    cost_immediat: contracte.cost_immediat || 'Pèrdua immediata de marge, reputació, seguretat o relació.',
+    consequencia_narrativa: contracte.consequencia_narrativa || 'La situació queda més compromesa i obliga el capítol següent a respondre al conflicte.',
+    prohibicio_escena: contracte.prohibicio_escena || 'No resumir el conflicte: mostrar-lo en acció, gest, diàleg o decisió.',
+    _auto_generat: true
+  });
+  const faltants = (typeof detectarFaltantsSceneContract === 'function') ? detectarFaltantsSceneContract(completat) : [];
+  if (faltants.length === 0) delete completat._incomplet;
+  else completat._incomplet = true;
+  return completat;
+}
+
+function fusionarSceneContractCompletat(original, completat) {
+  const out = Object.assign({}, original || {});
+  Object.entries(completat || {}).forEach(([k, v]) => {
+    if (['id', 'capitol', 'escena'].includes(k)) return;
+    const buit = out[k] == null || out[k] === '' || (Array.isArray(out[k]) && out[k].length === 0);
+    if (buit && !(v == null || v === '' || (Array.isArray(v) && v.length === 0))) out[k] = v;
+  });
+  out.id = (original && original.id) || (completat && completat.id);
+  out.capitol = Number((original && original.capitol) || (completat && completat.capitol) || 1);
+  out.escena = Number((original && original.escena) || (completat && completat.escena) || 1);
+  const normalitzat = (typeof normalitzarSceneContract === 'function') ? normalitzarSceneContract(out, out.capitol, out.escena) : out;
+  const faltants = (typeof detectarFaltantsSceneContract === 'function') ? detectarFaltantsSceneContract(normalitzat) : [];
+  if (faltants.length === 0) delete normalitzat._incomplet;
+  return normalitzat;
+}
+
+async function generarCompletarSceneContracts(userConfig, onProgress) {
+  if (!ESTAT._nkg) ESTAT._nkg = crearNKG();
+  if (typeof assegurarSceneContractsNKG === 'function') assegurarSceneContractsNKG(ESTAT._nkg);
+  const nkg = ESTAT._nkg;
+  nkg.scene_contracts = Array.isArray(nkg.scene_contracts) ? nkg.scene_contracts : [];
+  const candidats = nkg.scene_contracts.filter(c => contracteEscenaEsIncomplet(c) && !(typeof capitolSceneContractBloquejat === 'function' && capitolSceneContractBloquejat(nkg, c)));
+  if (candidats.length === 0) return { completats: 0, fallback: 0 };
+  if (onProgress) onProgress(`Completant ${candidats.length} contracte(s) d’escena dramàtics...`);
+
+  const context = {
+    escaletes: ESTAT._escaletes || [],
+    estructura_capitols: ESTAT._estructuraCapitols || [],
+    personatges: nkg.personatges || {},
+    objectes: nkg.objectes || {},
+    macronarrativa: nkg.macronarrativa || {},
+    biblia: ESTAT.bibliaNarrativa || {},
+    contractes_incomplets: candidats.map(c => ({ contracte: c, faltants: detectarFaltantsSceneContract(c) }))
+  };
+  let completatsModel = [];
+  try {
+    const models = getModelConfig(userConfig || USER_CONFIG || {});
+    const prompt = `Completa contractes d'escena incomplets per evitar escenes resumides o planes.
+
+RESTRICCIONS:
+- Retorna només JSON vàlid amb la clau "scene_contracts".
+- Completa NOMÉS camps buits o insuficients.
+- Mantén exactament el mateix id, capitol i escena.
+- No inventis capítols nous ni dupliquis contractes.
+- Cada contracte ha de tenir pov, objectiu_visible_pov, obstacle_concret, asimetria_poder, decisio_irreversible, cost_immediat i consequencia_narrativa.
+- Tot ha d'estar en català.
+
+CONTEXT:
+${JSON.stringify(context, null, 2).slice(0, 14000)}`;
+    const raw = await callLLMMulti(
+      [{ role: 'user', content: prompt }],
+      'Ets un arquitecte narratiu. Completes contractes d’escena amb conflicte visible, cost i conseqüència. Respon només JSON.',
+      Object.assign({}, userConfig || USER_CONFIG || {}, { maxTokens: 3500, model: models.modelArquitecte }),
+      'arquitectura'
+    );
+    const parsed = parseJsonRobust(raw);
+    completatsModel = Array.isArray(parsed && parsed.scene_contracts) ? parsed.scene_contracts : [];
+  } catch (e) {
+    console.warn('Compleció scene_contracts amb model fallida:', e.message);
+  }
+
+  const perIdModel = new Map(completatsModel.map(c => [String(c.id || `C${c.capitol}E${c.escena}`), c]));
+  const perIdActual = new Map(nkg.scene_contracts.map(c => [String(c.id || `C${c.capitol}E${c.escena}`), c]));
+  let fallback = 0;
+  candidats.forEach(original => {
+    const id = String(original.id || `C${original.capitol}E${original.escena}`);
+    const proposta = perIdModel.get(id);
+    let completat = proposta ? fusionarSceneContractCompletat(original, proposta) : completarSceneContractFallback(original);
+    if (contracteEscenaEsIncomplet(completat)) {
+      completat = completarSceneContractFallback(completat);
+      fallback++;
+    }
+    perIdActual.set(id, completat);
+  });
+  nkg.scene_contracts = Array.from(perIdActual.values());
+  if (typeof assegurarSceneContractsNKG === 'function') assegurarSceneContractsNKG(nkg);
+  if (onProgress) onProgress('Contractes d’escena dramàtics completats.');
+  return { completats: candidats.length, fallback };
 }
 
 function mostrarEscaleta(escaletes) {
