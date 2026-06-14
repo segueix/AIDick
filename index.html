@@ -1922,6 +1922,106 @@ function calcularEstudiDebilitatsLocal(estat = ESTAT) {
     ? (puntuacionsCheckpoint.reduce((a, b) => a + b, 0) / puntuacionsCheckpoint.length)
     : null;
 
+  const textGlobal = noBuits.map(x => x.t).join('\n\n').toLowerCase();
+  const totalParaules = textGlobal ? textGlobal.split(/\s+/).filter(Boolean).length : 0;
+  const perMil = (n) => totalParaules > 0 ? Number(((n / totalParaules) * 1000).toFixed(2)) : 0;
+  const comptarMot = (mot) => {
+    const escaped = String(mot).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(^|[^a-zà-ÿ0-9])${escaped}([^a-zà-ÿ0-9]|$)`, 'giu');
+    return (textGlobal.match(re) || []).length;
+  };
+  const comptarLlista = (llista) => llista.reduce((acc, mot) => acc + comptarMot(mot), 0);
+
+  const motsAbstractes = ['sistema', 'narrativa', 'mecanisme', 'xarxa', 'protocol', 'coherència', 'control', 'estructura', 'tendència', 'validació', 'protecció'];
+  const motiusRecurrents = ['carpeta', 'segell', 'tinta', 'signatura', 'cotxe oficial', 'gràfic', 'xifra', 'validació provisional'];
+  const verbsAccio = ['agafar', 'deixar', 'obrir', 'tancar', 'mirar', 'empènyer', 'signar', 'trencar', 'lliurar', 'amagar', 'entrar', 'sortir', 'posar', 'retirar'];
+
+  const abstractesTotal = comptarLlista(motsAbstractes);
+  const motiusTotal = comptarLlista(motiusRecurrents);
+  const accionsTotal = comptarLlista(verbsAccio);
+  const dialegGuions = (textGlobal.match(/(^|\n)\s*[—-]\s*[^\n]+/g) || []).length;
+  const sceneContracts = Array.isArray(nkg.scene_contracts) ? nkg.scene_contracts : [];
+  const sceneContractsIncomplets = sceneContracts.filter(c => {
+    if (!c || typeof c !== 'object') return true;
+    if (c._incomplet) return true;
+    const faltants = (typeof detectarFaltantsSceneContract === 'function') ? detectarFaltantsSceneContract(c) : [];
+    return faltants.length > 0 || !String(c.decisio_irreversible || '').trim() || !String(c.consequencia_narrativa || '').trim();
+  }).length;
+  const esdeveniments = Array.isArray(nkg.esdeveniments) ? nkg.esdeveniments : [];
+  const esdevenimentsSenseConseq = esdeveniments.filter(e => {
+    if (!e || typeof e === 'string') return true;
+    return !['consequencia', 'consequencies', 'conseqüencia', 'conseqüencies', 'consequencia_narrativa', 'cost', 'cost_immediat', 'canvi_estat', 'impacte_narratiu'].some(k => {
+      const v = e[k];
+      return Array.isArray(v) ? v.length > 0 : String(v || '').trim();
+    });
+  }).length;
+  const tensio = Array.isArray(estat._corbaTensio) ? estat._corbaTensio.map(t => Number(t.nivell)).filter(Number.isFinite) : [];
+  const mitjaTensio = tensio.length ? tensio.reduce((a, b) => a + b, 0) / tensio.length : null;
+  const varianciaTensio = tensio.length ? tensio.reduce((acc, n) => acc + Math.pow(n - mitjaTensio, 2), 0) / tensio.length : null;
+  const personatges = Object.values(nkg.personatges || {});
+  const personatgesFuncionals = personatges.filter(p => {
+    const objectius = Array.isArray(p.objectius) ? p.objectius : [];
+    const secrets = Array.isArray(p.secrets) ? p.secrets : [];
+    const objectiusTxt = objectius.map(o => typeof o === 'string' ? o : (o.descripcio || o.objectiu || '')).join(' ').trim().toLowerCase();
+    const secretsTxt = secrets.map(x => typeof x === 'string' ? x : (x.contingut || x.secret || x.pressio || '')).join(' ').trim().toLowerCase();
+    const generic = /^(sobreviure|entendre|descobrir|ajudar|protegir|controlar|canviar|millorar)$/i;
+    return !objectiusTxt || !secretsTxt || generic.test(objectiusTxt);
+  });
+  const puntuacioBase = 9;
+  const penalitzacions = [
+    perMil(abstractesTotal) > 18 ? 1.2 : 0,
+    perMil(motiusTotal) > 10 ? 0.8 : 0,
+    totalParaules > 0 && perMil(accionsTotal) < 4 ? 1 : 0,
+    sceneContracts.length > 0 && sceneContractsIncomplets / sceneContracts.length > 0.35 ? 1.2 : 0,
+    personatges.length > 0 && personatgesFuncionals.length / personatges.length > 0.35 ? 1 : 0,
+    varianciaTensio != null && varianciaTensio < 1 ? 0.8 : 0
+  ].reduce((a, b) => a + b, 0);
+
+  const qualitatLiteraria9 = {
+    puntuacio_estimativa: Number(Math.max(1, Math.min(9, puntuacioBase - penalitzacions)).toFixed(1)),
+    abstractesa: {
+      total: abstractesTotal,
+      per_1000_paraules: perMil(abstractesTotal),
+      exces: perMil(abstractesTotal) > 18,
+      mots: motsAbstractes.filter(m => comptarMot(m) > 0).map(m => ({ mot: m, count: comptarMot(m) }))
+    },
+    repeticio_motius: {
+      total: motiusTotal,
+      per_1000_paraules: perMil(motiusTotal),
+      exces: perMil(motiusTotal) > 10,
+      motius: motiusRecurrents.filter(m => comptarMot(m) > 0).map(m => ({ motiu: m, count: comptarMot(m) }))
+    },
+    accio_concreta: {
+      total: accionsTotal,
+      per_1000_paraules: perMil(accionsTotal),
+      insuficient: totalParaules > 0 && perMil(accionsTotal) < 4
+    },
+    dialeg_subtextual: {
+      guions_dialeg: dialegGuions,
+      per_capitol: totalCaps > 0 ? Number((dialegGuions / totalCaps).toFixed(2)) : 0,
+      estat: dialegGuions === 0 ? 'requereix revisió Opus' : 'indicis locals presents; requereix revisió Opus per valorar subtext'
+    },
+    consequencies_irreversibles: {
+      scene_contracts_total: sceneContracts.length,
+      scene_contracts_incomplets: sceneContractsIncomplets,
+      esdeveniments_total: esdeveniments.length,
+      esdeveniments_sense_consequencia: esdevenimentsSenseConseq,
+      problema_greu: sceneContracts.length > 0 && sceneContractsIncomplets / sceneContracts.length > 0.35
+    },
+    variacio_tensio: {
+      dades: tensio.length,
+      variancia: varianciaTensio != null ? Number(varianciaTensio.toFixed(2)) : null,
+      massa_uniforme: varianciaTensio != null && varianciaTensio < 1,
+      avis: tensio.length ? '' : 'No hi ha dades de variació de tensió.'
+    },
+    personatges_funcionals: {
+      total_personatges: personatges.length,
+      sospitosos: personatgesFuncionals.map(p => p.nom || p.id || 'Personatge'),
+      problema: personatges.length > 0 && personatgesFuncionals.length / personatges.length > 0.35
+    },
+    recomanacions: []
+  };
+
   const debilitats = [];
   if (coberturaResums < 100) debilitats.push({ id: 'resums_incomplets', severitat: 'alta', detall: `Cobertura resums completa ${coberturaResums}%` });
   if (coberturaSnapshots < 100) debilitats.push({ id: 'snapshots_incomplets', severitat: 'mitjana', detall: `Cobertura snapshots ${coberturaSnapshots}%` });
@@ -1929,6 +2029,12 @@ function calcularEstudiDebilitatsLocal(estat = ESTAT) {
   if (filsOberts > 24) debilitats.push({ id: 'massa_fils_oberts', severitat: 'mitjana', detall: `${filsOberts} fils oberts actius` });
   if (beats < Math.max(1, Math.floor(totalCaps * 0.8))) debilitats.push({ id: 'poca_diversitat_beats', severitat: 'baixa', detall: `${beats} beats per ${totalCaps} capítols` });
   if (qualitatMitja != null && qualitatMitja < 7) debilitats.push({ id: 'qualitat_checkpoint_baixa', severitat: 'alta', detall: `Mitjana checkpoint ${qualitatMitja.toFixed(1)}/10` });
+  if (qualitatLiteraria9.abstractesa.exces) debilitats.push({ id: 'excés_abstraccio', severitat: 'alta', detall: `${qualitatLiteraria9.abstractesa.per_1000_paraules} mots abstractes / 1000 paraules` });
+  if (qualitatLiteraria9.repeticio_motius.exces) debilitats.push({ id: 'motius_massa_repetits', severitat: 'mitjana', detall: `${qualitatLiteraria9.repeticio_motius.per_1000_paraules} motius recurrents / 1000 paraules` });
+  if (qualitatLiteraria9.accio_concreta.insuficient) debilitats.push({ id: 'poca_accio_concreta', severitat: 'alta', detall: `${qualitatLiteraria9.accio_concreta.per_1000_paraules} verbs/gestos concrets / 1000 paraules` });
+  if (qualitatLiteraria9.consequencies_irreversibles.problema_greu) debilitats.push({ id: 'scene_contracts_incomplets', severitat: 'alta', detall: `${sceneContractsIncomplets}/${sceneContracts.length} contractes sense decisió o conseqüència irreversible` });
+  if (qualitatLiteraria9.personatges_funcionals.problema) debilitats.push({ id: 'personatges_funcionals', severitat: 'alta', detall: `${personatgesFuncionals.length}/${personatges.length} personatges sense objectius/secrets prou concrets` });
+  if (qualitatLiteraria9.variacio_tensio.massa_uniforme) debilitats.push({ id: 'tensio_massa_uniforme', severitat: 'mitjana', detall: `Variància de tensió ${qualitatLiteraria9.variacio_tensio.variancia}` });
 
   const millores = [];
   if (debilitats.some(d => d.id === 'resums_incomplets')) millores.push({ prioritat: 'alta', proposta: 'Forçar generació de resums de bloc immediatament després de cada jutge i validar cobertura 100%.' });
@@ -1936,6 +2042,12 @@ function calcularEstudiDebilitatsLocal(estat = ESTAT) {
   if (debilitats.some(d => d.id === 'capitols_curts')) millores.push({ prioritat: 'mitjana', proposta: "Augmentar l'objectiu mínim de longitud i consolidar una única expansió post-capítol." });
   if (debilitats.some(d => d.id === 'massa_fils_oberts')) millores.push({ prioritat: 'alta', proposta: 'Incrementar tancament assistit de fils al final de cada bloc i limitar fils vius crítics.' });
   if (debilitats.some(d => d.id === 'qualitat_checkpoint_baixa')) millores.push({ prioritat: 'alta', proposta: 'Executar micro-reescriptura guiada només als capítols amb pitjor score, no a tot el bloc.' });
+  if (debilitats.some(d => ['poca_accio_concreta', 'scene_contracts_incomplets'].includes(d.id))) millores.push({ prioritat: 'alta', proposta: 'Reescriure escenes amb objectiu, obstacle i cost visible.' });
+  if (debilitats.some(d => d.id === 'excés_abstraccio')) millores.push({ prioritat: 'alta', proposta: 'Substituir formulacions abstractes per gestos, objectes i decisions.' });
+  if (debilitats.some(d => d.id === 'motius_massa_repetits')) millores.push({ prioritat: 'mitjana', proposta: 'Fer que cada motiu recurrent canviï de funció dramàtica.' });
+  if (debilitats.some(d => d.id === 'personatges_funcionals')) millores.push({ prioritat: 'alta', proposta: 'Afegir una escena de fricció interpersonal.' });
+  if (debilitats.some(d => ['scene_contracts_incomplets', 'tensio_massa_uniforme'].includes(d.id))) millores.push({ prioritat: 'alta', proposta: 'Afegir conseqüència irreversible al final de capítol.' });
+  qualitatLiteraria9.recomanacions = millores.map(m => m.proposta);
   if (millores.length === 0) millores.push({ prioritat: 'baixa', proposta: 'Sistema estable: mantenir cadència actual i monitoritzar cobertura de resums/snapshots.' });
 
   return {
@@ -1949,6 +2061,7 @@ function calcularEstudiDebilitatsLocal(estat = ESTAT) {
       beats,
       qualitatMitja: qualitatMitja != null ? Number(qualitatMitja.toFixed(2)) : null
     },
+    qualitatLiteraria9,
     debilitats,
     millores
   };
@@ -2148,6 +2261,24 @@ function exportarDiagnosticResums() {
 
   lines.push('MILLORA RECOMANADA (prioritzada):');
   estudi.millores.forEach(m => lines.push(`  · [${m.prioritat}] ${m.proposta}`));
+  lines.push('');
+
+  const q9 = estudi.qualitatLiteraria9 || {};
+  lines.push('═══════════════════════════════════════════════════════════');
+  lines.push('  DIAGNÒSTIC LITERARI 9/10');
+  lines.push('═══════════════════════════════════════════════════════════');
+  lines.push('');
+  lines.push(`Puntuació estimativa: ${q9.puntuacio_estimativa != null ? q9.puntuacio_estimativa + '/9' : 'N/D'}`);
+  lines.push(`Abstractesa: ${q9.abstractesa ? `${q9.abstractesa.per_1000_paraules} / 1000 paraules (${q9.abstractesa.exces ? 'excés' : 'acceptable'})` : 'N/D'}`);
+  lines.push(`Repetició de motius: ${q9.repeticio_motius ? `${q9.repeticio_motius.per_1000_paraules} / 1000 paraules (${q9.repeticio_motius.exces ? 'massa repetits' : 'acceptable'})` : 'N/D'}`);
+  lines.push(`Acció concreta: ${q9.accio_concreta ? `${q9.accio_concreta.per_1000_paraules} / 1000 paraules (${q9.accio_concreta.insuficient ? 'insuficient' : 'present'})` : 'N/D'}`);
+  lines.push(`Scene contracts: ${q9.consequencies_irreversibles ? `${q9.consequencies_irreversibles.scene_contracts_incomplets}/${q9.consequencies_irreversibles.scene_contracts_total} incomplets` : 'N/D'}`);
+  lines.push(`Personatges funcionals: ${q9.personatges_funcionals ? `${q9.personatges_funcionals.sospitosos.length}/${q9.personatges_funcionals.total_personatges} sospitosos` : 'N/D'}`);
+  lines.push(`Variació de tensió: ${q9.variacio_tensio ? (q9.variacio_tensio.avis || `variància ${q9.variacio_tensio.variancia}`) : 'N/D'}`);
+  lines.push(`Diàleg subtextual: ${q9.dialeg_subtextual ? q9.dialeg_subtextual.estat : 'N/D'}`);
+  lines.push('');
+  lines.push('Recomanacions prioritzades:');
+  (q9.recomanacions || []).length ? q9.recomanacions.forEach(r => lines.push(`  · ${r}`)) : lines.push('  (cap recomanació literària local)');
   lines.push('');
 
   const contingut = lines.join('\n');
@@ -20010,6 +20141,16 @@ Format de la teva resposta (en català i amb format Markdown net):
 1. **Diagnòstic Literari:** Què ha funcionat bé en la història i quins defectes típics de l'IA has notat (ex: personatges plans, pèrdua de ritme, clixés al final)?
 2. **Diagnòstic Tècnic:** Basat en el resultat, on creus que els algorismes de l'aplicació (el "Narrative Knowledge Graph", la corba de tensió, els prompts d'estil de veu) han fallat o s'han quedat curts?
 3. **Propostes de Codi:** Dóna 2 o 3 consells concrets de com el desenvolupador podria canviar el codi de l'aplicació o els *prompts* de sistema per solucionar aquests defectes i millorar les futures generacions.
+
+VALORACIÓ LITERÀRIA 9/10 OBLIGATÒRIA:
+- Quines escenes semblen resum i no escena viva?
+- Quins personatges semblen vectors temàtics en comptes de persones amb desig, por i contradicció?
+- Quins motius simbòlics es repeteixen massa sense canviar de funció dramàtica?
+- On falta cost irreversible o conseqüència narrativa visible?
+- Quin capítol s'hauria de reescriure primer per pujar de 7 a 9 i per què?
+- Hi ha un cas humà central amb dolor concret, o el dolor queda massa abstracte?
+
+No proposis reescriptura automàtica; només diagnostica i prioritza.
 
 Sigues crític, directe i molt tècnic.`;
 
