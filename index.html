@@ -1838,6 +1838,9 @@ function aplicarSnapshotProjecte(dades) {
   ESTAT._intervalLocks = (ESTAT._intervalLocks && typeof ESTAT._intervalLocks === 'object') ? ESTAT._intervalLocks : {};
   ESTAT._chapterLocks = (ESTAT._chapterLocks && typeof ESTAT._chapterLocks === 'object') ? ESTAT._chapterLocks : {};
   ESTAT._blockCanons = (ESTAT._blockCanons && typeof ESTAT._blockCanons === 'object') ? ESTAT._blockCanons : {};
+  if (ESTAT._nkg && !Array.isArray(ESTAT._nkg.scene_contracts) && ESTAT._modeCompatibilitatSnapshotsAntics == null) {
+    ESTAT._modeCompatibilitatSnapshotsAntics = true;
+  }
   USER_CONFIG = dades.config || USER_CONFIG;
   if (typeof assegurarSceneContractsNKG === 'function') assegurarSceneContractsNKG(ESTAT._nkg);
 
@@ -4747,11 +4750,33 @@ async function generarFaltantNKG(itemId, btnEl = null) {
   }
 }
 
+function renderitzarFaltantsDrama(faltants) {
+  const llista = Array.isArray(faltants) ? faltants : [];
+  if (llista.length === 0) return '';
+  const items = llista.map(f => `<li style="margin-bottom:6px;">${escHtml(String(f))}</li>`).join('');
+  return `<div class="veu-card"><div class="veu-card-nom">⚠️ Falten motors dramàtics</div><ul style="padding-left:18px;margin-top:8px;">${items}</ul></div>`;
+}
+
 function mostrarFaltantsNKG() {
   const cos = document.getElementById('nkg-faltants-cos');
   if (!cos) return;
-  const faltants = detectarFaltantsNKG(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {});
-  if (faltants.length === 0) {
+  const nkg = ESTAT._nkg || {};
+  const biblia = ESTAT.bibliaNarrativa || {};
+  const validacio = (typeof validarNKGPreparatPerCapitol1 === 'function')
+    ? validarNKGPreparatPerCapitol1(nkg, biblia)
+    : { errors: detectarFaltantsNKG(nkg, biblia), errorsDrama: [] };
+  const drama = Array.isArray(validacio.errorsDrama)
+    ? validacio.errorsDrama
+    : (typeof detectarFaltantsDramaNKG === 'function' ? detectarFaltantsDramaNKG(nkg, biblia) : []);
+  const avisosDrama = Array.isArray(validacio.warningsDrama) ? validacio.warningsDrama : [];
+  const faltants = (validacio.errors || detectarFaltantsNKG(nkg, biblia) || []).filter(f => !drama.includes(f));
+  const btnEscriptura = document.getElementById('btn-fase23');
+  const projecteNouBloquejat = drama.length > 0 && !ESTAT._modeCompatibilitatSnapshotsAntics;
+  if (btnEscriptura) {
+    btnEscriptura.disabled = projecteNouBloquejat;
+    btnEscriptura.title = projecteNouBloquejat ? 'Completa abans els motors dramàtics del NKG.' : '';
+  }
+  if (faltants.length === 0 && drama.length === 0 && avisosDrama.length === 0) {
     cos.innerHTML = '<div class="veu-card"><div class="veu-card-nom">✅ NKG complet</div><div class="veu-camp-val">Ja tens totes les dades necessàries per començar la novel·la.</div></div>';
     return;
   }
@@ -4762,7 +4787,16 @@ function mostrarFaltantsNKG() {
       : '';
     return `<li style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;"><span>${escHtml(f)}</span>${boto}</li>`;
   }).join('');
-  cos.innerHTML = `<div class="veu-card"><div class="veu-card-nom">⚠️ Dades pendents al NKG</div><ul style="padding-left:18px;margin-top:8px;">${itemsHtml}</ul></div>`;
+  const tecnicsHtml = faltants.length > 0
+    ? `<div class="veu-card"><div class="veu-card-nom">⚠️ Dades pendents al NKG</div><ul style="padding-left:18px;margin-top:8px;">${itemsHtml}</ul></div>`
+    : '';
+  const compatHtml = (drama.length > 0 && ESTAT._modeCompatibilitatSnapshotsAntics)
+    ? '<div class="veu-card"><div class="veu-card-nom">ℹ️ Projecte antic</div><div class="veu-camp-val">Aquests avisos dramàtics no bloquegen perquè el projecte ve d’una snapshot antiga.</div></div>'
+    : '';
+  const avisosHtml = avisosDrama.length > 0
+    ? `<div class="veu-card"><div class="veu-card-nom">ℹ️ Avisos dramàtics</div><ul style="padding-left:18px;margin-top:8px;">${avisosDrama.map(a => `<li>${escHtml(String(a))}</li>`).join('')}</ul></div>`
+    : '';
+  cos.innerHTML = tecnicsHtml + renderitzarFaltantsDrama(drama) + avisosHtml + compatHtml;
 }
 
 function mostrarResumNKGiTransicio(nkg, capitolsEscaleta, validacio, modeCreacio) {
@@ -8631,7 +8665,10 @@ async function iniciarFase11() {
 
   const chkNKG = validarNKGPreparatPerCapitol1(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {});
   if (!chkNKG.ok) {
-    toast('Falten dades al NKG. Et porto a la fase de compleció perquè puguis autogenerar-les o descarregar NKG + Bíblia.');
+    const teDrama = Array.isArray(chkNKG.errorsDrama) && chkNKG.errorsDrama.length > 0;
+    toast(teDrama
+      ? 'Falten motors dramàtics al NKG. Et porto a la fase de compleció abans d’escriure.'
+      : 'Falten dades al NKG. Et porto a la fase de compleció perquè puguis autogenerar-les o descarregar NKG + Bíblia.');
     console.error('NKG incomplet abans del capítol 1:', chkNKG.errors);
     ESTAT.fase = 22;
     updateProgress(22);

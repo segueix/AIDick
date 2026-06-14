@@ -450,9 +450,139 @@ function normalitzarVeuAvancada(veu = {}) {
 }
 
 
+function esModeCompatibilitatSnapshotsAntics() {
+  try {
+    return !!((typeof ESTAT !== 'undefined' && ESTAT && ESTAT._modeCompatibilitatSnapshotsAntics === true) || (typeof globalThis !== 'undefined' && globalThis.ESTAT && globalThis.ESTAT._modeCompatibilitatSnapshotsAntics === true));
+  } catch (e) {
+    return false;
+  }
+}
+
+function llistaAmbContingut(valor) {
+  if (!Array.isArray(valor)) return false;
+  return valor.some(v => {
+    if (typeof v === 'string') return v.trim().length > 0;
+    if (!v || typeof v !== 'object') return false;
+    return ['descripcio', 'objectiu', 'contingut', 'pressio', 'secret', 'resum', 'nom'].some(k => String(v[k] || '').trim());
+  });
+}
+
+function obtenirPersonatgesDramatics(nkg = {}) {
+  return Object.values((nkg && nkg.personatges) || {}).filter(p => {
+    if (!p || typeof p !== 'object') return false;
+    const rol = String(p.rol || p.tipus || p.funcio || '').toLowerCase();
+    if (!rol) return true;
+    return /protagon|principal|secundari|important|antagon|deuteragon|coprotagon/.test(rol) || p.es_principal === true || p.important === true;
+  });
+}
+
+function teObjectiuExternConcret(p = {}) {
+  return llistaAmbContingut(p.objectius) || llistaAmbContingut(p.objectius_externs) || llistaAmbContingut(p.objectius_dramatics);
+}
+
+function teSecretOPressioInterna(p = {}) {
+  return llistaAmbContingut(p.secrets) || llistaAmbContingut(p.pressions_ocultes) || llistaAmbContingut(p.pressions_internes) || llistaAmbContingut(p.informacio_retinguda);
+}
+
+function obtenirTramesDisponibles(nkg = {}, biblia = {}) {
+  const globals = (typeof ESTAT !== 'undefined' && ESTAT) ? ESTAT : ((typeof globalThis !== 'undefined' && globalThis.ESTAT) ? globalThis.ESTAT : {});
+  return [nkg.trames, biblia.trames, globals.trames, nkg.macronarrativa && nkg.macronarrativa.trames].filter(t => t && typeof t === 'object');
+}
+
+function teTramaPrincipalClara(nkg = {}, biblia = {}) {
+  return obtenirTramesDisponibles(nkg, biblia).some(t => {
+    const principal = t.trama_principal || t.principal || t.main || t.tramaPrincipal;
+    if (typeof principal === 'string') return principal.trim().length > 0;
+    if (principal && typeof principal === 'object') {
+      return ['conflicte', 'conflicte_causal', 'descripcio', 'objectiu', 'resum', 'causalitat'].some(k => String(principal[k] || '').trim());
+    }
+    return false;
+  });
+}
+
+function teSubtramesConnectades(nkg = {}, biblia = {}) {
+  return obtenirTramesDisponibles(nkg, biblia).some(t => {
+    const subs = t.subtrames || t.subtrames_connectades || t.secondary || [];
+    if (!Array.isArray(subs) || subs.length === 0) return false;
+    return subs.some(st => {
+      if (typeof st === 'string') return st.trim().length > 0;
+      if (!st || typeof st !== 'object') return false;
+      const connexio = st.personatge || st.personatge_secundari || st.personatges || st.connectada_a || st.relacio_personatge;
+      return String(st.descripcio || st.conflicte || st.objectiu || '').trim() && (Array.isArray(connexio) ? connexio.length > 0 : String(connexio || '').trim());
+    });
+  });
+}
+
+function esdevenimentTeConseqüencia(e = {}) {
+  if (typeof e === 'string') return false;
+  return ['consequencia', 'consequencies', 'conseqüencia', 'conseqüencies', 'consequencia_narrativa', 'cost', 'cost_immediat', 'canvi_estat', 'canvi_d_estat', 'impacte_narratiu'].some(k => {
+    const v = e[k];
+    return Array.isArray(v) ? v.length > 0 : String(v || '').trim();
+  });
+}
+
+function escaletaJaPreparada() {
+  try {
+    const estat = (typeof ESTAT !== 'undefined' && ESTAT) ? ESTAT : ((typeof globalThis !== 'undefined' && globalThis.ESTAT) ? globalThis.ESTAT : null);
+    if (!estat) return true;
+    const fase = Number(estat.fase || 0);
+    const escaletes = estat._escaletes;
+    return fase >= 22 || (Array.isArray(escaletes) && escaletes.length > 0);
+  } catch (e) {
+    return true;
+  }
+}
+
+function detectarFaltantsDramaNKG(nkg = {}, biblia = {}) {
+  const errors = [];
+  if (!nkg || typeof nkg !== 'object' || Object.keys(nkg).length === 0) return ['NKG no inicialitzat.'];
+
+  const personatges = obtenirPersonatgesDramatics(nkg);
+  let funcionals = 0;
+  personatges.forEach(p => {
+    const nom = p.nom || p.id || 'Personatge';
+    const teObjectiu = teObjectiuExternConcret(p);
+    const teSecret = teSecretOPressioInterna(p);
+    if (!teObjectiu) errors.push(`${nom} no té objectius dramàtics accionables.`);
+    if (!teSecret) errors.push(`${nom} no té secrets, pressions ocultes o informació retinguda.`);
+    if (!teObjectiu && !teSecret) funcionals++;
+  });
+
+  if (!teTramaPrincipalClara(nkg, biblia)) errors.push('Falta trama principal amb conflicte causal.');
+  if (!teSubtramesConnectades(nkg, biblia)) errors.push('Falten subtrames connectades a personatges secundaris.');
+
+  if (Array.isArray(nkg.esdeveniments) && nkg.esdeveniments.length > 0 && nkg.esdeveniments.some(e => !esdevenimentTeConseqüencia(e))) {
+    errors.push('Hi ha esdeveniments sense conseqüències narratives registrades.');
+  }
+
+  if (!Array.isArray(nkg.scene_contracts) || nkg.scene_contracts.length === 0) {
+    if (escaletaJaPreparada()) errors.push('Falten contractes d’escena amb conflicte dramàtic concret.');
+  } else if (typeof detectarFaltantsSceneContract === 'function') {
+    nkg.scene_contracts.forEach((contracte, idx) => {
+      const faltants = detectarFaltantsSceneContract(contracte);
+      if (faltants.length > 0) errors.push(`Contracte d’escena ${(contracte && contracte.id) || idx + 1} incomplet: ${faltants.join(', ')}.`);
+    });
+  }
+
+  if (personatges.length >= 3 && funcionals > Math.floor(personatges.length / 2)) {
+    errors.push('Hi ha massa personatges purament funcionals sense motor dramàtic propi.');
+  }
+
+  return [...new Set(errors)];
+}
+
 function validarNKGPreparatPerCapitol1(nkg, biblia = {}) {
-  const faltants = detectarFaltantsNKG(nkg, biblia);
-  return { ok: faltants.length === 0, errors: faltants };
+  const errorsContinuïtat = detectarFaltantsNKG(nkg, biblia);
+  const errorsDrama = detectarFaltantsDramaNKG(nkg, biblia);
+  const warningsDrama = [];
+  if ((!Array.isArray((nkg || {}).scene_contracts) || (nkg || {}).scene_contracts.length === 0) && !escaletaJaPreparada()) {
+    warningsDrama.push('Encara no hi ha contractes d’escena; es revisaran abans de començar l’escriptura.');
+  }
+  const errors = [...new Set([...(errorsContinuïtat || []), ...(errorsDrama || [])])];
+  if (esModeCompatibilitatSnapshotsAntics()) {
+    return { ok: true, errors: [], warnings: [...new Set([...errors, ...warningsDrama])], errorsContinuïtat, errorsDrama, warningsDrama, compatibilitat: true };
+  }
+  return { ok: errors.length === 0, errors, errorsContinuïtat, errorsDrama, warnings: warningsDrama, warningsDrama };
 }
 
 function detectarFaltantsNKG(nkg = {}, biblia = {}) {
@@ -478,7 +608,8 @@ function detectarFaltantsNKG(nkg = {}, biblia = {}) {
     if (!Array.isArray(veu.exemples_narratius) || veu.exemples_narratius.length < 2) errors.push(`${p.nom || 'Personatge'} sense exemples narratius de veu.`);
     if (!Array.isArray(veu.vocabulari_recurrent) || veu.vocabulari_recurrent.length < 3) errors.push(`${p.nom || 'Personatge'} sense vocabulari recurrent suficient.`);
   });
-  return errors;
+  const drama = detectarFaltantsDramaNKG(nkg, biblia);
+  return [...new Set([...errors, ...drama])];
 }
 
 
