@@ -347,7 +347,7 @@ function crearNKG() {
     beats_gastats: [], // Registre de beats narratius consumits (anti-repetició dramàtica)
     scene_contracts: [], // Capa estructural per evitar capítols massa resumits, abstractes o sense conflicte dramàtic.
     ultima_actualitzacio: { capitol: 0, escena: 0 },
-    versio: 5
+    versio: 6
   };
 }
 

@@ -1799,11 +1799,27 @@ const CLAU_HISTORIAL = 'booki_projecte_historial';
 const MAX_SNAPSHOTS = 6;
 
 function construirSnapshotProjecte() {
+  if (!ESTAT._nkg && typeof crearNKG === 'function') ESTAT._nkg = crearNKG();
+  if (ESTAT._nkg) {
+    if (typeof assegurarSceneContractsNKG === 'function') assegurarSceneContractsNKG(ESTAT._nkg);
+    ESTAT._nkg.versio = Math.max(Number(ESTAT._nkg.versio || 0), 6);
+  }
+  let diagnosticLiterari9 = null;
+  let avisosDramatics = [];
+  try { diagnosticLiterari9 = calcularEstudiDebilitatsLocal(ESTAT).qualitatLiteraria9; } catch (e) { console.warn('Diagnòstic snapshot:', e.message); }
+  try {
+    const v = typeof validarNKGPreparatPerCapitol1 === 'function' ? validarNKGPreparatPerCapitol1(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {}) : null;
+    avisosDramatics = [...((v && v.errorsDrama) || []), ...((v && v.warningsDrama) || [])];
+  } catch (e) { console.warn('Avisos dramàtics snapshot:', e.message); }
   return {
-    versio: 1,
+    versio: 2,
     guardat_el: new Date().toISOString(),
     estat: ESTAT,
-    config: USER_CONFIG
+    config: USER_CONFIG,
+    nkg_scene_contracts: (ESTAT._nkg && ESTAT._nkg.scene_contracts) || [],
+    diagnostic_literari_9: diagnosticLiterari9,
+    avisos_dramatics_pendents: avisosDramatics,
+    nkg_versio: (ESTAT._nkg && ESTAT._nkg.versio) || null
   };
 }
 
@@ -1832,15 +1848,26 @@ function comprovarProjecteGuardat() {
 function aplicarSnapshotProjecte(dades) {
   if (!dades || !dades.estat) throw new Error('Format de còpia no vàlid');
 
-  Object.assign(ESTAT, dades.estat);
+  const estatImportat = dades.estat || {};
+  const nkgImportat = estatImportat._nkg;
+  const esSnapshotAntic = !nkgImportat || !Array.isArray(nkgImportat.scene_contracts) || !nkgImportat.versio || Number(nkgImportat.versio) < 6;
+  Object.assign(ESTAT, estatImportat);
   ESTAT._intervalsCongelats = Array.isArray(ESTAT._intervalsCongelats) ? ESTAT._intervalsCongelats : [];
   ESTAT._capitolsLocked = (ESTAT._capitolsLocked && typeof ESTAT._capitolsLocked === 'object') ? ESTAT._capitolsLocked : {};
   ESTAT._intervalLocks = (ESTAT._intervalLocks && typeof ESTAT._intervalLocks === 'object') ? ESTAT._intervalLocks : {};
   ESTAT._chapterLocks = (ESTAT._chapterLocks && typeof ESTAT._chapterLocks === 'object') ? ESTAT._chapterLocks : {};
   ESTAT._blockCanons = (ESTAT._blockCanons && typeof ESTAT._blockCanons === 'object') ? ESTAT._blockCanons : {};
-  if (ESTAT._nkg && !Array.isArray(ESTAT._nkg.scene_contracts) && ESTAT._modeCompatibilitatSnapshotsAntics == null) {
-    ESTAT._modeCompatibilitatSnapshotsAntics = true;
+  if (!ESTAT._nkg && typeof crearNKG === 'function') ESTAT._nkg = crearNKG();
+  if (ESTAT._nkg) {
+    ESTAT._nkg = Object.assign({}, (typeof crearNKG === 'function' ? crearNKG() : {}), ESTAT._nkg);
+    ESTAT._nkg.scene_contracts = Array.isArray(ESTAT._nkg.scene_contracts) ? ESTAT._nkg.scene_contracts : [];
+    ESTAT._nkg.personatges = (ESTAT._nkg.personatges && typeof ESTAT._nkg.personatges === 'object') ? ESTAT._nkg.personatges : {};
+    ESTAT._nkg.esdeveniments = Array.isArray(ESTAT._nkg.esdeveniments) ? ESTAT._nkg.esdeveniments : [];
+    ESTAT._nkg.versio = Math.max(Number(ESTAT._nkg.versio || 0), 6);
   }
+  ESTAT._diagnosticLiterari9 = (ESTAT._diagnosticLiterari9 && typeof ESTAT._diagnosticLiterari9 === 'object') ? ESTAT._diagnosticLiterari9 : null;
+  ESTAT._modeCompatibilitatSnapshotsAntics = !!esSnapshotAntic;
+  ESTAT._avisCompatibilitatSceneConflict = !!esSnapshotAntic;
   USER_CONFIG = dades.config || USER_CONFIG;
   if (typeof assegurarSceneContractsNKG === 'function') assegurarSceneContractsNKG(ESTAT._nkg);
 
@@ -2305,7 +2332,9 @@ function importarCopiaSeguretat(event) {
       const dades = JSON.parse(String(reader.result || '{}'));
       aplicarSnapshotProjecte(dades);
       localStorage.setItem(CLAU_PROJECTE_ACTUAL, JSON.stringify(dades));
-      toast('Còpia importada correctament.');
+      toast(ESTAT._avisCompatibilitatSceneConflict
+        ? 'Còpia importada. Aquest projecte és anterior al Scene Conflict Layer. Pots continuar, però per obtenir millor qualitat recomanem completar els motors dramàtics.'
+        : 'Còpia importada correctament.');
     } catch (err) {
       toast('Fitxer de còpia invàlid: ' + err.message);
     }
@@ -10671,6 +10700,9 @@ async function generarFitxerContexte(nkg, biblia, capitolActual) {
     timeline_personatges: (nkg.timeline_personatges || []).slice(-20),
     beats_gastats: nkg.beats_gastats || [],
     scene_contracts: nkg.scene_contracts || [],
+    nkg_versio: nkg.versio || 6,
+    diagnostic_literari_9: (() => { try { return calcularEstudiDebilitatsLocal(ESTAT).qualitatLiteraria9; } catch (e) { return null; } })(),
+    avisos_dramatics_pendents: (() => { try { const v = validarNKGPreparatPerCapitol1(nkg || {}, biblia || {}); return [...(v.errorsDrama || []), ...(v.warningsDrama || [])]; } catch (e) { return []; } })(),
     vista_filtrada_capitol: getActiveObjectives(capitolActual),
     snapshot_objectes_capitol: getObjectState(capitolActual),
     context_creacio: {
@@ -10740,6 +10772,10 @@ async function generarDocumentFinal(capitolsGenerats, capitolsEscaleta, nkg, con
       generat: new Date().toISOString()
     },
     macronarrativa: (nkg && nkg.macronarrativa) || {},
+    scene_contracts: (nkg && nkg.scene_contracts) || [],
+    nkg_versio: (nkg && nkg.versio) || 6,
+    diagnostic_literari_9: (() => { try { return calcularEstudiDebilitatsLocal(ESTAT).qualitatLiteraria9; } catch (e) { return null; } })(),
+    avisos_dramatics_pendents: (() => { try { const v = validarNKGPreparatPerCapitol1(nkg || {}, ESTAT.bibliaNarrativa || {}); return [...(v.errorsDrama || []), ...(v.warningsDrama || [])]; } catch (e) { return []; } })(),
     capitols: caps.map((text, i) => ({
       numero: i + 1,
       titol: (esc[i] && esc[i].titol) || '',
@@ -12041,6 +12077,50 @@ async function reescriureCapitolGlobal(idx) {
   }
 }
 
+
+function renderitzarResumDramaticBiblia() {
+  const nkg = ESTAT._nkg || {};
+  const biblia = ESTAT.bibliaNarrativa || {};
+  let drama = [];
+  try { drama = typeof detectarFaltantsDramaNKG === 'function' ? detectarFaltantsDramaNKG(nkg, biblia) : []; } catch (e) { drama = []; }
+  const contracts = Array.isArray(nkg.scene_contracts) ? nkg.scene_contracts : [];
+  const perCapitol = contracts.reduce((acc, c) => {
+    const cap = Number(c.capitol || 0) || '?';
+    acc[cap] = acc[cap] || { total: 0, incomplets: 0 };
+    acc[cap].total += 1;
+    const faltants = (typeof detectarFaltantsSceneContract === 'function') ? detectarFaltantsSceneContract(c) : [];
+    if (c._incomplet || faltants.length > 0 || !String(c.consequencia_narrativa || '').trim()) acc[cap].incomplets += 1;
+    return acc;
+  }, {});
+  const persSenseMotor = Object.values(nkg.personatges || {}).filter(p => {
+    const obj = Array.isArray(p.objectius) && p.objectius.length > 0;
+    const sec = Array.isArray(p.secrets) && p.secrets.length > 0;
+    return !obj || !sec;
+  });
+  const evSenseConseq = (Array.isArray(nkg.esdeveniments) ? nkg.esdeveniments : []).filter(e => {
+    if (!e || typeof e === 'string') return true;
+    return !['consequencia', 'consequencies', 'conseqüencia', 'conseqüencies', 'consequencia_narrativa', 'cost', 'cost_immediat', 'canvi_estat', 'impacte_narratiu'].some(k => {
+      const v = e[k];
+      return Array.isArray(v) ? v.length > 0 : String(v || '').trim();
+    });
+  });
+  let qualitat = null;
+  try { qualitat = calcularEstudiDebilitatsLocal(ESTAT).qualitatLiteraria9; } catch (e) {}
+  const capHtml = Object.keys(perCapitol).length
+    ? Object.entries(perCapitol).sort((a, b) => Number(a[0]) - Number(b[0])).map(([cap, v]) => `<li>Capítol ${escHtml(cap)}: ${v.total} contracte(s), ${v.incomplets} incomplet(s)</li>`).join('')
+    : '<li>Encara no hi ha scene contracts registrats.</li>';
+  return `<details style="margin-top:16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;">
+    <summary style="cursor:pointer;color:var(--accent2);font-weight:600;">🎭 Motors dramàtics i Quality Gate 9</summary>
+    <div style="font-size:.86rem;line-height:1.6;margin-top:10px;">
+      <div><strong>Motors dramàtics pendents:</strong> ${drama.length ? escHtml(drama.slice(0, 6).join(' · ')) : 'cap bloquejant detectat'}</div>
+      <div style="margin-top:8px;"><strong>Scene contracts per capítol:</strong><ul style="margin:6px 0 0 18px;">${capHtml}</ul></div>
+      <div><strong>Personatges sense objectius o secrets:</strong> ${persSenseMotor.length ? escHtml(persSenseMotor.map(p => p.nom || p.id || 'Personatge').join(', ')) : 'cap detectat'}</div>
+      <div><strong>Esdeveniments sense conseqüència:</strong> ${evSenseConseq.length}</div>
+      <div><strong>Recomanació 9/10:</strong> ${escHtml((qualitat && qualitat.recomanacions && qualitat.recomanacions[0]) || 'Completa objectius, obstacles, costos i conseqüències visibles abans de redactar.')}</div>
+    </div>
+  </details>`;
+}
+
 // ─── SISTEMA 1: Bíblia Narrativa ─────────────────────────────────────────────
 function obrirBiblia() {
   const modal = document.getElementById('modal-biblia');
@@ -12071,6 +12151,7 @@ function obrirBiblia() {
   if (b.fets_canonics && b.fets_canonics.length > 0) {
     html += `<h4 style="color:var(--accent2);margin:14px 0 8px">📜 Fets Canònics</h4><ul style="padding-left:18px">${b.fets_canonics.slice(-10).map(f => `<li style="margin-bottom:4px">${f}</li>`).join('\n')}</ul>`;
   }
+  html += renderitzarResumDramaticBiblia();
   if (!html) {
     html = '<p style="color:var(--text2);text-align:center;padding:24px">La bíblia narrativa encara no s\'ha inicialitzat.</p>';
   }
@@ -15865,6 +15946,50 @@ Escriu directament el text de l'epíleg en català, sense títol ni notes de l'a
 
   const response = await callLLMOneShotPlusCompletion(msgs, systemPrompt, Object.assign({}, userConfig, { maxTokens: 2600, model: getModelConfig(userConfig).modelGeneracio }), 'generacio');
   return { response };
+}
+
+
+function renderitzarResumDramaticBiblia() {
+  const nkg = ESTAT._nkg || {};
+  const biblia = ESTAT.bibliaNarrativa || {};
+  let drama = [];
+  try { drama = typeof detectarFaltantsDramaNKG === 'function' ? detectarFaltantsDramaNKG(nkg, biblia) : []; } catch (e) { drama = []; }
+  const contracts = Array.isArray(nkg.scene_contracts) ? nkg.scene_contracts : [];
+  const perCapitol = contracts.reduce((acc, c) => {
+    const cap = Number(c.capitol || 0) || '?';
+    acc[cap] = acc[cap] || { total: 0, incomplets: 0 };
+    acc[cap].total += 1;
+    const faltants = (typeof detectarFaltantsSceneContract === 'function') ? detectarFaltantsSceneContract(c) : [];
+    if (c._incomplet || faltants.length > 0 || !String(c.consequencia_narrativa || '').trim()) acc[cap].incomplets += 1;
+    return acc;
+  }, {});
+  const persSenseMotor = Object.values(nkg.personatges || {}).filter(p => {
+    const obj = Array.isArray(p.objectius) && p.objectius.length > 0;
+    const sec = Array.isArray(p.secrets) && p.secrets.length > 0;
+    return !obj || !sec;
+  });
+  const evSenseConseq = (Array.isArray(nkg.esdeveniments) ? nkg.esdeveniments : []).filter(e => {
+    if (!e || typeof e === 'string') return true;
+    return !['consequencia', 'consequencies', 'conseqüencia', 'conseqüencies', 'consequencia_narrativa', 'cost', 'cost_immediat', 'canvi_estat', 'impacte_narratiu'].some(k => {
+      const v = e[k];
+      return Array.isArray(v) ? v.length > 0 : String(v || '').trim();
+    });
+  });
+  let qualitat = null;
+  try { qualitat = calcularEstudiDebilitatsLocal(ESTAT).qualitatLiteraria9; } catch (e) {}
+  const capHtml = Object.keys(perCapitol).length
+    ? Object.entries(perCapitol).sort((a, b) => Number(a[0]) - Number(b[0])).map(([cap, v]) => `<li>Capítol ${escHtml(cap)}: ${v.total} contracte(s), ${v.incomplets} incomplet(s)</li>`).join('')
+    : '<li>Encara no hi ha scene contracts registrats.</li>';
+  return `<details style="margin-top:16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;">
+    <summary style="cursor:pointer;color:var(--accent2);font-weight:600;">🎭 Motors dramàtics i Quality Gate 9</summary>
+    <div style="font-size:.86rem;line-height:1.6;margin-top:10px;">
+      <div><strong>Motors dramàtics pendents:</strong> ${drama.length ? escHtml(drama.slice(0, 6).join(' · ')) : 'cap bloquejant detectat'}</div>
+      <div style="margin-top:8px;"><strong>Scene contracts per capítol:</strong><ul style="margin:6px 0 0 18px;">${capHtml}</ul></div>
+      <div><strong>Personatges sense objectius o secrets:</strong> ${persSenseMotor.length ? escHtml(persSenseMotor.map(p => p.nom || p.id || 'Personatge').join(', ')) : 'cap detectat'}</div>
+      <div><strong>Esdeveniments sense conseqüència:</strong> ${evSenseConseq.length}</div>
+      <div><strong>Recomanació 9/10:</strong> ${escHtml((qualitat && qualitat.recomanacions && qualitat.recomanacions[0]) || 'Completa objectius, obstacles, costos i conseqüències visibles abans de redactar.')}</div>
+    </div>
+  </details>`;
 }
 
 // ─── SISTEMA 1: Bíblia Narrativa — backend ────────────────────────────────────
@@ -20138,9 +20263,9 @@ ${dadesAnalisi}
 La teva tasca és fer un INFORME POST-MORTEM META adreçat al desenvolupador de l'aplicació. No vull que reescriguis la novel·la. Vull que avaluïs el *sistema*.
 Format de la teva resposta (en català i amb format Markdown net):
 
-1. **Diagnòstic Literari:** Què ha funcionat bé en la història i quins defectes típics de l'IA has notat (ex: personatges plans, pèrdua de ritme, clixés al final)?
-2. **Diagnòstic Tècnic:** Basat en el resultat, on creus que els algorismes de l'aplicació (el "Narrative Knowledge Graph", la corba de tensió, els prompts d'estil de veu) han fallat o s'han quedat curts?
-3. **Propostes de Codi:** Dóna 2 o 3 consells concrets de com el desenvolupador podria canviar el codi de l'aplicació o els *prompts* de sistema per solucionar aquests defectes i millorar les futures generacions.
+A. **Diagnòstic editorial** — valora explícitament tema, estructura, personatges, ritme, escena, llengua i final.
+B. **Diagnòstic tècnic del sistema** — indica si el NKG ha fallat per falta de scene_contracts, si els objectius/secrets eren buits, si les conseqüències no s'han registrat, si hi ha massa abstracció i quins camps o fases cal millorar.
+C. **Tancament executiu** — acaba amb puntuació estimada de la novel·la, tres causes principals que impedeixen arribar a 9 i tres canvis prioritaris de repositori.
 
 VALORACIÓ LITERÀRIA 9/10 OBLIGATÒRIA:
 - Quines escenes semblen resum i no escena viva?
