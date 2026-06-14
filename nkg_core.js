@@ -336,9 +336,104 @@ function crearNKG() {
     },
     transicions_capitols: [], // Regles de pas capítol->capítol per evitar salts i pèrdua de continuïtat
     beats_gastats: [], // Registre de beats narratius consumits (anti-repetició dramàtica)
+    scene_contracts: [], // Capa estructural per evitar capítols massa resumits, abstractes o sense conflicte dramàtic.
     ultima_actualitzacio: { capitol: 0, escena: 0 },
     versio: 5
   };
+}
+
+
+function crearSceneContractBase(capitol, escena) {
+  const cap = Number.isFinite(Number(capitol)) && Number(capitol) > 0 ? Number(capitol) : 1;
+  const esc = Number.isFinite(Number(escena)) && Number(escena) > 0 ? Number(escena) : 1;
+  return {
+    id: `C${cap}E${esc}`,
+    capitol: cap,
+    escena: esc,
+    pov: "",
+    personatges_presents: [],
+    objectiu_visible_pov: "",
+    objectiu_ocult_pov: "",
+    objectiu_visible_oponent: "",
+    objectiu_ocult_oponent: "",
+    obstacle_concret: "",
+    asimetria_poder: "",
+    objecte_en_disputa: "",
+    informacio_en_disputa: "",
+    decisio_irreversible: "",
+    cost_immediat: "",
+    consequencia_narrativa: "",
+    gir_emocional: "",
+    subtext_dialog: "",
+    detall_sensorial_funcional: "",
+    prohibicio_escena: "No resumir el conflicte: mostrar-lo en acció, gest, diàleg o decisió."
+  };
+}
+
+function normalitzarSceneContract(contracte, capitolFallback, escenaFallback) {
+  const dades = (contracte && typeof contracte === 'object') ? contracte : {};
+  const capitol = Number.isFinite(Number(dades.capitol)) && Number(dades.capitol) > 0
+    ? Number(dades.capitol)
+    : (Number.isFinite(Number(capitolFallback)) && Number(capitolFallback) > 0 ? Number(capitolFallback) : 1);
+  const escena = Number.isFinite(Number(dades.escena)) && Number(dades.escena) > 0
+    ? Number(dades.escena)
+    : (Number.isFinite(Number(escenaFallback)) && Number(escenaFallback) > 0 ? Number(escenaFallback) : 1);
+  const base = crearSceneContractBase(capitol, escena);
+  const normalitzat = Object.assign({}, base, dades, {
+    capitol,
+    escena,
+    id: dades.id ? String(dades.id) : base.id,
+    personatges_presents: Array.isArray(dades.personatges_presents)
+      ? dades.personatges_presents
+      : (dades.personatges_presents ? [String(dades.personatges_presents)] : [])
+  });
+  if (!normalitzat.prohibicio_escena) normalitzat.prohibicio_escena = base.prohibicio_escena;
+  return normalitzat;
+}
+
+function detectarFaltantsSceneContract(contracte) {
+  const c = (contracte && typeof contracte === 'object') ? contracte : {};
+  const campsObligatoris = [
+    'pov',
+    'objectiu_visible_pov',
+    'obstacle_concret',
+    'asimetria_poder',
+    'decisio_irreversible',
+    'cost_immediat',
+    'consequencia_narrativa'
+  ];
+  return campsObligatoris.filter(camp => !String(c[camp] || '').trim());
+}
+
+function validarSceneContract(contracte) {
+  const faltants = detectarFaltantsSceneContract(contracte);
+  return { ok: faltants.length === 0, errors: faltants };
+}
+
+function capitolSceneContractBloquejat(nkg, contracte) {
+  const capitol = Number((contracte || {}).capitol || 0);
+  if ((contracte || {}).locked === true || (contracte || {}).bloquejat === true) return true;
+  const locks = (nkg && typeof nkg === 'object') ? (nkg._capitolsLocked || nkg.capitols_locked || nkg.capitolsBloquejats) : null;
+  if (!locks || !capitol) return false;
+  const candidats = [capitol, capitol - 1, String(capitol), String(capitol - 1)];
+  return candidats.some(k => {
+    const lock = locks[k];
+    return lock === true || (lock && typeof lock === 'object' && lock.locked === true);
+  });
+}
+
+function assegurarSceneContractsNKG(nkg) {
+  if (!nkg || typeof nkg !== 'object') return nkg;
+  // Aquesta capa prepara conflictes escènics concrets i evita capítols massa resumits, abstractes o sense tensió dramàtica.
+  if (!Array.isArray(nkg.scene_contracts)) {
+    nkg.scene_contracts = [];
+    return nkg;
+  }
+  nkg.scene_contracts = nkg.scene_contracts.map((contracte, idx) => {
+    if (capitolSceneContractBloquejat(nkg, contracte)) return contracte;
+    return normalitzarSceneContract(contracte, (contracte || {}).capitol || 1, (contracte || {}).escena || idx + 1);
+  });
+  return nkg;
 }
 
 

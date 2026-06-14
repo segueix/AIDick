@@ -1839,6 +1839,7 @@ function aplicarSnapshotProjecte(dades) {
   ESTAT._chapterLocks = (ESTAT._chapterLocks && typeof ESTAT._chapterLocks === 'object') ? ESTAT._chapterLocks : {};
   ESTAT._blockCanons = (ESTAT._blockCanons && typeof ESTAT._blockCanons === 'object') ? ESTAT._blockCanons : {};
   USER_CONFIG = dades.config || USER_CONFIG;
+  if (typeof assegurarSceneContractsNKG === 'function') assegurarSceneContractsNKG(ESTAT._nkg);
 
   if (ESTAT._anthropicApiKey) document.getElementById('anthropicApiKey').value = ESTAT._anthropicApiKey;
   if (ESTAT._openaiApiKey) document.getElementById('openaiApiKey').value = ESTAT._openaiApiKey;
@@ -10410,6 +10411,7 @@ async function generarFitxerContexte(nkg, biblia, capitolActual) {
     timeline_objectes: (nkg.timeline_objectes || []).slice(-20),
     timeline_personatges: (nkg.timeline_personatges || []).slice(-20),
     beats_gastats: nkg.beats_gastats || [],
+    scene_contracts: nkg.scene_contracts || [],
     vista_filtrada_capitol: getActiveObjectives(capitolActual),
     snapshot_objectes_capitol: getObjectState(capitolActual),
     context_creacio: {
@@ -10444,6 +10446,7 @@ async function generarFitxerContexte(nkg, biblia, capitolActual) {
 async function descarregarNKGiBiblia() {
   const capitolActual = (ESTAT._capitolActual || 0) + 1;
   const nkg = ESTAT._nkg || {};
+  if (typeof assegurarSceneContractsNKG === 'function') assegurarSceneContractsNKG(nkg);
   const biblia = ESTAT.bibliaNarrativa || {};
   try {
     await generarFitxerContexte(nkg, biblia, capitolActual);
