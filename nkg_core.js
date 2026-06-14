@@ -24,6 +24,15 @@ const ESQUEMES_LLM = {
       if (!d.ganxo_final || typeof d.ganxo_final !== 'object') errors.push('falta "ganxo_final"');
       else if (!d.ganxo_final.tipus) errors.push('falta "ganxo_final.tipus"');
       if (!d.estat_final_personatges || typeof d.estat_final_personatges !== 'object') errors.push('falta "estat_final_personatges"');
+      if (!Array.isArray(d.scene_contracts) || d.scene_contracts.length === 0) errors.push('falta "scene_contracts"');
+      else {
+        d.scene_contracts.forEach((c, i) => {
+          if (typeof detectarFaltantsSceneContract === 'function') {
+            const faltants = detectarFaltantsSceneContract(c);
+            if (faltants.length > 0) errors.push(`scene_contracts[${i}] incomplet: ${faltants.join(', ')}`);
+          }
+        });
+      }
       return errors;
     }
   },

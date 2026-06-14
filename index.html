@@ -4956,9 +4956,13 @@ async function iniciarEscaletaSeqNou() {
         escenes: [{
           nom: capInfo.titol,
           paraules_objectiu: ESTAT.estil.paraules,
-          funcio_narrativa: dades.funcio || capInfo.resum || ''
+          funcio_narrativa: dades.funcio || capInfo.resum || '',
+          personatges: Array.isArray(capInfo.personatges) ? capInfo.personatges : [],
+          beat_narratiu: 'diàleg',
+          scene_contract: Array.isArray(dades.scene_contracts) ? dades.scene_contracts[0] : dades.scene_contract
         }]
       };
+      desarSceneContractsEscaletes([escaleta]);
       ESTAT._escaletes.push(escaleta);
 
       // Desar ganxo_final a _estructuraCapitols
@@ -5024,14 +5028,16 @@ async function iniciarEscaletaSeqNou() {
 
     } catch (err) {
       console.warn(`Error escaleta cap.${idx+1}:`, err.message);
-      ESTAT._escaletes.push({
+      const escaletaFallback = {
         capitol: idx + 1,
         titol: capInfo.titol,
         funcio: capInfo.resum || '',
         primera_frase: '',
         darrera_imatge: '',
-        escenes: [{ nom: capInfo.titol, paraules_objectiu: ESTAT.estil.paraules, funcio_narrativa: capInfo.resum || '' }]
-      });
+        escenes: [{ nom: capInfo.titol, paraules_objectiu: ESTAT.estil.paraules, funcio_narrativa: capInfo.resum || '', scene_contract: crearSceneContractFallbackLocal(idx + 1, 1, { funcio_narrativa: capInfo.resum || '' }) }]
+      };
+      desarSceneContractsEscaletes([escaletaFallback]);
+      ESTAT._escaletes.push(escaletaFallback);
       const div = document.createElement('div');
       div.style.cssText = 'padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:8px;color:var(--text2);';
       div.textContent = `Cap. ${idx + 1}: ${capInfo.titol} — (error generant escaleta)`;
@@ -8629,6 +8635,7 @@ async function iniciarFaseEscaleta() {
       }
     }
     ESTAT._escaletes = totsResultats;
+    desarSceneContractsEscaletes(totsResultats);
     hideLoader('20');
     mostrarEscaleta(totsResultats);
     document.getElementById('btn-fase21').classList.remove('hidden');
@@ -8638,6 +8645,85 @@ async function iniciarFaseEscaleta() {
   }
 }
 
+
+function resumConflicteSceneContract(contracte = {}) {
+  const x = String(contracte.objectiu_visible_pov || contracte.objectiu_ocult_pov || 'objectiu del POV').trim();
+  const y = String(contracte.objectiu_visible_oponent || contracte.objectiu_ocult_oponent || contracte.obstacle_concret || 'obstacle/oponent').trim();
+  const cost = String(contracte.cost_immediat || contracte.consequencia_narrativa || 'cost pendent').trim();
+  return `Conflicte: ${x} contra ${y} | Cost: ${cost}`;
+}
+
+function crearSceneContractFallbackLocal(capitol, escena, escenaInfo = {}) {
+  const base = (typeof crearSceneContractBase === 'function')
+    ? crearSceneContractBase(capitol, escena)
+    : { id: `C${capitol}E${escena}`, capitol, escena, personatges_presents: [], prohibicio_escena: 'No resumir el conflicte: mostrar-lo en acció, gest, diàleg o decisió.' };
+  return Object.assign({}, base, {
+    pov: (Array.isArray(escenaInfo.personatges) && escenaInfo.personatges[0]) || '',
+    personatges_presents: Array.isArray(escenaInfo.personatges) ? escenaInfo.personatges : [],
+    objectiu_visible_pov: escenaInfo.funcio_narrativa || '',
+    obstacle_concret: escenaInfo.beat_narratiu ? `Resistència concreta durant un beat de ${escenaInfo.beat_narratiu}` : '',
+    consequencia_narrativa: escenaInfo.funcio_narrativa || '',
+    _auto_generat: true,
+    _incomplet: true
+  });
+}
+
+function normalitzarSceneContractEscaleta(contracte, capitol, escena, escenaInfo = {}) {
+  const base = contracte && typeof contracte === 'object'
+    ? Object.assign({}, contracte)
+    : crearSceneContractFallbackLocal(capitol, escena, escenaInfo);
+  if (!base.id) base.id = `C${capitol}E${escena}`;
+  if (!base.capitol) base.capitol = capitol;
+  if (!base.escena) base.escena = escena;
+  const normalitzat = (typeof normalitzarSceneContract === 'function')
+    ? normalitzarSceneContract(base, capitol, escena)
+    : base;
+  const faltants = (typeof detectarFaltantsSceneContract === 'function') ? detectarFaltantsSceneContract(normalitzat) : [];
+  if (faltants.length > 0) normalitzat._incomplet = true;
+  if (base._auto_generat) normalitzat._auto_generat = true;
+  return normalitzat;
+}
+
+function desarSceneContractsEscaletes(escaletes = []) {
+  if (!ESTAT._nkg) ESTAT._nkg = crearNKG();
+  if (typeof assegurarSceneContractsNKG === 'function') assegurarSceneContractsNKG(ESTAT._nkg);
+  const mapa = new Map((ESTAT._nkg.scene_contracts || []).map(c => [String(c.id || `C${c.capitol}E${c.escena}`), c]));
+  (escaletes || []).forEach(cap => {
+    const capitol = Number(cap.capitol || cap.numero || 1);
+    (cap.escenes || []).forEach((escenaInfo, idx) => {
+      const escena = Number(escenaInfo.escena || idx + 1);
+      const raw = escenaInfo.scene_contract || escenaInfo.scene_contracte || escenaInfo.contracte_escena || null;
+      const contracte = normalitzarSceneContractEscaleta(raw, capitol, escena, escenaInfo);
+      escenaInfo.scene_contract = contracte;
+      mapa.set(String(contracte.id), Object.assign({}, mapa.get(String(contracte.id)) || {}, contracte));
+    });
+  });
+  ESTAT._nkg.scene_contracts = Array.from(mapa.values());
+}
+
+function obtenirSceneContractsCapitol(capitolNum) {
+  const contracts = (ESTAT._nkg && Array.isArray(ESTAT._nkg.scene_contracts)) ? ESTAT._nkg.scene_contracts : [];
+  return contracts
+    .filter(c => Number(c.capitol) === Number(capitolNum))
+    .sort((a, b) => Number(a.escena || 0) - Number(b.escena || 0));
+}
+
+function construirBlocSceneContractsCapitol(capitolNum) {
+  const contracts = obtenirSceneContractsCapitol(capitolNum);
+  if (!contracts.length) return '';
+  return `=== CONTRACTES D'ESCENA OBLIGATORIS ===
+Abans de redactar cada escena, compleix aquest contracte. No l'expliquis al lector: dramatitza'l.
+Cada escena ha de tenir conflicte visible, objectius incompatibles, cost immediat i conseqüència irreversible.
+${JSON.stringify(contracts, null, 2)}
+
+PROHIBICIONS D'ESCENA:
+- No convertir l'escena en resum.
+- No explicar l'estat moral si es pot mostrar amb gest, acció, objecte o diàleg.
+- No repetir el mateix motiu simbòlic si no canvia de funció.
+- No fer que tots els personatges parlin amb la mateixa lògica.
+- No tancar una escena sense cost.`;
+}
+
 function mostrarEscaleta(escaletes) {
   const div = document.getElementById('escaleta-result');
   if (!escaletes || escaletes.length === 0) { div.innerHTML = '<p>No s\'ha pogut generar l\'escaleta.</p>'; return; }
@@ -8645,7 +8731,11 @@ function mostrarEscaleta(escaletes) {
   escaletes.forEach(e => {
     html += `<details style="margin-bottom:8px;"><summary><strong>Capítol ${e.capitol}</strong>: ${escHtml(e.titol || '')}</summary><ol>`;
     (e.escenes || []).forEach(sc => {
-      html += `<li><strong>${escHtml(sc.nom || '')}</strong> (${sc.paraules_objectiu || '?'} par.)<br>${escHtml(sc.funcio_narrativa || '')}</li>`;
+      const contracte = sc.scene_contract || obtenirSceneContractsCapitol(e.capitol).find(c => Number(c.escena) === Number(sc.escena || ((e.escenes || []).indexOf(sc) + 1))) || {};
+      const conflicte = contracte && (contracte.objectiu_visible_pov || contracte.cost_immediat || contracte._incomplet)
+        ? `<br><span style="color:var(--accent2);font-size:.82rem;">${escHtml(resumConflicteSceneContract(contracte))}${contracte._incomplet ? ' · incomplet' : ''}</span>`
+        : '';
+      html += `<li><strong>${escHtml(sc.nom || '')}</strong> (${sc.paraules_objectiu || '?'} par.)<br>${escHtml(sc.funcio_narrativa || '')}${conflicte}</li>`;
     });
     html += '</ol></details>';
   });
@@ -9638,6 +9728,7 @@ function construirInstruccioCapitol(capitolNum, totalCapitols, nkg, capitolInfo)
     construirBlocSubtextualitat(thematicCount),
     construirBlocRitme(intensitat, ratioDialeg),
     construirBlocFils(capitolInfo, nkg),
+    construirBlocSceneContractsCapitol(capitolNum),
     esPenultim ? construirBlocPenultim() : '',
     esUltim    ? construirBlocFinal(nkg) : '',
     construirBlocGanxo(capitolInfo),
@@ -15278,8 +15369,9 @@ Fixa't especialment en:
 2. Format (errors de diàlegs al mateix paràgraf = rebuig automàtic).
 3. Qualitat (ritme, telling vs showing, info-dumping).
 4. Escenes equivalents: Avisa si hi ha alguna escena que serveixi per al mateix propòsit narratiu que una del capítol anterior i demana'n la transformació.
-5. Continuïtat física: Verifica que cap objecte canviï de lloc o desaparegui màgicament de les mans d'un personatge.
-6. Metàfores repetides: Assegura't que no s'utilitza una imatge poètica o metàfora ja gastada.
+5. Contractes d'escena: comprova que cada escena tingui conflicte visible, objectius incompatibles, cost immediat i conseqüència irreversible; rebutja les escenes que només resumeixen informació o formulen el tema moral.
+6. Continuïtat física: Verifica que cap objecte canviï de lloc o desaparegui màgicament de les mans d'un personatge.
+7. Metàfores repetides: Assegura't que no s'utilitza una imatge poètica o metàfora ja gastada.
 
 CRÍTIC PER ESTALVIAR TOKENS: Si aproves el capítol, les valoracions han de ser buides o d'1 sola paraula. Si el rebutges, les "instruccions_correccio" han de ser EXTREMADAMENT BREUS, en estil telegràfic (3 o 4 bullet points directes al gra). Prohibit justificar-te o enrotllar-te.
 
@@ -15419,6 +15511,8 @@ CRITERIS DE QUALITAT LITERÀRIA (aplica sempre en la reescriptura):
 
 PLANIFICACIÓ DEL CAPÍTOL:
 ${capText}
+
+${construirBlocSceneContractsCapitol(idx + 1)}
 
 CAPÍTOL ACTUAL:
 ${textActual.substring(0, 4000)}${textActual.length > 4000 ? '\n[…]' : ''}
@@ -16387,12 +16481,21 @@ TOTAL OBJECTIU: ~3.500-5.000 paraules per capítol. La novel·la completa ha de 
 CORBA DE TENSIÓ (per orientar el ritme de cada capítol):
 ${corbaTensio.length > 0 ? corbaTensio.map(t => `Cap.${t.capitol}: nivell ${t.nivell} (${t.tipus})`).join(', ') : '(no disponible)'}${arcMoralCtx}
 
+REGLES FORTES DE DRAMA ESCÈNIC:
+- Una escena no és vàlida si només resumeix informació.
+- Una escena no és vàlida si només formula el tema moral.
+- Cada escena ha de tenir una batalla concreta entre dos desitjos incompatibles.
+- Cada escena ha d'acabar amb una situació pitjor, més compromesa o més irreversible que al principi.
+- Com a mínim un objecte, dada, cos, gest o espai ha de tenir funció dramàtica.
+- No abusis de paraules abstractes com sistema, narrativa, xarxa, coherència, control, protocol, mecanisme. Si apareixen, han d'estar encarnades en acció.
+
 Cada escena ha d'incloure (camps OBLIGATORIS, res més):
 - nom: títol breu (3-5 paraules)
 - paraules_objectiu: nombre enter
 - funcio_narrativa: 1 frase curta (màxim 10 paraules)
 - personatges: array de noms
 - beat_narratiu: "diàleg" | "acció" | "introspecció" | "descripció"
+- scene_contract: objecte OBLIGATORI amb els camps id, capitol, escena, pov, personatges_presents, objectiu_visible_pov, objectiu_ocult_pov, objectiu_visible_oponent, objectiu_ocult_oponent, obstacle_concret, asimetria_poder, objecte_en_disputa, informacio_en_disputa, decisio_irreversible, cost_immediat, consequencia_narrativa, gir_emocional, subtext_dialog, detall_sensorial_funcional, prohibicio_escena.
 - REGLA DE DIÀLEG: Com a mínim el 50% de les escenes d'un capítol han de tenir el "beat_narratiu" fixat a "diàleg". Prioritza sempre la interacció verbal.
 - Cada escena ha de tenir un objectiu físic (avançar en la trama) i un objectiu emocional o reflexiu (introspecció, record, subtrama).
 
@@ -16415,7 +16518,29 @@ Retorna EXCLUSIVAMENT JSON vàlid:
           "paraules_objectiu": 450,
           "funcio_narrativa": "frase curta",
           "personatges": ["nom1"],
-          "beat_narratiu": "diàleg"
+          "beat_narratiu": "diàleg",
+          "scene_contract": {
+            "id": "C1E1",
+            "capitol": 1,
+            "escena": 1,
+            "pov": "",
+            "personatges_presents": ["nom1"],
+            "objectiu_visible_pov": "",
+            "objectiu_ocult_pov": "",
+            "objectiu_visible_oponent": "",
+            "objectiu_ocult_oponent": "",
+            "obstacle_concret": "",
+            "asimetria_poder": "",
+            "objecte_en_disputa": "",
+            "informacio_en_disputa": "",
+            "decisio_irreversible": "",
+            "cost_immediat": "",
+            "consequencia_narrativa": "",
+            "gir_emocional": "",
+            "subtext_dialog": "",
+            "detall_sensorial_funcional": "",
+            "prohibicio_escena": "No resumir el conflicte: mostrar-lo en acció, gest, diàleg o decisió."
+          }
         }
       ]
     }
@@ -17197,6 +17322,14 @@ FERIDA NUCLEAR (personatges):
 ${JSON.stringify((ESTAT._perfilsPersonatges || {}), null, 2).substring(0, 1600)}
 ${reglaAmbientacioAutor(ESTAT.tematica)}
 
+REGLES FORTES DE DRAMA ESCÈNIC:
+- Una escena no és vàlida si només resumeix informació.
+- Una escena no és vàlida si només formula el tema moral.
+- Cada escena ha de tenir una batalla concreta entre dos desitjos incompatibles.
+- Cada escena ha d'acabar amb una situació pitjor, més compromesa o més irreversible que al principi.
+- Com a mínim un objecte, dada, cos, gest o espai ha de tenir funció dramàtica.
+- No abusis de paraules abstractes com sistema, narrativa, xarxa, coherència, control, protocol, mecanisme. Si apareixen, han d'estar encarnades en acció.
+
 Retorna EXCLUSIVAMENT JSON vàlid:
 {
   "funcio": "descripció de la funció del capítol (1 frase)",
@@ -17207,6 +17340,30 @@ Retorna EXCLUSIVAMENT JSON vàlid:
   "estat_final_personatges": {"nom_personatge": "estat al final del capítol"},
   "primera_frase": "primera frase del capítol (potent, in medias res)",
   "darrera_imatge": "darrera imatge o moment del capítol (evocadora)",
+  "scene_contracts": [
+    {
+      "id": "C1E1",
+      "capitol": 1,
+      "escena": 1,
+      "pov": "",
+      "personatges_presents": [],
+      "objectiu_visible_pov": "",
+      "objectiu_ocult_pov": "",
+      "objectiu_visible_oponent": "",
+      "objectiu_ocult_oponent": "",
+      "obstacle_concret": "",
+      "asimetria_poder": "",
+      "objecte_en_disputa": "",
+      "informacio_en_disputa": "",
+      "decisio_irreversible": "",
+      "cost_immediat": "",
+      "consequencia_narrativa": "",
+      "gir_emocional": "",
+      "subtext_dialog": "",
+      "detall_sensorial_funcional": "",
+      "prohibicio_escena": "No resumir el conflicte: mostrar-lo en acció, gest, diàleg o decisió."
+    }
+  ],
   "ganxo_final": {
     "tipus": "un de: cliffhanger_accio | cliffhanger_revelacio | ganxo_emocional | ganxo_pregunta | tancament",
     "intensitat": ${esPenultim ? 5 : intensitat},
