@@ -67,6 +67,15 @@ Cada capítol té un objecte `llibreRegistre.capitols[idx].ksn` amb:
 | NKG | `nkgActualitzarPostEscena` |
 | Diagnòstic | `exportarDiagnosticResums` |
 
+## Regles de dramatització 9/10
+
+- Cap escena sense objectiu visible del POV.
+- Cap escena sense obstacle concret o oposició activa.
+- Cap escena sense cost immediat per algun personatge.
+- Cap escena sense conseqüència narrativa o decisió irreversible.
+- No substituir una escena per resum temàtic o formulació moral abstracta.
+- No repetir motius simbòlics sense una nova funció dramàtica.
+
 ## Estat persistent (localStorage)
 
 - `ESTAT._capitolsLocked`: `{ [idx]: { locked, lockedAtISO, intervalId, hash } }`
