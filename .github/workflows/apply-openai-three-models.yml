@@ -1,0 +1,160 @@
+name: Apply OpenAI three-model configuration
+
+on:
+  push:
+    branches:
+      - agent/openai-three-models
+
+permissions:
+  contents: write
+
+jobs:
+  apply-model-update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update Booki model configuration
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          index_path = Path('index.html')
+          text = index_path.read_text(encoding='utf-8')
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: esperava 1 coincidència i n’he trobat {count}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              '<option value="openai">OpenAI (GPT-5)</option>',
+              '<option value="openai">OpenAI (GPT-5.6)</option>',
+              'Etiqueta del proveïdor OpenAI',
+          )
+
+          replace_once(
+              '<button onclick="aplicarPreset(\'barat_gpt\')"  class="btn" style="padding:3px 8px;font-size:.78rem;" title="GPT-5.2 per tot">🤖 GPT-5.2</button>',
+              '<button onclick="aplicarPreset(\'barat_gpt\')"  class="btn" style="padding:3px 8px;font-size:.78rem;" title="GPT-5.4 Nano + GPT-5.6 Luna + GPT-5.6 Terra">🤖 OpenAI recomanat</button>',
+              'Preset OpenAI',
+          )
+
+          replace_once(
+              "  openai:    { draft: 'gpt-5-mini',                generacio: 'gpt-5-mini',             arquitectura: 'gpt-5.4-mini' },",
+              "  openai:    { draft: 'gpt-5.4-nano',              generacio: 'gpt-5.6-luna',             arquitectura: 'gpt-5.6-terra' },",
+              'Defaults OpenAI per rol',
+          )
+
+          marker = "  'gpt-5.2': {\n"
+          if marker not in text:
+              raise SystemExit('No s’ha trobat el punt d’inserció del registre OpenAI')
+          if "  'gpt-5.6-luna': {\n" in text:
+              raise SystemExit('Els models GPT-5.6 ja consten al registre; s’atura per evitar duplicats')
+
+          models = """  'gpt-5.4-nano': {
+    nom: 'GPT-5.4 Nano', nomCurt: 'GPT-5.4 Nano',
+    proveidor: 'openai',
+    input_per_m: 0.20, output_per_m: 1.25,
+    context_max: 400000, max_output: 128000,
+    qualitat: { draft: 84, prosa: 70, arquitectura: 76, extraccio: 92 },
+    velocitat: 'molt_rapida',
+    notes: 'Model d’alt volum per a extracció, classificació, resums i esquelets. No recomanat per a la prosa definitiva.'
+  },
+  'gpt-5.6-luna': {
+    nom: 'GPT-5.6 Luna', nomCurt: 'GPT-5.6 Luna',
+    proveidor: 'openai',
+    input_per_m: 1.00, output_per_m: 6.00,
+    context_max: 1050000, max_output: 128000,
+    qualitat: { draft: 88, prosa: 88, arquitectura: 88, extraccio: 91 },
+    velocitat: 'rapida',
+    notes: 'Model eficient per a càrregues creatives d’alt volum. Recomanat per redactar i reescriure capítols.'
+  },
+  'gpt-5.6-terra': {
+    nom: 'GPT-5.6 Terra', nomCurt: 'GPT-5.6 Terra',
+    proveidor: 'openai',
+    input_per_m: 2.50, output_per_m: 15.00,
+    context_max: 1050000, max_output: 128000,
+    qualitat: { draft: 91, prosa: 92, arquitectura: 95, extraccio: 94 },
+    velocitat: 'moderada',
+    notes: 'Model de raonament equilibrat per a arquitectura, coherència, diagnòstic literari i revisió global.'
+  },
+"""
+          text = text.replace(marker, models + marker, 1)
+
+          replace_once(
+              "    input_per_m: 0.30, output_per_m: 2.40,\n    context_max: 400000, max_output: 16384,",
+              "    input_per_m: 0.75, output_per_m: 4.50,\n    context_max: 400000, max_output: 128000,",
+              'Preu i sortida de GPT-5.4 Mini',
+          )
+
+          index_path.write_text(text, encoding='utf-8')
+
+          readme_path = Path('README.md')
+          readme = readme_path.read_text(encoding='utf-8')
+          old = 'amb un sistema dual de models.'
+          new = 'amb tres rols de models: Draft / Extracció, Generació literària i Arquitecte / Revisor.'
+          if readme.count(old) != 1:
+              raise SystemExit('README: no s’ha trobat la descripció del sistema dual')
+          readme_path.write_text(readme.replace(old, new, 1), encoding='utf-8')
+
+          test_path = Path('proves/f7_models_openai.mjs')
+          test_path.write_text("""import { readFileSync } from 'node:fs';
+
+const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+let passades = 0;
+let totals = 0;
+
+function comprova(nom, condicio) {
+  totals += 1;
+  if (condicio) {
+    passades += 1;
+    console.log(`✅ ${nom}`);
+  } else {
+    console.error(`❌ ${nom}`);
+  }
+}
+
+comprova('OpenAI mostra tres selectors de rol',
+  ['selectModelDraft', 'selectModelGen', 'selectModelArq'].every(id => html.includes(`id=\"${id}\"`)));
+comprova('Draft OpenAI per defecte és GPT-5.4 Nano',
+  /openai:\s*\{[^}]*draft:\s*'gpt-5\.4-nano'/.test(html));
+comprova('Generació OpenAI per defecte és GPT-5.6 Luna',
+  /openai:\s*\{[^}]*generacio:\s*'gpt-5\.6-luna'/.test(html));
+comprova('Arquitecte OpenAI per defecte és GPT-5.6 Terra',
+  /openai:\s*\{[^}]*arquitectura:\s*'gpt-5\.6-terra'/.test(html));
+comprova('GPT-5.4 Nano és al registre', html.includes("'gpt-5.4-nano': {"));
+comprova('GPT-5.6 Luna és al registre', html.includes("'gpt-5.6-luna': {"));
+comprova('GPT-5.6 Terra és al registre', html.includes("'gpt-5.6-terra': {"));
+comprova('La configuració persisteix els tres rols',
+  html.includes('models: { draft: modelDraft, generacio: modelGeneracio, arquitecte: modelArquitectura }') ||
+  (html.includes('draft: modelDraft') && html.includes('generacio: modelGeneracio') && html.includes('arquitecte: modelArquitectura')));
+comprova('El preset OpenAI usa els defaults per rol',
+  html.includes("'barat_gpt':  { draft: MODELS_PER_PROVEIDOR.openai.draft, generacio: MODELS_PER_PROVEIDOR.openai.generacio, arquitecte: MODELS_PER_PROVEIDOR.openai.arquitectura }"));
+comprova('Els defaults registrats són vàlids abans de les crides', html.includes('validarDefaultsModels()'));
+
+console.log(`\n${passades}/${totals} comprovacions passades`);
+process.exit(passades === totals ? 0 : 1);
+""", encoding='utf-8')
+
+          workflow = Path('.github/workflows/apply-openai-three-models.yml')
+          workflow.unlink()
+          PY
+
+      - name: Run OpenAI model regression test
+        run: node proves/f7_models_openai.mjs
+
+      - name: Commit implementation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html README.md proves/f7_models_openai.mjs .github/workflows/apply-openai-three-models.yml
+          git commit -m "Configura tres models OpenAI per rol"
+          git push
