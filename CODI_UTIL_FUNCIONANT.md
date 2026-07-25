@@ -126,9 +126,47 @@ Una peça entra aquí si compleix **tots** aquests punts:
 - **Responsabilitat**: `showCard` + scroll al destí, per no deixar transicions cegues.
 - **Contracte**: tolera ids inexistents (avís per consola, sense excepció).
 
-> **Proves**: `proves/f0_f1.mjs` (Playwright + Chromium sobre `index.html` real).
-> Executar amb el projecte servit: `npx http-server -p 8099 -c-1 .` i després
-> `node proves/f0_f1.mjs`.
+## Peces consolidades a F3 (estil dels 4 autors)
+
+### `blocReglesEstilAutor(idPerfil)` — `perfils_autor.js`
+- **Responsabilitat**: muntar el bloc «REGLES D'ESTIL» del prompt de novel·la a
+  partir dels camps `regles_dures`, `prosa`, `exposicio` i `emocio` del perfil.
+- **Contracte**: per a un perfil desconegut o buit retorna les regles genèriques
+  (`REGLES_ESTIL_GENERIQUES`), idèntiques a les que hi havia abans de F3.
+- **Checks mínims**: Tolkien no rep «Màxim 1 adjectiu»; Larsson sí; Castaneda no
+  rep la prohibició global d'exposició.
+
+### `blocCriterisExcellenciaGeneracio(idPerfil)` — `perfils_autor.js`
+- **Responsabilitat**: convertir `criteris_excellencia` en condicions d'acceptació
+  del capítol, injectades al prompt (abans només s'usaven a l'informe posterior).
+- **Contracte**: retorna `''` si el perfil no té criteris.
+
+### `resoldrePerfilAutor(text)` — `perfils_autor.js`
+- **Responsabilitat**: punt únic de resolució del perfil. El perfil del projecte
+  mana; la detecció per text és el pla B.
+- **Nota**: `obtenirPerfilAutorId` distingeix ara identificadors forts (nom de
+  l'autor) de pistes de gènere (`DETECCIONS_DEBILS`).
+
+### `construirBlocHumanitzacio(capitolNum)` — `index.html`
+- **Responsabilitat**: implementació de `humanitzacio_capitol_bloc.md`
+  parametritzada pel perfil (gest inútil, objecte emocional, temps mort).
+- **Dependències**: POV i `necessitat_interna` del NKG, `arc.waypoints`,
+  `cap.temperatura_emocional`, `cap.ratio_dialeg`, `cap.cost_emocional`.
+- **Contracte**: retorna `''` si no hi ha POV resoluble; mai llança.
+
+### `escenesDesDeContractes(dades, capInfo, capitolNum)` — `index.html`
+- **Responsabilitat**: convertir els `scene_contracts` d'un capítol en la seva
+  llista d'escenes, amb POV, lloc, beat i objectiu de paraules per escena.
+- **Contracte**: sense contractes, retorna una escena amb fallback vàlid.
+
+> ⚠️ **Errata corregida a F3**: `ESTAT._estruturaCapitols` (sense la `c`) apareixia
+> en 7 punts i no s'assigna enlloc. Deixava morta tota la capa d'arquitectura
+> emocional: temperatura per capítol, ratio de diàleg i cost emocional no
+> s'aplicaven mai. Si torna a aparèixer, la capa torna a quedar silenciosament morta.
+
+> **Proves**: `proves/f0_f1.mjs` i `proves/f3_estil_autors.mjs`
+> (Playwright + Chromium sobre `index.html` real). Executar amb el projecte servit:
+> `npx http-server -p 8099 -c-1 .` i després `node proves/<fitxer>.mjs`.
 
 ## Full de ruta de reducció de mida (pràctic)
 

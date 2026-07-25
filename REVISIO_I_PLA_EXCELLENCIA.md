@@ -29,7 +29,7 @@ cap crida a funció inexistent. El problema és un altre, i és més greu:
    *stubbed*, morts o mai implementats — però `AGENT.md`, el `README.md` i la pròpia UI els
    segueixen anunciant. La novel·la s'escriu, avui, sense cap control de coherència creuada.
 
-4. **L'estil dels 4 autors arriba diluït i contradit.** El prompt base de novel·la imposa a totes
+4. **L'estil dels 4 autors arribava diluït i contradit** (resolt a F3). El prompt base de novel·la imposa a totes
    les obres les tècniques de *Donna Tartt, Elena Ferrante i Carlos Ruiz Zafón* i una regla de
    "màxim 1 adjectiu per substantiu", que xoquen frontalment amb el perfil Tolkien i amb el
    registre didàctic de Castaneda. Els `criteris_excellencia` de cada autor existeixen però
@@ -37,9 +37,10 @@ cap crida a funció inexistent. El problema és un altre, i és més greu:
 
 El pla de la secció 5 ataca aquests quatre fronts en 5 fases.
 
-> **Estat**: **F0 (desbloqueig) i F1 (ordre visual) ja estan implementades i verificades**
-> amb `proves/f0_f1.mjs` (15/15). Els punts 1 i 2 d'aquest resum, doncs, descriuen el
-> problema tal com era; els punts 3 i 4 continuen oberts (F2, F3 i F4 pendents).
+> **Estat**: **F0, F1 i F3 estan implementades i verificades** — `proves/f0_f1.mjs`
+> (15/15) i `proves/f3_estil_autors.mjs` (33/33). Els punts 1, 2 i 4 d'aquest resum
+> descriuen, doncs, el problema tal com era. El punt 3 continua obert: el jutge
+> d'interval i la capa de locks segueixen morts (F2), i queda F4 d'higiene.
 
 ---
 
@@ -483,7 +484,7 @@ ubicació d'un objecte) i verificar que el jutge del bloc 1–4 la detecta, la c
 
 ---
 
-### F3 — L'estil dels 4 autors, de veritat *(2-3 dies · el nucli de l'encàrrec)*
+### F3 — L'estil dels 4 autors, de veritat ✅ FETA
 
 **F3.1 · Netejar el prompt base.** Treure de `getSystemPromptNovella()` (`index.html:13953`) tot el
 que és estilístic i no universal:
@@ -543,6 +544,33 @@ interna, waypoint, temperatura emocional), que ja són tots a `ESTAT`.
 i desar **2-4 escenes per capítol** amb un `scene_contract` cadascuna, en lloc d'una sola amb
 `beat_narratiu` fix. És el que la `README` § "Scene Conflict Layer" ja promet i el que evita el
 capítol pla.
+
+> **Implementat.** Verificat amb `proves/f3_estil_autors.mjs` (33/33).
+>
+> El prompt base ja no imposa cap autor aliè: la identitat literària surt del perfil
+> triat. Les tres regles que xocaven amb algun perfil (prosa, exposició, emoció) han
+> passat a ser camps per autor amb `blocReglesEstilAutor()`; quan no hi ha perfil
+> seleccionat es mantenen les versions genèriques d'abans, així que la «veu original»
+> no canvia de comportament.
+>
+> **Troballa no prevista al pla:** la capa d'arquitectura emocional (temperatura per
+> capítol, ratio de diàleg, cost emocional) estava morta per una errata —
+> `ESTAT._estruturaCapitols`, sense la `c`, en 7 punts. Aquesta propietat no s'assigna
+> enlloc, de manera que `assegurarTemperaturaEmocionalCapitols` i les seves germanes
+> sortien immediatament i cap capítol rebia mai temperatura, ratio ni cost. Com que
+> són exactament els paràmetres del bloc d'humanització, F3.6 no hauria funcionat
+> sense arreglar-ho abans.
+>
+> **Desviació respecte del pla:** F3.7 proposava exigir 2-4 escenes per capítol. No
+> s'ha endurit l'esquema `escaleta_capitol` per a això: una validació fallida atura el
+> flux en dur després d'un sol reintent, i pujar el mínim a 2 hauria convertit una
+> resposta pobra del model en un tall del procés. La divisió es demana al prompt i es
+> respecta al codi (`escenesDesDeContractes` mapeja tots els contractes rebuts), amb
+> el camí d'una sola escena encara acceptat com a degradació.
+>
+> Nota col·lateral: `validarIReomplirEscaleta()` (`index.html`) genera 5-7 escenes
+> **sense** `scene_contract` i substituiria les escenes del capítol, però no té cap
+> cridador. Queda com a codi mort a netejar a F4; no s'ha tocat per no ampliar l'abast.
 
 *Criteri de fet F3*: generar el mateix capítol 1 amb els 4 perfils a partir del mateix tema i
 verificar a cegues que un lector els pot atribuir correctament. L'informe d'excel·lència ha de

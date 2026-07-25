@@ -99,6 +99,23 @@ Cada capítol té un objecte `llibreRegistre.capitols[idx].ksn` amb:
 - `ESTAT.fase` ha de reflectir el pas real (`'b1'`…`'b6'` als fonaments, número a la
   resta): el panell d'etapes hi confia per tornar on eres.
 
+## Regles d'estil per perfil d'autor (F3)
+
+- **El prompt base no imposa cap autor de referència.** La identitat literària surt
+  sempre de `PERFILS_AUTOR[id]`. No hi tornis a posar noms d'autors que no siguin un
+  dels quatre perfils.
+- **Cap regla d'estil discutible és global.** Prosa, exposició i emoció viuen als
+  camps `prosa`, `exposicio` i `emocio` de cada perfil, perquè el que és correcte per
+  a Larsson (frase curta, zero exposició) és fals per a Tolkien i Castaneda. Al prompt
+  base només hi queden les regles realment invariables: llengua, format de diàleg,
+  metadades i continuïtat d'escena.
+- **Un camp nou al perfil s'ha d'omplir per als quatre**, o tenir un valor genèric de
+  fallback a `REGLES_ESTIL_GENERIQUES` / `HUMANITZACIO_GENERICA`.
+- `criteris_excellencia` són alhora condicions de generació i criteris d'avaluació:
+  si en canvies un, canvia el que es demana i el que es mesura.
+- El perfil del projecte (`ESTAT._autorPerfilId`) mana sobre qualsevol detecció per
+  text. Usa `resoldrePerfilAutor(text)`, mai `obtenirPerfilAutorId(text) || ...`.
+
 ## Restriccions generals per a qualsevol canvi
 
 - No refactoritzar funcions que no estiguin explícitament mencionades al prompt.

@@ -5234,6 +5234,51 @@ async function autocompletarNKGSilent(setStatus = () => {}) {
   }
 }
 
+// F3.7: converteix els scene_contracts d'un capítol en la seva llista d'escenes.
+// Cada contracte és una escena amb el seu POV, lloc, beat i objectiu de paraules.
+function escenesDesDeContractes(dades, capInfo, capitolNum) {
+  const contractes = Array.isArray(dades && dades.scene_contracts)
+    ? dades.scene_contracts.filter(Boolean)
+    : (dades && dades.scene_contract ? [dades.scene_contract] : []);
+
+  const paraulesCapitol = Number((ESTAT.estil && ESTAT.estil.paraules) || 3000);
+  const funcioCap = (dades && dades.funcio) || capInfo.resum || '';
+  const personatgesCap = Array.isArray(capInfo.personatges) ? capInfo.personatges : [];
+
+  if (contractes.length === 0) {
+    return [{
+      nom: capInfo.titol,
+      paraules_objectiu: paraulesCapitol,
+      funcio_narrativa: funcioCap,
+      personatges: personatgesCap,
+      beat_narratiu: 'diàleg',
+      scene_contract: crearSceneContractFallbackLocal(capitolNum, 1, {
+        personatges: personatgesCap, funcio_narrativa: funcioCap, beat_narratiu: 'diàleg'
+      })
+    }];
+  }
+
+  const perEscena = Math.round(paraulesCapitol / contractes.length);
+  return contractes.map((c, i) => {
+    const escenaNum = Number(c.escena) > 0 ? Number(c.escena) : i + 1;
+    const presents = Array.isArray(c.personatges_presents) && c.personatges_presents.length > 0
+      ? c.personatges_presents
+      : personatgesCap;
+    return {
+      nom: c.nom || `${capInfo.titol} — escena ${escenaNum}`,
+      escena: escenaNum,
+      lloc: c.lloc || '',
+      paraules_objectiu: Number(c.paraules_objectiu) > 0 ? Number(c.paraules_objectiu) : perEscena,
+      funcio_narrativa: c.objectiu_visible_pov || c.consequencia_narrativa || funcioCap,
+      personatges: presents,
+      beat_narratiu: c.beat_narratiu || 'diàleg',
+      scene_contract: normalitzarSceneContractEscaleta(c, capitolNum, escenaNum, {
+        personatges: presents, funcio_narrativa: funcioCap, beat_narratiu: c.beat_narratiu || 'diàleg'
+      })
+    };
+  });
+}
+
 async function iniciarEscaletaSeqNou() {
   ESTAT._escaletes = [];
   const n = ESTAT._estructuraCapitols.length;
@@ -5277,14 +5322,9 @@ async function iniciarEscaletaSeqNou() {
         primera_frase: dades.primera_frase || '',
         darrera_imatge: dades.darrera_imatge || '',
         ganxo_final: ganxoFinal,
-        escenes: [{
-          nom: capInfo.titol,
-          paraules_objectiu: ESTAT.estil.paraules,
-          funcio_narrativa: dades.funcio || capInfo.resum || '',
-          personatges: Array.isArray(capInfo.personatges) ? capInfo.personatges : [],
-          beat_narratiu: 'diàleg',
-          scene_contract: Array.isArray(dades.scene_contracts) ? dades.scene_contracts[0] : dades.scene_contract
-        }]
+        // F3.7: es desaven totes les escenes del capítol com una de sola, agafant
+        // scene_contracts[0] i descartant la resta, amb beat_narratiu fix a 'diàleg'.
+        escenes: escenesDesDeContractes(dades, capInfo, idx + 1)
       };
       desarSceneContractsEscaletes([escaleta]);
       ESTAT._escaletes.push(escaleta);
@@ -5358,7 +5398,7 @@ async function iniciarEscaletaSeqNou() {
         funcio: capInfo.resum || '',
         primera_frase: '',
         darrera_imatge: '',
-        escenes: [{ nom: capInfo.titol, paraules_objectiu: ESTAT.estil.paraules, funcio_narrativa: capInfo.resum || '', scene_contract: crearSceneContractFallbackLocal(idx + 1, 1, { funcio_narrativa: capInfo.resum || '' }) }]
+        escenes: escenesDesDeContractes(null, capInfo, idx + 1)
       };
       desarSceneContractsEscaletes([escaletaFallback]);
       ESTAT._escaletes.push(escaletaFallback);
@@ -7925,7 +7965,7 @@ function aplicarTemperaturaEmocionalAEstructura(temperatures = []) {
 }
 
 async function assegurarTemperaturaEmocionalCapitols(userConfig, setStatus = null) {
-  if (!Array.isArray(ESTAT._estruturaCapitols) || ESTAT._estruturaCapitols.length === 0) return;
+  if (!Array.isArray(ESTAT._estructuraCapitols) || ESTAT._estructuraCapitols.length === 0) return;
   if (typeof setStatus === 'function') setStatus('Calculant temperatura emocional per capítol...');
   const temperatures = await generarTemperaturaEmocionalCapitols(userConfig);
   if (temperatures.length > 0) aplicarTemperaturaEmocionalAEstructura(temperatures);
@@ -7978,7 +8018,7 @@ function normalitzarSortidaDialegCapitol(raw = {}, ctx = {}) {
 }
 
 function construirContextDialegCapitols() {
-  return (ESTAT._estruturaCapitols || []).map((cap, idx) => {
+  return (ESTAT._estructuraCapitols || []).map((cap, idx) => {
     const numero = Number(cap.numero || idx + 1);
     const presents = Array.isArray(cap.personatges) ? cap.personatges.filter(Boolean) : [];
     const pov = ((((ESTAT._nkg || {}).context_creacio || {}).estil || {}).perspectiva?.pov_per_capitol || []).find(x => Number(x.capitol) === numero);
@@ -8055,7 +8095,7 @@ Retorna EXCLUSIVAMENT un array JSON:
 
 function aplicarRatioDialegCapitols(ratios = []) {
   const map = new Map((ratios || []).map(r => [Number(r.capitol), r]));
-  (ESTAT._estruturaCapitols || []).forEach((cap, idx) => {
+  (ESTAT._estructuraCapitols || []).forEach((cap, idx) => {
     const num = Number(cap.numero || idx + 1);
     const r = map.get(num);
     if (!r) return;
@@ -8064,7 +8104,7 @@ function aplicarRatioDialegCapitols(ratios = []) {
 }
 
 async function assegurarRatioDialegCapitols(userConfig, setStatus = null) {
-  if (!Array.isArray(ESTAT._estruturaCapitols) || ESTAT._estruturaCapitols.length === 0) return;
+  if (!Array.isArray(ESTAT._estructuraCapitols) || ESTAT._estructuraCapitols.length === 0) return;
   if (typeof setStatus === 'function') setStatus('Assignant ratio de diàleg per capítol...');
   const ratios = await generarRatioDialegCapitols(userConfig);
   if (ratios.length > 0) aplicarRatioDialegCapitols(ratios);
@@ -8087,13 +8127,96 @@ function normalitzarCostEmocional(raw = {}, ctx = {}) {
   };
 }
 
+// ═══════════════════════════════════════════════════════════
+//  F3.6 — BLOC D'HUMANITZACIÓ PER CAPÍTOL
+//  Implementació de humanitzacio_capitol_bloc.md, parametritzada pel perfil
+//  d'autor. ESTRATEGIA_REORGANITZACIO.md el llistava com a "palanca de qualitat
+//  ja existent, només cal connectar-la", però no estava escrit enlloc del codi.
+//  Les sis peces: microruptura, cos, objecte emocional, temps mort, diàleg
+//  imperfecte i waypoint/cost.
+// ═══════════════════════════════════════════════════════════
+function contextHumanitzacioCapitol(capitolNum) {
+  const idx  = Math.max(0, Number(capitolNum) - 1);
+  const cap  = (ESTAT._estructuraCapitols || [])[idx] || {};
+  const nkg  = ESTAT._nkg || {};
+  const perspectiva = ((nkg.context_creacio || {}).estil || {}).perspectiva || {};
+  const povs = Array.isArray(perspectiva.pov_per_capitol) ? perspectiva.pov_per_capitol : [];
+
+  const presents = Array.isArray(cap.personatges) ? cap.personatges.filter(Boolean) : [];
+  const povNom = povs.find(p => Number(p.capitol) === Number(capitolNum))?.personatge_pov
+    || presents[0] || '';
+  const clau = (typeof nkgNormalitzarNom === 'function' && povNom) ? nkgNormalitzarNom(povNom) : povNom;
+  const p = (clau && nkg.personatges && nkg.personatges[clau]) || null;
+
+  const waypoints = Array.isArray(p?.arc?.waypoints) ? p.arc.waypoints : [];
+  const wp = waypoints.find(w => Number(w.capitol) === Number(capitolNum)) || null;
+
+  const escaleta = (ESTAT._escaletes || [])[idx] || {};
+  const contracte = (escaleta.escenes && escaleta.escenes[0] && escaleta.escenes[0].scene_contract) || {};
+
+  return {
+    capitol: Number(capitolNum),
+    pov: (p && p.nom) || povNom || 'el personatge POV',
+    altres: presents.filter(n => n !== povNom),
+    necessitat_interna: String(p?.motivacions_base?.necessitat_interna || '').trim(),
+    ubicacio: String(contracte.lloc || cap.lloc || '').trim(),
+    waypoint: wp,
+    cost: cap.cost_emocional || escaleta.cost_emocional || null,
+    temperatura: Number(cap.temperatura_emocional ?? cap.intensity_level ?? 3),
+    ratio: cap.ratio_dialeg || null
+  };
+}
+
+function construirBlocHumanitzacio(capitolNum) {
+  const c = contextHumanitzacioCapitol(capitolNum);
+  if (!c.pov) return '';
+  const h = humanitzacioPerfil(obtenirAutorIdProjecte());
+
+  const acompanyants = c.altres.length > 0 ? c.altres.join(', ') : 'qui l’acompanyi a l’escena';
+  const detonant = c.necessitat_interna
+    ? `"${c.necessitat_interna}"`
+    : 'allò que el personatge necessita de debò i no sap demanar';
+
+  const linies = [
+    `=== HUMANITZACIÓ — CAPÍTOL ${c.capitol} ===`,
+    `1. MICRORUPTURA: A la primera escena compartida entre ${c.pov} i ${acompanyants}, ${c.pov} ha de fer un gest inútil però revelador: ${h.gest_inutil}. Aquesta acció no resol cap conflicte; només evidencia la motxilla emocional amb què entra al capítol.`,
+    `2. COS: Just quan aparegui el primer estímul vinculat a ${detonant} (una pregunta directa, una absència o un record activat), la reacció física ha d'anar a la gola de ${c.pov}: se li estreny abans de parlar i la veu triga un batec a sortir.`,
+    `3. OBJECTE EMOCIONAL: Ha d'aparèixer ${h.objecte_emocional}${c.ubicacio ? `, coherent amb ${c.ubicacio}` : ''}, amb càrrega emocional no explicada; ${c.pov} el mira o el toca un instant, però ningú n'explica el motiu.`,
+    `4. TEMPS MORT: Inclou un moment de quietud de 12-20 segons al mateix espai on transcorre la tensió principal: ${c.pov} resta aturat/da escoltant ${h.temps_mort}. Durant aquest lapse no hi ha revelacions, ni decisions noves, ni avanç d'acció; només persistència de l'estat emocional que arrossega de capítols anteriors.`
+  ];
+
+  if (!c.ratio || Number(c.ratio.percentatge_dialeg) > 8) {
+    const pct = c.ratio ? `${c.ratio.percentatge_dialeg}%` : 'el diàleg';
+    const tipus = c.ratio && c.ratio.tipus_dialeg ? ` (${c.ratio.tipus_dialeg})` : '';
+    linies.push(`5. DIÀLEG IMPERFECTE: En un intercanvi clau de ${pct} de diàleg${tipus}, fes que ${c.pov} comenci una frase sobre allò que realment necessita i la talli a mitges ("Jo només volia..."); l'altre personatge respon amb una frase funcional que no contesta el nucli emocional, i el silenci posterior ha de quedar perceptible.`);
+  }
+
+  if (c.waypoint) {
+    linies.push(`6. WAYPOINT: En el moment "${c.waypoint.estat || 'de màxima pressió'}", ${c.pov} ha de mostrar "${c.waypoint.senyal_visible || 'un senyal físic inequívoc del canvi intern'}" de manera inequívoca.`);
+  }
+  if (c.cost) {
+    const qui = c.cost.personatge || c.pov;
+    linies.push(`${c.waypoint ? '7' : '6'}. COST: Després del punt de màxima pressió, ${qui} ha de pagar "${c.cost.que_perd || 'una certesa operativa'}" en conducta observable: ${c.cost.manifestacio || 'trenca un hàbit visible i altera una acció automàtica'}. Duració: ${c.cost.duracio || 'fins al tancament del capítol'}.`);
+  }
+
+  const temp = Math.max(0, Math.min(10, Number(c.temperatura) || 3));
+  const nivell = temp < 4
+    ? 'per sota de 4 predomina la contenció'
+    : (temp <= 7 ? 'entre 5 i 7 hi ha fricció sostinguda' : 'per sobre de 8, vulnerabilitat exposada i decisions amb tremolor');
+  linies.push(`Temperatura emocional: ${temp}/10 — ${nivell}.`);
+  linies.push(`RECORDATORI: Aquestes instruccions NO anul·len l'estil. Són les esquerdes que fan que el gel sigui gel i no plàstic.`);
+  linies.push('══════════════════════════════════');
+
+  return linies.join('\n\n');
+}
+
 function construirContextCostEmocionalCapitols() {
   const tipusValid = new Set(['cliffhanger_revelacio', 'ganxo_emocional']);
   const perspectiva = (((ESTAT._nkg || {}).context_creacio || {}).estil || {}).perspectiva || {};
   const povs = Array.isArray(perspectiva.pov_per_capitol) ? perspectiva.pov_per_capitol : [];
   const personatges = ((ESTAT._nkg || {}).personatges || {});
 
-  return (ESTAT._estruturaCapitols || []).map((cap, idx) => {
+  return (ESTAT._estructuraCapitols || []).map((cap, idx) => {
     const numero = Number(cap.numero || idx + 1);
     const ganxoTipus = String(cap?.ganxo_final?.tipus || '').trim();
     if (!tipusValid.has(ganxoTipus)) return null;
@@ -8180,8 +8303,8 @@ async function assegurarCostEmocionalCapitols(userConfig, setStatus = null) {
     if (ESTAT._escaletes[ctx.idx]) {
       ESTAT._escaletes[ctx.idx].cost_emocional = cost;
     }
-    if (ESTAT._estruturaCapitols[ctx.idx]) {
-      ESTAT._estruturaCapitols[ctx.idx].cost_emocional = cost;
+    if (ESTAT._estructuraCapitols[ctx.idx]) {
+      ESTAT._estructuraCapitols[ctx.idx].cost_emocional = cost;
     }
   }
 }
@@ -14245,26 +14368,28 @@ async function exportarNovella(titol, caps, estructura, epileg) {
 //  SYSTEM PROMPT per a novel·la
 // ═══════════════════════════════════════════════════════════
 function getSystemPromptNovella(tematica) {
-  const idPerfil = obtenirPerfilAutorId(tematica) || obtenirAutorIdProjecte();
-  const reglesEstilDures = (idPerfil && PERFILS_AUTOR[idPerfil] && PERFILS_AUTOR[idPerfil].regles_dures) || '';
+  // F3.5: el perfil del projecte mana; la detecció per text és el pla B.
+  const idPerfil = resoldrePerfilAutor(tematica);
+  const perfil = (idPerfil && PERFILS_AUTOR[idPerfil]) || null;
 
-  const base = `Ets un novel·lista literari expert en català. Escrius novel·la amb profunditat psicològica, diàlegs vius i un ritme narratiu sostingut.
-Apliques les tècniques de Donna Tartt, Elena Ferrante i Carlos Ruiz Zafón: atmòsferes denses, personatges amb contradiccions genuïnes i trames que s'informen mútuament.
+  // F3.1: la identitat literària ve del perfil triat. Abans s'imposava a TOTES
+  // les novel·les "les tècniques de Donna Tartt, Elena Ferrante i Carlos Ruiz
+  // Zafón", que no és cap dels quatre perfils i que xoca amb Tolkien i Castaneda.
+  const identitat = perfil
+    ? `Ets un novel·lista literari expert en català que escriu dins l'univers i la poètica de ${perfil.nom}. No imites cap altre autor: la referència estilística és ${perfil.nom} i només ${perfil.nom}.`
+    : `Ets un novel·lista literari expert en català. Escrius novel·la amb profunditat psicològica, diàlegs vius i un ritme narratiu sostingut, amb veu pròpia i sense imitar cap autor concret.`;
+
+  const base = `${identitat}
 
 ━━━ REGLES INVIOLABLES ━━━
 • LLENGUA: Escrius EXCLUSIVAMENT en català. Cap paraula en anglès ni cap altra llengua.
 • METADADES: Mai afegeixes títols, números de capítol, notes ni cap text fora de la narració. Escriu directament el text literari.
 • DIÀLEGS — FORMAT: Usa SEMPRE el guió llarg (—) per introduir el parlament. PROHIBIT usar cometes («», "", ''). Format: —Hola —va dir ella. / —Vine aquí —li ordenà.
 • DIÀLEGS — PARÀGRAFS: Un punt i a part OBLIGATORI cada vegada que canvia el parlant o hi ha canvi d'acció important. MAI dos personatges al mateix paràgraf.
-• SHOW, DON'T TELL: PROHIBIT etiquetar emocions explícitament ("estava trist", "sentia por", "se sentia nerviós"). MOSTRA l'emoció a través d'accions físiques, gestualitat, interaccions amb objectes o detalls d'entorn.
-• ANTI-EXPOSICIÓ: PROHIBIT que cap personatge expliqui directament els seus plans o motivacions (zero monòlegs de "dolent de James Bond"). Les figures de poder parlen en eufemismes i to institucional. Cap personatge explicarà res que l'interlocutor ja sàpiga.
 • CONTINUÏTAT D'ESCENA: No tanquis artificialment l'energia entre escenes. Cada escena ha de fluir cap a la següent amb una tensió o pregunta oberta, llevat que sigui el tancament explícit del capítol.
 
-━━━ REGLES D'ESTIL ━━━
-${reglesEstilDures}• NOMS I CONTEXT D'AUTOR: Escriu en català, però preserva l'onomàstica i el món de referència (noms, topònims, institucions, codis socials i històrics). NO facis catalanització automàtica de noms o llocs (no converteixis John→Joan, London→Londres) tret que l'usuari ho demani explícitament.
-• PROSA: Evita el barroquisme. Màxim 1 adjectiu rellevant per substantiu. Pren-te el teu temps: descriu l'atmosfera, explora el monòleg intern, coreografia els moviments per l'espai. Ets exhaustiu i detallista.
-• RITME: Alterna escenes de tensió activa (frases curtes, diàleg incisiu, acció breu) amb moments de respiració (introspecció, detall sensorial, gest quotidià). El contrast de ritme és el que crea la il·lusió de velocitat.
-• SENSORIALITAT: PROHIBIT la prosa asèptica. Integra textura física i sensorial (olors, suor, fred, fricció material, sons ambientals) especialment quan la tensió és alta. Quan la tensió supera 7/10, els detalls viscerals són OBLIGATORIS.`;
+━━━ REGLES D'ESTIL${perfil ? ' — ' + perfil.nom.toUpperCase() : ''} ━━━
+${blocReglesEstilAutor(idPerfil)}`;
   return base + '\n\n' + buildDirectivaEstilEmocional() + '\n' + getGenreStyle(tematica || ESTAT.tematica);
 }
 
@@ -14710,8 +14835,16 @@ Si un element del capítol contradiu la macronarrativa, no l'escriguis.
 
     // Bloc 2 (cache): perfil autor + base del sistema
     const autorPerfil = (ESTAT.configuracio && ESTAT.configuracio.perfil_autor) || '';
+    // F3.4: la regla d'ambientació només s'injectava als 7 prompts del flux b1–b6,
+    // mai al prompt de capítol. En capítols llargs i tardans el model derivava cap
+    // al context local. Va dins del bloc amb cache_control: cost zero per capítol.
     const blocPerfilText = (autorPerfil ? `=== ESTIL — AUTOR DE REFERÈNCIA ===\n${autorPerfil}\n===================================\n\n` : '') +
-      getSystemPromptNovella(ESTAT.tematica) + '\n' + buildBriefNarratiu();
+      getSystemPromptNovella(ESTAT.tematica) + '\n' +
+      reglaAmbientacioAutor(ESTAT.tematica) + '\n' +
+      // F3.3: els criteris d'excel·lència del perfil deixen de ser només material
+      // d'informe posterior i passen a ser condicions d'acceptació del capítol.
+      blocCriterisExcellenciaGeneracio(obtenirAutorIdProjecte()) + '\n' +
+      buildBriefNarratiu();
 
     // Parts dinàmiques (canvien per capítol — sense cache)
     const parts = [];
@@ -14765,8 +14898,21 @@ Si un element del capítol contradiu la macronarrativa, no l'escriguis.
     } else {
       parts.push('\nCONTROL DE CONTRAST SENSORIAL: Evita la prosa asèptica. Integra textura física i sensorial (cos, entorn, fricció material) per humanitzar la tensió.');
     }
-    parts.push("\nREGLA D'ESTIL OBLIGATÒRIA (SHOW, DON'T TELL): Tens totalment prohibit utilitzar etiquetes emocionals explícites per descriure com se sent un personatge (ex: prohibit dir \"estava trist\", \"se sentia enfadat\", \"estava nerviós\"). En comptes d'això, has de MOSTRAR l'emoció a través d'accions físiques, interaccions amb objectes, vestimenta, llenguatge corporal o detalls de l'entorn.");
+    // F3.1: la regla de show-don't-tell es repetia aquí de manera absoluta i
+    // contradeia el camp `emocio` del perfil (Dick i Castaneda necessiten poder
+    // nomenar la interioritat del narrador). Ara només s'afegeix per als perfils
+    // que no en defineixen una de pròpia.
+    const emocioPerfil = (idPerfilAutor && PERFILS_AUTOR[idPerfilAutor] && PERFILS_AUTOR[idPerfilAutor].emocio) || '';
+    if (!emocioPerfil) {
+      parts.push("\nREGLA D'ESTIL OBLIGATÒRIA (SHOW, DON'T TELL): Tens totalment prohibit utilitzar etiquetes emocionals explícites per descriure com se sent un personatge (ex: prohibit dir \"estava trist\", \"se sentia enfadat\", \"estava nerviós\"). En comptes d'això, has de MOSTRAR l'emoció a través d'accions físiques, interaccions amb objectes, vestimenta, llenguatge corporal o detalls de l'entorn.");
+    }
     parts.push("\nREGLA DE CONTINUITAT OBLIGATÒRIA: Llevat que se t'indiqui explícitament que és el final del capítol, NO tanquis artificialment l'energia narrativa. Mantén continuïtat orgànica segons el to de l'obra: suspens d'acció, ressonància lírica, o desplaçament perceptiu; la següent generació ha de poder recollir el testimoni de forma natural.");
+
+    // F3.6: bloc d'humanització (humanitzacio_capitol_bloc.md). Estava escrit al
+    // repositori i documentat com a "palanca de qualitat existent", però no
+    // s'havia implementat mai: cap de les seves cadenes apareixia al codi.
+    const blocHuma = construirBlocHumanitzacio(Number(ESTAT._capitolActual || 0) + 1);
+    if (blocHuma) parts.push('\n' + blocHuma);
         const blocBeatsProhibits = buildBlocBeatsNarratiusProhibits();
     if (blocBeatsProhibits) parts.push('\n' + blocBeatsProhibits);
     const blocAlertesEstil = buildBlocAlertesEstil();
@@ -17972,6 +18118,14 @@ async function nouFlux_escaletaCapitol(capInfo, macronarrativaText, escaletesAnt
   const esUltim    = totalCapitols && capInfo.numero === totalCapitols;
   const esPenultim = totalCapitols && capInfo.numero === totalCapitols - 1;
 
+  // F3.7: fins ara cada capítol es planificava com una sola escena amb un sol
+  // contracte dramàtic. Un capítol de 3.000 paraules amb un únic conflicte és
+  // estructuralment pla; el README ja promet una capa d'escenes per capítol.
+  const paraulesCapitol  = Number((ESTAT.estil && ESTAT.estil.paraules) || 3000);
+  const escenesMin       = 2;
+  const escenesMax       = paraulesCapitol >= 3500 ? 4 : 3;
+  const paraulesPerEscena = Math.round(paraulesCapitol / ((escenesMin + escenesMax) / 2));
+
   // Tipus de ganxo compatibles per intensitat
   const ganxosPerIntensitat = {
     1: 'tancament, ganxo_pregunta',
@@ -18013,6 +18167,12 @@ FERIDA NUCLEAR (personatges):
 ${JSON.stringify((ESTAT._perfilsPersonatges || {}), null, 2).substring(0, 1600)}
 ${reglaAmbientacioAutor(ESTAT.tematica)}
 
+DIVISIÓ EN ESCENES (OBLIGATORI):
+- Aquest capítol s'ha de descompondre en ${escenesMin}-${escenesMax} escenes, cadascuna amb el seu contracte dramàtic complet dins de "scene_contracts".
+- Cada escena té el seu propi POV, lloc, obstacle, decisió irreversible i cost. No repeteixis el mateix conflicte en dues escenes: cada una ha de moure la situació a un punt nou.
+- Objectiu aproximat de ${paraulesPerEscena} paraules per escena (total del capítol: ${paraulesCapitol}).
+- Numera les escenes correlativament i posa els ids "C${capInfo.numero}E1", "C${capInfo.numero}E2", etc.
+
 REGLES FORTES DE DRAMA ESCÈNIC:
 - Una escena no és vàlida si només resumeix informació.
 - Una escena no és vàlida si només formula el tema moral.
@@ -18033,9 +18193,13 @@ Retorna EXCLUSIVAMENT JSON vàlid:
   "darrera_imatge": "darrera imatge o moment del capítol (evocadora)",
   "scene_contracts": [
     {
-      "id": "C1E1",
-      "capitol": 1,
+      "id": "C${capInfo.numero}E1",
+      "capitol": ${capInfo.numero},
       "escena": 1,
+      "nom": "títol breu de l'escena (3-5 paraules)",
+      "lloc": "on passa, concret",
+      "paraules_objectiu": ${paraulesPerEscena},
+      "beat_narratiu": "un de: diàleg | acció | investigació | revelació | confrontació | trànsit | introspecció",
       "pov": "",
       "personatges_presents": [],
       "objectiu_visible_pov": "",
