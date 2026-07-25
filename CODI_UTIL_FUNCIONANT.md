@@ -76,7 +76,7 @@ Una peça entra aquí si compleix **tots** aquests punts:
 
 ## Mòduls extrets (Etapa D — consolidats i funcionant)
 
-### `perfils_autor.js`
+### `perfils_autor_base.js` (abans `perfils_autor.js`)
 - **Responsabilitat única**: registre `PERFILS_AUTOR` (larsson/tolkien/dick/castaneda) i utilitats d'estil/ambientació.
 - **Conté**: `PERFILS_AUTOR`, `obtenirPerfilAutorId`, `obtenirAutorIdProjecte`, `reglaAmbientacioAutor`, `getGenreStyle`.
 - **Dependències globals**: llegeix `ESTAT` en temps d'execució (cap dependència de DOM).
@@ -90,8 +90,11 @@ Una peça entra aquí si compleix **tots** aquests punts:
 - **Contracte**: `crearNKG()` retorna l'estructura buida; `detectarFaltantsNKG(nkg, biblia)` retorna llista d'errors; `generarJsonValidat(schemaId, ferCrida)` retorna `{ok, dades|errors}` amb 1 reintent.
 - **Checks mínims**: `node --check` net; `detectarFaltantsNKG({})` → `['NKG no inicialitzat.']`; `parseJsonRobust('{"a":1}')` → objecte.
 
-> **Càrrega**: tots dos via `<script src>` just abans del primer bloc inline d'`index.html`
-> (línia ~1671). L'app ja NO funciona com a fitxer únic: cal copiar els 3 fitxers junts.
+> **Càrrega**: via `<script src>` directes just abans del primer bloc inline
+> d'`index.html`, en aquest ordre: `perfils_autor_base.js`, `models_openai.js`,
+> `ui_fixes.js`, `nkg_core.js`. L'app ja NO funciona com a fitxer únic: cal copiar
+> tots els fitxers junts. **No tornis a un carregador `document.write`**: funciona
+> en local però els navegadors el bloquegen cross-origin amb connexió lenta.
 > Pendent (pas 3 del pla original): `prompts.js` — les funcions de prompt criden
 > `nouFluxCall`/`callLLMMulti` i toquen ESTAT; extreure-les requereix més cura.
 
@@ -128,7 +131,7 @@ Una peça entra aquí si compleix **tots** aquests punts:
 
 ## Peces consolidades a F3 (estil dels 4 autors)
 
-### `blocReglesEstilAutor(idPerfil)` — `perfils_autor.js`
+### `blocReglesEstilAutor(idPerfil)` — `perfils_autor_base.js`
 - **Responsabilitat**: muntar el bloc «REGLES D'ESTIL» del prompt de novel·la a
   partir dels camps `regles_dures`, `prosa`, `exposicio` i `emocio` del perfil.
 - **Contracte**: per a un perfil desconegut o buit retorna les regles genèriques
@@ -136,12 +139,12 @@ Una peça entra aquí si compleix **tots** aquests punts:
 - **Checks mínims**: Tolkien no rep «Màxim 1 adjectiu»; Larsson sí; Castaneda no
   rep la prohibició global d'exposició.
 
-### `blocCriterisExcellenciaGeneracio(idPerfil)` — `perfils_autor.js`
+### `blocCriterisExcellenciaGeneracio(idPerfil)` — `perfils_autor_base.js`
 - **Responsabilitat**: convertir `criteris_excellencia` en condicions d'acceptació
   del capítol, injectades al prompt (abans només s'usaven a l'informe posterior).
 - **Contracte**: retorna `''` si el perfil no té criteris.
 
-### `resoldrePerfilAutor(text)` — `perfils_autor.js`
+### `resoldrePerfilAutor(text)` — `perfils_autor_base.js`
 - **Responsabilitat**: punt únic de resolució del perfil. El perfil del projecte
   mana; la detecció per text és el pla B.
 - **Nota**: `obtenirPerfilAutorId` distingeix ara identificadors forts (nom de
@@ -262,7 +265,7 @@ Una peça entra aquí si compleix **tots** aquests punts:
 
 ## Peces consolidades a F6 (lectura automàtica i calibratge)
 
-### `criteris_avaluacio` (per perfil) — `perfils_autor.js`
+### `criteris_avaluacio` (per perfil) — `perfils_autor_base.js`
 - **Responsabilitat**: criteris d'examen redactats com a modes de fallada, que el
   generador no veu mai. Complementen `criteris_excellencia`, que sí que s'injecten.
 - **Invariant**: cap dels dos conjunts pot contenir literals de l'altre.

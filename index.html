@@ -1696,7 +1696,14 @@
      FRONTEND — utilitats i lògica de navegació
      ══════════════════════════════════════════════════════════ -->
 <!-- Etapa D: mòduls purs extrets (vegeu CODI_UTIL_FUNCIONANT.md) -->
-<script src="perfils_autor.js"></script>
+<!-- Els mòduls purs es carreguen directament, en ordre. Abans hi havia un
+     carregador que els injectava amb document.write des de perfils_autor.js:
+     funcionava, però els navegadors bloquegen els scripts injectats així quan
+     són cross-origin i la connexió és lenta, i llavors l'app no arrenca sense
+     donar cap error clar. Amb etiquetes directes el risc desapareix. -->
+<script src="perfils_autor_base.js"></script>
+<script src="models_openai.js"></script>
+<script src="ui_fixes.js"></script>
 <script src="nkg_core.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
@@ -3622,6 +3629,20 @@ function validarDefaultsModels() {
       if (!MODEL_REGISTRY[id]) problemes.push(`${prov}.${rol} → "${id}" no és a MODEL_REGISTRY`);
     });
   });
+
+  // Aquesta segona comprovació és la que faltava: validar només contra el
+  // registre no detectava que PROVIDER_DEFAULTS s'hagués desincronitzat de la
+  // font única, perquè el model obsolet també existia al registre.
+  if (typeof PROVIDER_DEFAULTS !== 'undefined') {
+    Object.keys(PROVIDER_DEFAULTS).forEach(prov => {
+      const esperat = (MODELS_PER_PROVEIDOR[prov] || {}).generacio;
+      const real = PROVIDER_DEFAULTS[prov] && PROVIDER_DEFAULTS[prov].model;
+      if (esperat && real && real !== esperat) {
+        problemes.push(`PROVIDER_DEFAULTS.${prov}.model = "${real}" però la font única diu "${esperat}"`);
+      }
+    });
+  }
+
   if (problemes.length > 0) console.warn('⚠️ Models per defecte desalineats amb el registre:', problemes);
   return problemes;
 }
@@ -13827,18 +13848,22 @@ function mostrarRepeticions(reps) {
 
 // ─── URLs i models per defecte ──────────────────────────────
 // F4.2: només les URLs són pròpies d'aquí; els models surten de la font única.
+// Els models es llegeixen amb un getter, no es copien: `models_openai.js` muta
+// MODELS_PER_PROVEIDOR a DOMContentLoaded, i amb una còpia feta en temps de
+// parseig aquests valors quedaven congelats amb el model antic. La font única
+// deixava de ser-ho i una crida sense model explícit anava a un model equivocat.
 const PROVIDER_DEFAULTS = {
   anthropic: {
     apiUrl: 'https://api.anthropic.com/v1/messages',
-    model: MODELS_PER_PROVEIDOR.anthropic.generacio
+    get model() { return MODELS_PER_PROVEIDOR.anthropic.generacio; }
   },
   openai: {
     apiUrl: 'https://api.openai.com/v1/chat/completions',
-    model: MODELS_PER_PROVEIDOR.openai.generacio
+    get model() { return MODELS_PER_PROVEIDOR.openai.generacio; }
   },
   gemini: {
     apiUrlBase: 'https://generativelanguage.googleapis.com/v1beta/models',
-    model: MODELS_PER_PROVEIDOR.gemini.generacio
+    get model() { return MODELS_PER_PROVEIDOR.gemini.generacio; }
   }
 };
 
