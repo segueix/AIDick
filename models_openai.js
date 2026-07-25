@@ -4,13 +4,33 @@
 (function registrarModelsOpenAI() {
   'use strict';
 
+  // Configuració econòmica però prou fiable per validar el pipeline complet:
+  // Nano només per a tasques mecàniques; Mini per a prosa i arquitectura.
   const defaultsOpenAI = Object.freeze({
-    draft: 'gpt-5.4-nano',
-    generacio: 'gpt-5.6-luna',
-    arquitectura: 'gpt-5.6-terra'
+    draft: 'gpt-5-nano',
+    generacio: 'gpt-5-mini',
+    arquitectura: 'gpt-5-mini'
   });
 
   const modelsOpenAI = {
+    'gpt-5-nano': {
+      nom: 'GPT-5 Nano', nomCurt: 'GPT-5 Nano',
+      proveidor: 'openai',
+      input_per_m: 0.05, output_per_m: 0.40,
+      context_max: 400000, max_output: 128000,
+      qualitat: { draft: 80, prosa: 66, arquitectura: 70, extraccio: 91 },
+      velocitat: 'molt_rapida',
+      notes: 'Model més econòmic per a extracció, classificació, resums, NKG i tasques auxiliars.'
+    },
+    'gpt-5-mini': {
+      nom: 'GPT-5 Mini', nomCurt: 'GPT-5 Mini',
+      proveidor: 'openai',
+      input_per_m: 0.25, output_per_m: 2.00,
+      context_max: 400000, max_output: 128000,
+      qualitat: { draft: 86, prosa: 82, arquitectura: 84, extraccio: 88 },
+      velocitat: 'rapida',
+      notes: 'Equilibri econòmic per a redacció literària, estructura, coherència i revisió del pipeline.'
+    },
     'gpt-5.4-nano': {
       nom: 'GPT-5.4 Nano', nomCurt: 'GPT-5.4 Nano',
       proveidor: 'openai',
@@ -133,12 +153,12 @@
 
     const proveidor = document.getElementById('config-provider');
     const opcioOpenAI = proveidor && proveidor.querySelector('option[value="openai"]');
-    if (opcioOpenAI) opcioOpenAI.textContent = 'OpenAI (GPT-5.6)';
+    if (opcioOpenAI) opcioOpenAI.textContent = 'OpenAI econòmic (GPT-5 Nano/Mini)';
 
     const presetOpenAI = document.querySelector('button[onclick="aplicarPreset(\'barat_gpt\')"]');
     if (presetOpenAI) {
-      presetOpenAI.textContent = '🤖 OpenAI recomanat';
-      presetOpenAI.title = 'GPT-5.4 Nano + GPT-5.6 Luna + GPT-5.6 Terra';
+      presetOpenAI.textContent = '🤖 OpenAI econòmic coherent';
+      presetOpenAI.title = 'GPT-5 Nano per Draft + GPT-5 Mini per Generació i Arquitectura';
     }
 
     window.BOOKI_OPENAI_MODELS = { ...defaultsOpenAI };
