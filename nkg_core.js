@@ -515,7 +515,12 @@ function teTramaPrincipalClara(nkg = {}, biblia = {}) {
     const principal = t.trama_principal || t.principal || t.main || t.tramaPrincipal;
     if (typeof principal === 'string') return principal.trim().length > 0;
     if (principal && typeof principal === 'object') {
-      return ['conflicte', 'conflicte_causal', 'descripcio', 'objectiu', 'resum', 'causalitat'].some(k => String(principal[k] || '').trim());
+      // `conflicte_central`, `arc_protagonista` i `resolucio` són els camps que
+      // genera de debò el prompt de trames. No ser-hi feia que la trama principal
+      // es donés per absent encara que estigués perfectament generada.
+      return ['conflicte', 'conflicte_central', 'conflicte_causal', 'descripcio',
+              'objectiu', 'resum', 'causalitat', 'arc_protagonista', 'resolucio']
+        .some(k => String(principal[k] || '').trim());
     }
     return false;
   });
@@ -528,8 +533,12 @@ function teSubtramesConnectades(nkg = {}, biblia = {}) {
     return subs.some(st => {
       if (typeof st === 'string') return st.trim().length > 0;
       if (!st || typeof st !== 'object') return false;
-      const connexio = st.personatge || st.personatge_secundari || st.personatges || st.connectada_a || st.relacio_personatge;
-      return String(st.descripcio || st.conflicte || st.objectiu || '').trim() && (Array.isArray(connexio) ? connexio.length > 0 : String(connexio || '').trim());
+      // `personatges_implicats` és el camp que genera de debò el prompt de trames;
+      // no ser a aquesta llista feia que cap subtrama comptés mai com a connectada.
+      const connexio = st.personatges_implicats || st.personatge || st.personatge_secundari ||
+                       st.personatges || st.connectada_a || st.relacio_personatge;
+      const teText = String(st.descripcio || st.conflicte || st.objectiu || st.nom || '').trim();
+      return !!teText && (Array.isArray(connexio) ? connexio.length > 0 : !!String(connexio || '').trim());
     });
   });
 }

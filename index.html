@@ -5907,40 +5907,190 @@ function sceneContractsIncomplets() {
     : false);
 }
 
+// ─── Fallbacks locals deterministes ────────────────────────────────────────
+// Si la crida a l'LLM falla o torna dades inservibles, el gate no pot quedar
+// bloquejat per sempre: es construeix el mínim viable a partir del que ja hi ha
+// al NKG. Mateix principi que crearSceneContractFallbackLocal (F0.5): un camí
+// de degradació no pot deixar l'estat en una situació invàlida.
+function objectiusSecretsFallbackLocal(clau, p) {
+  const nom = p.nom || clau;
+  const desig = String(p.motivacions_base?.desig_extern || '').trim();
+  const necessitat = String(p.motivacions_base?.necessitat_interna || '').trim();
+  const arcIni = String(p.arc?.inici_emocional || '').trim();
+  const limit = String(p.limit_moral || '').trim();
+
+  const objectius = (Array.isArray(p.objectius) && p.objectius.length > 0) ? p.objectius : [
+    normalitzarObjectiu({
+      descripcio: desig || `Aconseguir allò que ${nom} persegueix des del començament de la novel·la`,
+      prioritat: 1, actiu_des_de_capitol: Math.max(1, Number(p.primera_aparicio) || 1),
+      bloquejat_per: limit || 'la seva pròpia línia vermella'
+    }, 0, 1, clau),
+    normalitzarObjectiu({
+      descripcio: necessitat
+        ? `Evitar reconèixer que el que realment necessita és ${necessitat}`
+        : `Mantenir la posició que ${nom} ocupa davant dels altres`,
+      prioritat: 2, actiu_des_de_capitol: Math.max(1, Number(p.primera_aparicio) || 1)
+    }, 1, 1, clau)
+  ].filter(o => o.descripcio);
+
+  const secrets = (Array.isArray(p.secrets) && p.secrets.length > 0) ? p.secrets : [
+    normalitzarSecret({
+      contingut: limit
+        ? `${nom} ja ha traspassat una vegada el límit "${limit}" i no ho ha explicat a ningú`
+        : `${nom} amaga el motiu real pel qual va acceptar entrar en aquesta història`,
+      qui_ho_sap: [], consequencia_si_es_descobreix: 'perdria la confiança de qui l\'ha deixat entrar'
+    }, 0, clau),
+    normalitzarSecret({
+      contingut: arcIni
+        ? `Ningú sap fins a quin punt ${nom} arrossega "${arcIni}" des d'abans del primer capítol`
+        : `${nom} reté informació que faria canviar de bàndol algú altre`,
+      qui_ho_sap: [], consequencia_si_es_descobreix: 'l\'obligaria a triar abans d\'hora'
+    }, 1, clau)
+  ].filter(x => x.contingut);
+
+  return { objectius, secrets };
+}
+
+function aplicarFallbackObjectiusSecrets() {
+  const nkg = ESTAT._nkg || {};
+  const arreglats = [];
+  personatgesSenseMotorDramatic().forEach(p => {
+    const clau = Object.keys(nkg.personatges || {}).find(k => nkg.personatges[k] === p);
+    if (!clau) return;
+    const { objectius, secrets } = objectiusSecretsFallbackLocal(clau, p);
+    if (!teObjectiuExternConcret(p)) p.objectius = objectius;
+    if (!teSecretOPressioInterna(p)) p.secrets = secrets;
+    arreglats.push(p.nom || clau);
+  });
+  return arreglats;
+}
+
+function aplicarFallbackTramaPrincipal() {
+  const nkg = ESTAT._nkg || {};
+  ESTAT.trames = ESTAT.trames || { trama_principal: null, subtrames: [], mapa_entrellacat: [] };
+  const macro = nkg.macronarrativa || {};
+  const protagonista = Object.values(nkg.personatges || {})
+    .find(p => /protagon/i.test(String(p.rol || p.trets_immutables?.rol_narratiu || ''))) ||
+    Object.values(nkg.personatges || {})[0] || {};
+  const previa = ESTAT.trames.trama_principal;
+  ESTAT.trames.trama_principal = Object.assign({
+    descripcio: String(macro.synopsis_core || '').trim() ||
+                `La trama que porta ${protagonista.nom || 'el protagonista'} fins al final previst`,
+    conflicte_central: String(protagonista.motivacions_base?.desig_extern || '').trim()
+      ? `${protagonista.nom || 'El protagonista'} vol ${protagonista.motivacions_base.desig_extern}, i el que s'hi oposa no cedirà sense cost`
+      : String(macro.theme || 'El conflicte central de la novel·la'),
+    arc_protagonista: `${String(protagonista.arc?.inici_emocional || 'punt de partida')} → ${String(protagonista.arc?.final_emocional || macro.ending?.desti_protagonista || 'destí final')}`,
+    resolucio: String(macro.ending?.veritat_que_es_revela || macro.ending?.imatge_o_escena_final || '').trim() ||
+               'Es resol al darrer capítol amb el cost ja pagat'
+  }, previa && typeof previa === 'object' ? previa : {});
+  return ESTAT.trames.trama_principal;
+}
+
+function aplicarFallbackSubtrames() {
+  const nkg = ESTAT._nkg || {};
+  ESTAT.trames = ESTAT.trames || { trama_principal: null, subtrames: [], mapa_entrellacat: [] };
+  const secundaris = Object.values(nkg.personatges || {})
+    .filter(p => p && !/protagon/i.test(String(p.rol || p.trets_immutables?.rol_narratiu || '')))
+    .slice(0, 3);
+  if (secundaris.length === 0) return [];
+
+  const total = (ESTAT._estructuraCapitols || []).length || 12;
+  const noves = secundaris.map((p, i) => ({
+    nom: `Línia de ${p.nom}`,
+    descripcio: String(p.motivacions_base?.desig_extern || '').trim() ||
+                `El que ${p.nom} persegueix pel seu compte i que acaba xocant amb la trama principal`,
+    personatges_implicats: [p.nom],
+    capitol_inici: Math.min(total, 2 + i * 2),
+    capitol_resolucio: Math.max(2, total - 2 - i),
+    com_entrellaça: `Obliga el protagonista a decidir entre la investigació i ${p.nom}`
+  }));
+  const previes = Array.isArray(ESTAT.trames.subtrames) ? ESTAT.trames.subtrames : [];
+  const nomsPrevis = new Set(previes.map(s => String(s && s.nom || '')));
+  ESTAT.trames.subtrames = previes.concat(noves.filter(s => !nomsPrevis.has(s.nom)));
+  return noves.map(s => s.nom);
+}
+
+function aplicarFallbackSceneContracts() {
+  const nkg = ESTAT._nkg || {};
+  // Font natural: l'escaleta. Ja porta els contractes normalitzats per escena.
+  if (Array.isArray(ESTAT._escaletes) && ESTAT._escaletes.length > 0) {
+    desarSceneContractsEscaletes(ESTAT._escaletes);
+  }
+  if (Array.isArray(nkg.scene_contracts) && nkg.scene_contracts.length > 0) return nkg.scene_contracts.length;
+
+  // Sense escaleta: un contracte mínim però vàlid per capítol.
+  const contractes = (ESTAT._estructuraCapitols || []).map((cap, i) =>
+    crearSceneContractFallbackLocal(i + 1, 1, {
+      personatges: Array.isArray(cap.personatges) ? cap.personatges : [],
+      funcio_narrativa: cap.resum || cap.funcio_narrativa || cap.titol || '',
+      beat_narratiu: 'confrontació'
+    }));
+  if (contractes.length > 0) nkg.scene_contracts = contractes;
+  return contractes.length;
+}
+
+// ─── Compleció dels motors dramàtics ───────────────────────────────────────
+// Itera fins que el gate del capítol 1 queda net. Cada pas prova primer la via
+// LLM i, si el faltant hi segueix, aplica el fallback local. Així la fase no pot
+// acabar deixant l'usuari davant d'una llista de blocants per resoldre a mà.
 async function completarMotorsDramaticsNKG(userConfig, onProgress = () => {}) {
   const cfg = userConfig || USER_CONFIG;
-  const nkg = ESTAT._nkg || {};
-  const biblia = ESTAT.bibliaNarrativa || {};
+  const registre = [];
 
-  const tramesOk = (typeof teTramaPrincipalClara === 'function')
-    ? (teTramaPrincipalClara(nkg, biblia) && teSubtramesConnectades(nkg, biblia))
-    : true;
-  if (!tramesOk) {
-    onProgress('🕸️ Dissenyant trama principal i subtrames…');
-    try {
-      await generarIDesarTrames(cfg, onProgress);
-    } catch (err) {
-      console.warn('Trames automàtiques:', err.message);
+  for (let passada = 1; passada <= 2; passada++) {
+    const nkg = ESTAT._nkg || {};
+    const biblia = ESTAT.bibliaNarrativa || {};
+
+    // 1. Trames
+    if (typeof teTramaPrincipalClara === 'function' && !teTramaPrincipalClara(nkg, biblia)) {
+      onProgress('🕸️ Dissenyant trama principal i subtrames…');
+      try { await generarIDesarTrames(cfg, onProgress); }
+      catch (err) { console.warn('Trames automàtiques:', err.message); }
+      if (!teTramaPrincipalClara(ESTAT._nkg || {}, biblia)) {
+        aplicarFallbackTramaPrincipal();
+        registre.push('trama principal local');
+      }
+    }
+    if (typeof teSubtramesConnectades === 'function' && !teSubtramesConnectades(ESTAT._nkg || {}, biblia)) {
+      const noves = aplicarFallbackSubtrames();
+      if (noves.length > 0) registre.push(`subtrames locals: ${noves.join(', ')}`);
+    }
+
+    // 2. Objectius i secrets
+    if (personatgesSenseMotorDramatic().length > 0) {
+      onProgress('🎯 Generant objectius i secrets dels personatges…');
+      try { await generarObjectiusSecrets(cfg, onProgress); }
+      catch (err) { console.warn('Objectius/secrets automàtics:', err.message); }
+      const arreglats = aplicarFallbackObjectiusSecrets();
+      if (arreglats.length > 0) registre.push(`motors locals: ${arreglats.join(', ')}`);
+    }
+
+    // 3. Contractes d'escena — abans només es completaven els INCOMPLETS, de
+    //    manera que si la llista era buida el pas se saltava i el blocant
+    //    "Falten contractes d'escena" no s'arreglava mai.
+    const contractes = ((ESTAT._nkg || {}).scene_contracts) || [];
+    if (contractes.length === 0 || sceneContractsIncomplets().length > 0) {
+      onProgress("🎬 Completant contractes d'escena…");
+      if (contractes.length === 0) aplicarFallbackSceneContracts();
+      try { await generarCompletarSceneContracts(cfg, onProgress); }
+      catch (err) { console.warn("Contractes d'escena automàtics:", err.message); }
+      if (sceneContractsIncomplets().length > 0) {
+        const n = aplicarFallbackSceneContracts();
+        if (n) registre.push(`contractes locals: ${n}`);
+      }
+    }
+
+    const chk = validarNKGPreparatPerCapitol1(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {});
+    if (chk.ok) {
+      if (registre.length > 0) console.info('Motors dramàtics completats amb fallback local —', registre.join(' | '));
+      return { ok: true, passades: passada, fallbacks: registre };
+    }
+    if (passada === 2) {
+      console.warn('Motors dramàtics encara incomplets després de 2 passades:', chk.errors);
+      return { ok: false, passades: passada, fallbacks: registre, errors: chk.errors };
     }
   }
-
-  if (personatgesSenseMotorDramatic().length > 0) {
-    onProgress('🎯 Generant objectius i secrets dels personatges…');
-    try {
-      await generarObjectiusSecrets(cfg, onProgress);
-    } catch (err) {
-      console.warn('Objectius/secrets automàtics:', err.message);
-    }
-  }
-
-  if (sceneContractsIncomplets().length > 0) {
-    onProgress("🎬 Completant contractes d'escena…");
-    try {
-      await generarCompletarSceneContracts(cfg, onProgress);
-    } catch (err) {
-      console.warn("Contractes d'escena automàtics:", err.message);
-    }
-  }
+  return { ok: false, passades: 2, fallbacks: registre };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -7688,17 +7838,43 @@ function mostrarObjectiusSecrets(personatgesObj = {}) {
   document.getElementById('objectius-secrets-result').classList.remove('hidden');
 }
 
+// El merge s'aplicava sobre TOTS els personatges, i als que no sortien a la
+// resposta parcial els assignava [] — és a dir, els esborrava. Com que
+// generarObjectiusSecrets crida aquesta funció després de cada tros de 2
+// personatges i després de cada reintent individual, només sobrevivia l'últim
+// tros: tots els altres quedaven sense objectius ni secrets. Aquest era el
+// motiu real pel qual el gate de motors dramàtics no s'obria mai.
+// Ara només es toquen els personatges presents a la resposta, i mai es buida
+// el que ja hi havia.
 function mergeObjectiusSecretsNKG(data = {}) {
   const nkg = ESTAT._nkg || {};
   const personatges = nkg.personatges || {};
   const objPer = data.objectius_per_personatge || {};
   const secPer = data.secrets_per_personatge || {};
-  Object.entries(personatges).forEach(([clau, p]) => {
-    const objs = Array.isArray(objPer[clau]) ? objPer[clau] : [];
-    const secs = Array.isArray(secPer[clau]) ? secPer[clau] : [];
-    p.objectius = objs.map((o, i) => normalitzarObjectiu(o, i, 1, clau)).filter(o => o.descripcio);
-    p.secrets = secs.map((x, i) => normalitzarSecret(x, i, clau)).filter(x => x.contingut);
-  });
+
+  // El model pot retornar la clau normalitzada o el nom visible: acceptem tots dos.
+  const resoldreClau = (clauResposta) => {
+    if (personatges[clauResposta]) return clauResposta;
+    const norm = nkgNormalitzarNom(clauResposta);
+    if (personatges[norm]) return norm;
+    return Object.keys(personatges).find(k => nkgNormalitzarNom(personatges[k].nom || k) === norm) || null;
+  };
+
+  const aplicar = (font, camp, normalitzador, teContingut) => {
+    Object.entries(font).forEach(([clauResposta, llista]) => {
+      if (!Array.isArray(llista) || llista.length === 0) return;
+      const clau = resoldreClau(clauResposta);
+      if (!clau) return;
+      const nous = llista.map((x, i) => normalitzador(x, i, 1, clau)).filter(teContingut);
+      if (nous.length === 0) return;
+      const previs = Array.isArray(personatges[clau][camp]) ? personatges[clau][camp] : [];
+      const ids = new Set(previs.map(x => x.id));
+      personatges[clau][camp] = previs.concat(nous.filter(x => !ids.has(x.id)));
+    });
+  };
+
+  aplicar(objPer, 'objectius', normalitzarObjectiu, o => !!o.descripcio);
+  aplicar(secPer, 'secrets', (x, i, _c, clau) => normalitzarSecret(x, i, clau), x => !!x.contingut);
 }
 
 async function generarObjectiusSecretsBloc(claus, userConfig) {
@@ -9943,7 +10119,23 @@ async function iniciarFase11() {
     return;
   }
 
-  const chkNKG = validarNKGPreparatPerCapitol1(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {});
+  let chkNKG = validarNKGPreparatPerCapitol1(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {});
+
+  // Si el que falta són motors dramàtics, intenta-ho resoldre abans de plantar
+  // l'usuari davant d'una llista de blocants: aquest camí ha de ser automàtic.
+  if (!chkNKG.ok && Array.isArray(chkNKG.errorsDrama) && chkNKG.errorsDrama.length > 0) {
+    toast('Completant els motors dramàtics que falten…');
+    showLoader(23);
+    const loader = document.getElementById('loader-23-text');
+    try {
+      await completarMotorsDramaticsNKG(USER_CONFIG, msg => { if (loader) loader.textContent = msg; });
+    } catch (err) {
+      console.warn('Compleció automàtica de motors dramàtics:', err.message);
+    }
+    hideLoader(23);
+    chkNKG = validarNKGPreparatPerCapitol1(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {});
+  }
+
   if (!chkNKG.ok) {
     const teDrama = Array.isArray(chkNKG.errorsDrama) && chkNKG.errorsDrama.length > 0;
     toast(teDrama

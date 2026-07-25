@@ -220,6 +220,138 @@ const anarA = await page.evaluate(() => {
 });
 check('mostrarIAnarA amb id inexistent no llança', anarA === 'ok', anarA);
 
+// ══════════════════════════════════════════════════════════════════════════
+//  Regressions de l'informe d'ús real: el gate de motors dramàtics es quedava
+//  bloquejat amb personatges secundaris sense objectius ni secrets, subtrames
+//  "no connectades" i contractes d'escena inexistents.
+// ══════════════════════════════════════════════════════════════════════════
+
+// BUG 1 — mergeObjectiusSecretsNKG esborrava tothom qui no fos al tros actual.
+const merge = await page.evaluate(() => {
+  ESTAT._nkg = crearNKG();
+  ['Laia', 'Biel', 'Mats Eklund', 'Samir Haddad'].forEach(nom => {
+    ESTAT._nkg.personatges[nkgNormalitzarNom(nom)] = { nom, objectius: [], secrets: [] };
+  });
+  // Tros 1: dos personatges
+  mergeObjectiusSecretsNKG({
+    objectius_per_personatge: { laia: [{ descripcio: 'trobar l\'informe' }], biel: [{ descripcio: 'tapar-ho' }] },
+    secrets_per_personatge:   { laia: [{ contingut: 'va falsificar una firma' }], biel: [{ contingut: 'cobra del fons' }] }
+  });
+  // Tros 2: els altres dos — abans, això buidava Laia i Biel
+  mergeObjectiusSecretsNKG({
+    objectius_per_personatge: { 'mats_eklund': [{ descripcio: 'protegir el germà' }] },
+    secrets_per_personatge:   { 'mats_eklund': [{ contingut: 'sap qui va signar' }] }
+  });
+  // I el model pot retornar el nom visible en lloc de la clau normalitzada
+  mergeObjectiusSecretsNKG({
+    objectius_per_personatge: { 'Samir Haddad': [{ descripcio: 'sortir del país' }] },
+    secrets_per_personatge:   { 'Samir Haddad': [{ contingut: 'té els originals' }] }
+  });
+  const p = ESTAT._nkg.personatges;
+  return Object.keys(p).map(k => ({
+    nom: p[k].nom, objectius: (p[k].objectius || []).length, secrets: (p[k].secrets || []).length
+  }));
+});
+const senseMotor = merge.filter(m => m.objectius === 0 || m.secrets === 0);
+check('El merge per trossos ja no esborra els personatges anteriors',
+  senseMotor.length === 0, senseMotor.map(m => m.nom).join(', ') || merge.map(m => `${m.nom}:${m.objectius}/${m.secrets}`).join(' '));
+
+// BUG 2 — les subtrames reals del prompt usen personatges_implicats
+const subtrames = await page.evaluate(() => {
+  ESTAT._nkg = crearNKG();
+  ESTAT.bibliaNarrativa = {};
+  ESTAT.trames = {
+    trama_principal: { conflicte_central: 'x', descripcio: 'y' },
+    // Forma EXACTA que produeix el prompt de generarTrames
+    subtrames: [{
+      nom: 'La deute del germà', descripcio: 'Mats amaga un pagament',
+      personatges_implicats: ['Mats Eklund'], capitol_inici: 2, capitol_resolucio: 10,
+      com_entrellaça: 'obliga la Laia a triar'
+    }],
+    mapa_entrellacat: []
+  };
+  return teSubtramesConnectades(ESTAT._nkg, ESTAT.bibliaNarrativa);
+});
+check('Una subtrama amb "personatges_implicats" compta com a connectada', subtrames === true, '');
+
+// BUG 3 — amb la llista de contractes BUIDA, el pas se saltava
+const contractes = await page.evaluate(() => {
+  ESTAT._nkg = crearNKG();
+  ESTAT._escaletes = [];
+  ESTAT._estructuraCapitols = [
+    { titol: 'U', personatges: ['Laia'], resum: 'obre el cas' },
+    { titol: 'Dos', personatges: ['Laia', 'Mats Eklund'], resum: 'topa amb l\'arxiu' }
+  ];
+  const abans = (ESTAT._nkg.scene_contracts || []).length;
+  const incompletsAbans = sceneContractsIncomplets().length;   // 0: no n'hi ha cap
+  const creats = aplicarFallbackSceneContracts();
+  return {
+    abans, incompletsAbans, creats,
+    valids: (ESTAT._nkg.scene_contracts || []).every(c => detectarFaltantsSceneContract(c).length === 0)
+  };
+});
+check('Amb zero contractes, sceneContractsIncomplets no en veia cap (causa del pas saltat)',
+  contractes.abans === 0 && contractes.incompletsAbans === 0, '');
+check('El fallback crea un contracte vàlid per capítol',
+  contractes.creats === 2 && contractes.valids, `${contractes.creats} contractes`);
+
+// El cas complet de l'usuari: gate vermell → completar → gate verd, sense LLM
+const casReal = await page.evaluate(async () => {
+  window.fetch = async () => { throw new Error('sense xarxa a la prova'); };
+  // Totes les vies LLM fallen: només han d'actuar els fallbacks locals.
+  window.generarIDesarTrames = async () => { throw new Error('LLM caigut'); };
+  window.generarObjectiusSecrets = async () => { throw new Error('LLM caigut'); };
+  window.generarCompletarSceneContracts = async () => { throw new Error('LLM caigut'); };
+
+  const nkg = crearNKG();
+  nkg.macronarrativa.synopsis_core = 'x'; nkg.macronarrativa.theme = 'x';
+  nkg.macronarrativa.ending.emocio_final_lector = 'x';
+  nkg.macronarrativa.backstory_canonic.fets_previs = ['fet'];
+  nkg.relacions = [{ personatge_a: 'Laia', personatge_b: 'Mats Eklund', tipus: 'rival' }];
+  nkg.objectes = { clau: { nom: 'clau' } };
+  nkg.llocs = { a: {}, b: {}, c: {} };
+  nkg.context_creacio.estil.perspectiva.tipus = 'tercera_limitada';
+  nkg.context_creacio.estil.perspectiva.pov_per_capitol = [{ capitol: 1, personatge_pov: 'Laia' }];
+  nkg.context_creacio.cronologia.per_capitol = [{ capitol: 1, moment: 'mati' }];
+  [['Laia', 'protagonista'], ['Mats Eklund', 'secundari'], ['Samir Haddad', 'secundari']].forEach(([nom, rol]) => {
+    nkg.personatges[nkgNormalitzarNom(nom)] = {
+      nom, rol,
+      trets_immutables: { aspecte_fisic: 'x', ocupacio: 'x', tret_definitori: 'x' },
+      veu: { exemples_narratius: ['a', 'b'], vocabulari_recurrent: ['a', 'b', 'c'] },
+      motivacions_base: { desig_extern: 'publicar la investigació', necessitat_interna: 'deixar de dependre' },
+      arc: { inici_emocional: 'en alerta' }, limit_moral: 'no exposar una font',
+      objectius: [], secrets: [], primera_aparicio: 1
+    };
+  });
+  ESTAT._nkg = nkg;
+  ESTAT.bibliaNarrativa = { regles_mon: ['regla'] };
+  ESTAT.trames = { trama_principal: { conflicte_central: 'x' }, subtrames: [], mapa_entrellacat: [] };
+  ESTAT._estructuraCapitols = [{ titol: 'U', personatges: ['Laia'], resum: 'obre' },
+                               { titol: 'Dos', personatges: ['Laia', 'Mats Eklund'], resum: 'topa' }];
+  ESTAT._escaletes = [];
+  ESTAT._modeCompatibilitatSnapshotsAntics = false;
+  ESTAT.fase = 23;
+
+  const abans = validarNKGPreparatPerCapitol1(nkg, ESTAT.bibliaNarrativa);
+  const res = await completarMotorsDramaticsNKG({}, () => {});
+  const despres = validarNKGPreparatPerCapitol1(ESTAT._nkg, ESTAT.bibliaNarrativa);
+  return {
+    blocantsAbans: (abans.errorsDrama || []).length,
+    ok: despres.ok,
+    errors: despres.errors || [],
+    fallbacks: res.fallbacks || []
+  };
+});
+check('Es reprodueix el bloqueig reportat (secundaris sense motors, subtrames, contractes)',
+  casReal.blocantsAbans >= 5, `${casReal.blocantsAbans} blocants`);
+check('Amb totes les crides LLM caigudes, la compleció local obre el gate igualment',
+  casReal.ok === true, casReal.errors.slice(0, 3).join(' · ') || `fallbacks: ${casReal.fallbacks.join(' | ')}`);
+
+// I iniciarFase11 ha d'intentar-ho sol abans de mostrar cap llista
+const autoIntent = await page.evaluate(() =>
+  String(iniciarFase11).includes('completarMotorsDramaticsNKG'));
+check('iniciarFase11 intenta completar els motors abans de bloquejar l\'usuari', autoIntent, '');
+
 await browser.close();
 
 const fallits = results.filter(r => !r.ok);
