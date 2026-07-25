@@ -40,6 +40,74 @@
     }
   };
 
+  function assegurarCampDraftVisible() {
+    if (document.getElementById('config-model-draft')) return;
+
+    const inputGeneracio = document.getElementById('config-model-generacio');
+    const etiquetaGeneracio = document.querySelector('label[for="config-model-generacio"]');
+    if (!inputGeneracio || !etiquetaGeneracio || !etiquetaGeneracio.parentNode) return;
+
+    const etiquetaDraft = document.createElement('label');
+    etiquetaDraft.className = 'field-label';
+    etiquetaDraft.htmlFor = 'config-model-draft';
+    etiquetaDraft.innerHTML = 'Model de Draft / Extracció <span style="color:var(--text2);font-size:.78rem;">— esquelets, resums i NKG</span>';
+
+    const inputDraft = document.createElement('input');
+    inputDraft.type = 'text';
+    inputDraft.id = 'config-model-draft';
+    inputDraft.value = (typeof ESTAT !== 'undefined' && ESTAT._modelDraft) || defaultsOpenAI.draft;
+    inputDraft.placeholder = defaultsOpenAI.draft;
+    inputDraft.autocomplete = 'off';
+    inputDraft.addEventListener('change', aplicarDraftDesDelCamp);
+
+    etiquetaGeneracio.parentNode.insertBefore(etiquetaDraft, etiquetaGeneracio);
+    etiquetaGeneracio.parentNode.insertBefore(inputDraft, etiquetaGeneracio);
+  }
+
+  function aplicarDraftDesDelCamp() {
+    const input = document.getElementById('config-model-draft');
+    const modelId = String((input && input.value) || '').trim();
+    if (!modelId || typeof MODEL_REGISTRY === 'undefined' || !MODEL_REGISTRY[modelId]) return;
+
+    if (typeof ESTAT !== 'undefined') ESTAT._modelDraft = modelId;
+    const selector = document.getElementById('selectModelDraft');
+    if (selector) selector.value = modelId;
+  }
+
+  function sincronitzarCampDraft() {
+    const input = document.getElementById('config-model-draft');
+    if (!input) return;
+    const modelId = (typeof ESTAT !== 'undefined' && ESTAT._modelDraft) || defaultsOpenAI.draft;
+    input.value = modelId;
+    input.placeholder = modelId;
+  }
+
+  function embolcallarFuncioGlobal(nom, abans, despres) {
+    const original = window[nom];
+    if (typeof original !== 'function' || original.__bookiDraftVisible) return;
+
+    const embolcallada = function(...args) {
+      if (typeof abans === 'function') abans();
+      const resultat = original.apply(this, args);
+      if (typeof despres === 'function') despres();
+      return resultat;
+    };
+    embolcallada.__bookiDraftVisible = true;
+    window[nom] = embolcallada;
+  }
+
+  function connectarCampDraft() {
+    // Els presets, el canvi de proveïdor i el selector inferior han de reflectir-se
+    // també al tercer camp visible de la capçalera.
+    embolcallarFuncioGlobal('sincronitzarCampsConfigModels', null, sincronitzarCampDraft);
+    embolcallarFuncioGlobal('actualitzarConfigProvider', null, sincronitzarCampDraft);
+    embolcallarFuncioGlobal('poblarSelectorsModels', null, sincronitzarCampDraft);
+
+    // Si l’usuari escriu manualment el model Draft, s’aplica abans de desar.
+    embolcallarFuncioGlobal('guardarIComencar', aplicarDraftDesDelCamp, sincronitzarCampDraft);
+    embolcallarFuncioGlobal('actualitzarConfiguracioActiva', aplicarDraftDesDelCamp, sincronitzarCampDraft);
+  }
+
   function installar() {
     if (typeof MODEL_REGISTRY === 'undefined' || typeof MODELS_PER_PROVEIDOR === 'undefined') {
       console.error('No s’han pogut registrar els models OpenAI: falta el registre principal de Booki.');
@@ -58,6 +126,10 @@
         max_output: 128000
       });
     }
+
+    assegurarCampDraftVisible();
+    connectarCampDraft();
+    sincronitzarCampDraft();
 
     const proveidor = document.getElementById('config-provider');
     const opcioOpenAI = proveidor && proveidor.querySelector('option[value="openai"]');
