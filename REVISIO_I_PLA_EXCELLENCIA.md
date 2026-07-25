@@ -37,10 +37,14 @@ cap crida a funció inexistent. El problema és un altre, i és més greu:
 
 El pla de la secció 5 ataca aquests quatre fronts en 5 fases.
 
-> **Estat**: **F0, F1, F2 i F3 estan implementades i verificades** — `proves/f0_f1.mjs`
-> (15/15), `proves/f2_jutge.mjs` (20/20) i `proves/f3_estil_autors.mjs` (33/33). Els
-> quatre punts d'aquest resum descriuen, doncs, el problema tal com era. Només queda
-> F4, d'higiene i neteja de codi mort.
+> **Estat**: **les cinc fases (F0–F4) estan implementades i verificades.** Els quatre
+> punts d'aquest resum descriuen, doncs, el problema tal com era, no com és ara.
+> Suites: `proves/f0_f1.mjs` (15/15), `proves/f2_jutge.mjs` (20/20),
+> `proves/f3_estil_autors.mjs` (33/33) i `proves/f4_higiene.mjs` (11/11) —
+> **79 comprovacions**, executables de cop amb `node proves/executa-totes.mjs`.
+>
+> El que queda per fer no és codi: són els criteris de fet que necessiten l'API real i
+> el teu criteri (una novel·la curta de punta a punta per a cadascun dels 4 perfils).
 
 ---
 
@@ -605,7 +609,7 @@ donar ≥ 3/4 criteris complerts sense retocs manuals.
 
 ---
 
-### F4 — Tancament i higiene *(1 dia)*
+### F4 — Tancament i higiene ✅ FETA
 
 - **F4.1** Eliminar la duplicació de `renderitzarResumDramaticBiblia` (`index.html:12218`/`16089`).
 - **F4.2** Unificar `PROVIDER_DEFAULTS` (`index.html:12585`) amb el catàleg de models
@@ -616,6 +620,30 @@ donar ≥ 3/4 criteris complerts sense retocs manuals.
   d'autors diferent (Rodoreda, Le Guin, Murakami). O s'elimina, o s'alinea.
 - **F4.5** Actualitzar `AGENT.md`, `README.md` i `CODI_UTIL_FUNCIONANT.md` amb l'estat real
   després de F0–F3.
+
+> **Implementat.** Verificat amb `proves/f4_higiene.mjs` (11/11).
+>
+> F4.2 ha resultat més gros del previst: no hi havia una taula de models desalineada
+> sinó **cinc** (`MODEL_DEFAULTS`, els fallbacks de `getModelConfig`, els presets, els
+> defaults del canvi de proveïdor i `PROVIDER_DEFAULTS`), amb `claude-opus-4-1` i
+> `gemini-1.5-pro` apuntant a IDs que no són a `MODEL_REGISTRY`. `MODEL_DEFAULTS`, a
+> més, no la llegia ningú. Totes cinc s'han reduït a `MODELS_PER_PROVEIDOR`, i
+> `validarDefaultsModels()` avisa a l'arrencada si un ID per defecte no és al registre.
+> Els IDs concrets no s'han inventat: només s'han fet servir els que el projecte ja
+> declarava. **Cal contrastar-los amb la llista vigent de cada proveïdor** abans de
+> publicar; el que aquesta fase garanteix és la coherència interna, no la vigència.
+>
+> F4.4: `nkg_biblia.html` s'ha eliminat. Estava congelat des de l'Etapa A a la fase
+> 0+1, no el referenciava cap fitxer i portava una llista d'autors (Rodoreda, Le Guin,
+> Murakami) que contradiu els quatre perfils. És recuperable de l'històric de git.
+>
+> **Fora del pla**, s'han eliminat dues funcions mortes trobades a F2 i F3:
+> `validarIReomplirEscaleta()`, que regenerava 5-7 escenes **sense** `scene_contract`
+> i hauria desfet la capa de conflicte escènic si mai s'hagués connectat, i
+> `revisioArquitectaAmbContinuitat()`, un no-op que retornava `'APROVAT'`
+> incondicionalment. `applyPatch()` es manté tot i no tenir cridadors: és el mecanisme
+> sancionat per a patches sota canon congelat i esborrar-lo deixaria òrfena la
+> modalitat `'patch'` de `canRewrite`.
 
 ---
 

@@ -133,6 +133,24 @@ Cada capítol té un objecte `llibreRegistre.capitols[idx].ksn` amb:
 - El perfil del projecte (`ESTAT._autorPerfilId`) mana sobre qualsevol detecció per
   text. Usa `resoldrePerfilAutor(text)`, mai `obtenirPerfilAutorId(text) || ...`.
 
+## Models i defaults (F4)
+
+- **Cap ID de model escrit a mà fora de `MODEL_REGISTRY` i `MODELS_PER_PROVEIDOR`.**
+  Per afegir un model: primer entra al registre (preu, context, qualitat) i només
+  després pot ser un default. `validarDefaultsModels()` avisa a l'arrencada si un
+  default no és al registre.
+- `PROVIDER_DEFAULTS` només aporta URLs d'API; els models en deriva.
+
+## Proves
+
+- Les suites de `proves/` s'executen sobre l'`index.html` real amb Playwright:
+  `npx http-server -p 8099 -c-1 .` i després `node proves/executa-totes.mjs`.
+- Qualsevol canvi al gate NKG, al flux visual, al jutge o als perfils d'autor ha de
+  deixar les 79 comprovacions en verd, o actualitzar la suite corresponent explicant
+  per què canvia el comportament esperat.
+- Les suites que toquen crides LLM les simulen i **bloquegen `fetch`**: una crida
+  real no simulada ha de fallar de seguida, no penjar-se als reintents.
+
 ## Restriccions generals per a qualsevol canvi
 
 - No refactoritzar funcions que no estiguin explícitament mencionades al prompt.

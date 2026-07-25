@@ -198,12 +198,52 @@ Una peça entra aquí si compleix **tots** aquests punts:
 - **Nota**: s'executa a `load`, no amb `setTimeout(…, 0)`: el jutge viu al segon
   bloc `<script>` i el parser pot disparar un timer de 0 ms entremig.
 
-> **Proves**: `proves/f0_f1.mjs`, `proves/f2_jutge.mjs` i
-> `proves/f3_estil_autors.mjs` (Playwright + Chromium sobre `index.html` real).
-> Executar amb el projecte servit: `npx http-server -p 8099 -c-1 .` i després
-> `node proves/<fitxer>.mjs`. La suite de F2 simula l'LLM i bloqueja `fetch`, de
-> manera que qualsevol crida real que se li escapi falla de seguida en lloc de
-> quedar-se penjada als reintents.
+## Peces consolidades a F4 (higiene)
+
+### `MODELS_PER_PROVEIDOR` + `validarDefaultsModels()` — `index.html`
+- **Responsabilitat**: font única dels models per defecte, per proveïdor i rol.
+  Substitueix cinc taules d'IDs escampades que ja no coincidien entre elles.
+- **Contracte**: tot ID ha d'existir a `MODEL_REGISTRY`; `validarDefaultsModels()`
+  ho comprova a l'arrencada i avisa per consola si no.
+- **Consumidors**: `getModelConfig` (fallbacks), `aplicarPreset`, el canvi de
+  proveïdor i `PROVIDER_DEFAULTS` (segon bloc), que ara només aporta les URLs.
+
+> **Regla**: si afegeixes un model, entra primer a `MODEL_REGISTRY` (amb preu,
+> context i qualitat) i només després pot aparèixer a `MODELS_PER_PROVEIDOR`.
+> Cap ID de model pot viure escrit a mà enlloc més.
+
+### Codi eliminat a F4
+- `renderitzarResumDramaticBiblia()` duplicada al segon bloc (idèntica; la
+  segona sobreescrivia la primera).
+- `validarIReomplirEscaleta()` — sense cridadors i perjudicial: regenerava
+  escenes sense `scene_contract`.
+- `revisioArquitectaAmbContinuitat()` — no-op que retornava `'APROVAT'`.
+- `nkg_biblia.html` — app paral·lela congelada a la fase 0+1, sense referències.
+
+> `applyPatch()` es manté tot i no tenir cridadors: és el mecanisme sancionat per
+> a patches sota canon congelat i esborrar-lo deixaria òrfena la modalitat
+> `'patch'` de `canRewrite`.
+
+## Proves de regressió
+
+`proves/` conté quatre suites de Playwright + Chromium que s'executen sobre
+l'`index.html` real (**79 comprovacions**):
+
+| Suite | Cobreix |
+|---|---|
+| `f0_f1.mjs` | desbloqueig del gate NKG i ordre visual |
+| `f2_jutge.mjs` | jutge de bloc, locks i reconciliació cap endavant |
+| `f3_estil_autors.mjs` | perfils d'autor, humanització i escenes per capítol |
+| `f4_higiene.mjs` | duplicats, models per defecte i codi mort |
+
+```
+npx http-server -p 8099 -c-1 .     # en una terminal
+node proves/executa-totes.mjs      # en una altra
+```
+
+La suite de F2 simula l'LLM i **bloqueja `fetch`**, de manera que qualsevol crida
+real que se li escapi falla de seguida en lloc de quedar-se penjada als reintents
+amb backoff. És un patró a repetir en suites futures.
 
 ## Full de ruta de reducció de mida (pràctic)
 
@@ -218,11 +258,12 @@ Una peça entra aquí si compleix **tots** aquests punts:
 
 ## Planning de migració `index.html` → `nkg_biblia.html` (fase a fase)
 
-> ⚠️ **CONGELAT (Etapa A — ESTRATEGIA_REORGANITZACIO.md).** La migració paral·lela a
-> `nkg_biblia.html` queda aturada: la reorganització es fa in situ a `index.html`
-> (un sol flux, 6 macro-etapes, perfils d'autor) i la reducció de mida es farà
-> extraient mòduls purs (Etapa D), no duplicant l'app. Aquest planning es conserva
-> només com a referència històrica.
+> ❌ **CANCEL·LAT (F4).** `nkg_biblia.html` s'ha eliminat del projecte: estava
+> congelat a la fase 0+1 des de l'Etapa A, no el referenciava cap fitxer i portava
+> una llista d'autors que contradiu els quatre perfils. La reorganització es fa in
+> situ a `index.html` i la reducció de mida, extraient mòduls purs (Etapa D).
+> Aquest planning es conserva només com a referència històrica; el fitxer és
+> recuperable de l'històric de git.
 
 > Objectiu: migrar només codi útil i estable, marcant cada fase com a feta.
 
