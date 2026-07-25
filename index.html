@@ -671,6 +671,14 @@
       </label>
     </div>
 
+    <div class="checkbox-row" onclick="document.getElementById('config-jutge-reescriu').click()">
+      <input type="checkbox" id="config-jutge-reescriu" onclick="event.stopPropagation()">
+      <label for="config-jutge-reescriu">
+        <strong>El jutge pot reescriure capítols</strong> — corregeix el text ja escrit quan detecta una incoherència
+        <small style="display:block;color:var(--text2);font-size:.78rem;margin-top:2px;">Desactivat (recomanat): el jutge només detecta i obre un fil perquè el capítol següent reconciliï la incoherència. Activat: reescriu i congela els capítols del bloc, que passen a ser immutables.</small>
+      </label>
+    </div>
+
     <label class="field-label" for="config-target-qualitat" style="margin-top:10px;">Qualitat objectiu del jutge (0-100)</label>
     <input type="number" id="config-target-qualitat" min="60" max="98" step="1" value="85" placeholder="85">
     <small style="display:block;color:var(--text2);font-size:.78rem;margin-top:4px;">El generador iterarà fins assolir aquest llindar (amb límit de seguretat d'intents).</small>
@@ -3319,6 +3327,9 @@ function guardarIComencar() {
     // F1.3: l'efecte d'escriptura és opcional (per defecte actiu).
     const efecteEscripturaEl = document.getElementById('config-efecte-escriptura');
     const efecteEscriptura   = efecteEscripturaEl ? efecteEscripturaEl.checked : true;
+    // F2.1: la reescriptura automàtica del jutge és opcional i per defecte NO.
+    const jutgeReescriuEl = document.getElementById('config-jutge-reescriu');
+    const jutgeReescriu   = jutgeReescriuEl ? jutgeReescriuEl.checked : false;
     const targetQualitatEl  = document.getElementById('config-target-qualitat');
     const targetQualitatRaw = targetQualitatEl ? Number(targetQualitatEl.value) : 85;
     const targetQualitat    = Math.max(60, Math.min(98, Number.isFinite(targetQualitatRaw) ? targetQualitatRaw : 85));
@@ -3366,6 +3377,7 @@ function guardarIComencar() {
       },
       fluxAutomatic,
       efecteEscriptura,
+      jutgeReescriu,
       targetQualitat,
       delayEntreCapitolsMs
     };
@@ -3426,6 +3438,9 @@ function actualitzarConfiguracioActiva() {
     // F1.3: l'efecte d'escriptura és opcional (per defecte actiu).
     const efecteEscripturaEl = document.getElementById('config-efecte-escriptura');
     const efecteEscriptura   = efecteEscripturaEl ? efecteEscripturaEl.checked : true;
+    // F2.1: la reescriptura automàtica del jutge és opcional i per defecte NO.
+    const jutgeReescriuEl = document.getElementById('config-jutge-reescriu');
+    const jutgeReescriu   = jutgeReescriuEl ? jutgeReescriuEl.checked : false;
     const targetQualitatEl  = document.getElementById('config-target-qualitat');
     const targetQualitatRaw = targetQualitatEl ? Number(targetQualitatEl.value) : 85;
     const targetQualitat    = Math.max(60, Math.min(98, Number.isFinite(targetQualitatRaw) ? targetQualitatRaw : 85));
@@ -3459,7 +3474,7 @@ function actualitzarConfiguracioActiva() {
       modelGeneracio, modelArquitectura, modelDraft,
       modelArquitecte: modelArquitectura,
       models: { draft: modelDraft, generacio: modelGeneracio, arquitecte: modelArquitectura },
-      fluxAutomatic, efecteEscriptura, targetQualitat, delayEntreCapitolsMs
+      fluxAutomatic, efecteEscriptura, jutgeReescriu, targetQualitat, delayEntreCapitolsMs
     };
 
     if (typeof poblarSelectorsModels === 'function') poblarSelectorsModels();
@@ -9591,34 +9606,57 @@ function canJudge(chapterId) {
   return l.lockState === 'unlocked';
 }
 
+// F2.3 — el self-check comprovava que el codi font d'executarJutgeInterval
+// contingués la cadena "const MAX_ITER = 1;". Com que la funció retornava a la
+// segona línia i tota la implementació quedava com a codi mort però present al
+// toString(), el check passava en verd mentre el jutge no s'executava mai: un
+// test que no podia fallar. Ara verifica COMPORTAMENT, no text.
 function selfCheckLockingInvariants() {
+  const problemes = [];
+  const NOMS_JUTGE = ['executarJutgeInterval', 'jutgeIntervalInconsistencies', 'aplicarCorreccionsJutge',
+                      'tancamentBlocComplet', 'setFinalLock', 'setProvisionalLock'];
   try {
-    // Evitem inspeccionar tot l'outerHTML (pot donar falsos positius per scripts duplicats del navegador).
-    const _ejiFn = typeof executarJutgeInterval !== 'undefined' ? executarJutgeInterval : undefined;
-    if (typeof _ejiFn !== 'function') {
-      console.warn('Invariant (deferit): executarJutgeInterval encara no està disponible en aquest punt del carregat.');
-      return;
-    }
-    const fnSrc = String(_ejiFn || '');
-    if (!fnSrc.includes('const MAX_ITER = 1;')) {
-      console.warn('Invariant: MAX_ITER=1 requerit al jutge');
+    // Aquest check viu al primer bloc <script> i part del jutge és al segon.
+    // El parser pot deixar caure un timer de 0 ms entre els dos blocs, així que
+    // si encara no hi són, ajornem en lloc de reportar un fals problema.
+    const fns = {};
+    for (const nom of NOMS_JUTGE) fns[nom] = (typeof globalThis[nom] === 'function') ? globalThis[nom] : null;
+    if (Object.values(fns).some(f => !f)) {
+      console.info('Invariants de jutge/locks: ajornat (el segon bloc encara no s\'ha carregat).');
+      return null;
     }
 
-    const src = String(document.documentElement && document.documentElement.outerHTML || '');
-    const jiStart = src.indexOf('function jutgeIntervalInconsistencies');
-    if (jiStart >= 0) {
-      const jiEnd = src.indexOf('function aplicarCorreccionsJutge', jiStart);
-      const jiSrc = jiEnd > jiStart ? src.slice(jiStart, jiEnd) : src.slice(jiStart, jiStart + 8000);
-      if (/cos íntegre/i.test(jiSrc)) {
-        console.warn("Invariant: jutgeIntervalInconsistencies no ha d'incloure cos íntegre");
-      }
+    for (const [nom, fn] of Object.entries(fns)) {
+      if (typeof fn !== 'function') { problemes.push(`${nom} no disponible`); continue; }
+      // Un stub és una funció que retorna abans d'executar res: ho detectem
+      // buscant un `return` incondicional a les primeres línies del cos.
+      const cos = String(fn).replace(/\/\/[^\n]*/g, '');
+      const primeres = cos.slice(cos.indexOf('{') + 1).split('\n').slice(0, 3).join(' ');
+      if (/^\s*return\b/.test(primeres)) problemes.push(`${nom} sembla un stub (return incondicional)`);
+    }
+
+    // El jutge ha de ser single-pass: cap interval es pot jutjar dues vegades.
+    const locks = (ESTAT && ESTAT._intervalLocks) || {};
+    Object.entries(locks).forEach(([k, v]) => {
+      if (v && Number(v.iteracions) > 1) problemes.push(`interval ${k} jutjat ${v.iteracions} vegades (MAX_ITER=1)`);
+    });
+
+    // El tancament de bloc ha d'estar connectat al bucle de capítols.
+    if (typeof generarCapitol === 'function' && !String(generarCapitol).includes('tancamentBlocComplet')) {
+      problemes.push('generarCapitol no crida tancamentBlocComplet: el bloc no es tancaria mai');
     }
   } catch (err) {
-    console.warn('selfCheckLockingInvariants:', err.message);
+    problemes.push('excepció: ' + err.message);
   }
+
+  if (problemes.length > 0) console.warn('⚠️ Invariants de jutge/locks:', problemes);
+  else console.info('✅ Invariants de jutge/locks correctes.');
+  return problemes;
 }
 
-setTimeout(selfCheckLockingInvariants, 0);
+// Esperem que tot el document (i per tant el segon bloc <script>) estigui carregat.
+if (document.readyState === 'complete') setTimeout(selfCheckLockingInvariants, 0);
+else window.addEventListener('load', () => setTimeout(selfCheckLockingInvariants, 0), { once: true });
 
 function obtenirBlockCanon58() {
   ESTAT._blockCanons = (ESTAT._blockCanons && typeof ESTAT._blockCanons === 'object') ? ESTAT._blockCanons : {};
@@ -10059,15 +10097,38 @@ function validacioBasica(text, objectiuCaracters) {
   return { valid: true, motiu: null };
 }
 
-// ─── CORRECCIÓ 5: Revisió de continuïtat (STUB — elimina el jutge) ────────────
+// Revisió de continuïtat per capítol. Substituïda pel jutge de bloc (F2.2), que
+// fa la mateixa feina un cop cada 4 capítols en lloc de a cada capítol. Es manté
+// com a no-op explícit perquè no té cap cridador; candidata a esborrar a F4.
 async function revisioArquitectaAmbContinuitat(idx, textCapitol, userConfig) {
-  // JUTGE ELIMINAT — revisioArquitectaAmbContinuitat és ara un no-op
   return { errors_continuitat: [], veredicte: 'APROVAT', resum_correccions: '' };
 }
 
+// F2.2 — restaurada. Només s'invoca des de camins que ja han comprovat el lock
+// del capítol (aplicarCorreccionsJutge amb reescriptura activada, o applyPatch).
 async function reescriureAmbCorreccions(textCapitol, resumCorreccions, idx, userConfig) {
-  // JUTGE ELIMINAT — reescriureAmbCorreccions és ara un no-op
-  return textCapitol;
+  const msgs = [{
+    role: 'user',
+    content: `Corregeix els errors de continuïtat del capítol ${idx + 1} sense afegir escenes noves ni canviar l'estructura narrativa.
+
+CORRECCIONS A APLICAR:
+${resumCorreccions}
+
+CAPÍTOL A CORREGIR:
+${textCapitol}
+
+Retorna el capítol corregit en text pla. PROHIBIT afegir escenes, personatges nous o canviar el fil principal.`
+  }];
+
+  const models = getModelConfig(userConfig || USER_CONFIG);
+  const systemPrompt = buildSystemPromptCapitol();
+  const raw = await callLLMOneShotPlusCompletion(
+    msgs,
+    systemPrompt,
+    Object.assign({}, userConfig || USER_CONFIG, { maxTokens: 14000, model: models.modelGeneracio }),
+    'generacio'
+  );
+  return raw || textCapitol; // fallback: retorna original si falla
 }
 
 function refrescarPlaPsicologicPerSeguentCapitol() {
@@ -10119,9 +10180,35 @@ async function processarDerivatsBlocAbansJutge(fromIdx, toIdx, userConfig) {
   }
 }
 
+// F2.2 — restaurada. Orquestra el tancament d'un bloc de 4 capítols:
+// derivats → resums → jutge → resum consolidat → congelació.
+// Cap pas pot tombar el flux d'escriptura: tots van dins de try/catch.
 async function tancamentBlocComplet(idx, bloc, userConfig) {
-  // JUTGE ELIMINAT — tancamentBlocComplet és ara un no-op (generarCapitol gestiona el flux)
-  console.log(`[tancamentBlocComplet] stub (jutge eliminat) — bloc ${(bloc.fromIdx||0)+1}–${(bloc.toIdx||0)+1}`);
+  const { fromIdx, toIdx } = bloc;
+  const cfg = userConfig || USER_CONFIG;
+  const loader = document.getElementById('loader-23-text');
+  const estat = txt => { if (loader) loader.textContent = txt; };
+
+  showLoader(23);
+  try {
+    estat(`🧠 Preparant derivats del bloc (caps. ${fromIdx + 1}–${toIdx + 1})…`);
+    await processarDerivatsBlocAbansJutge(fromIdx, toIdx, cfg);
+
+    estat(`📝 Generant resums del bloc (caps. ${fromIdx + 1}–${toIdx + 1})…`);
+    try { await generarResumsBloc(fromIdx, toIdx, cfg); } catch (e) { console.warn('Resums bloc:', e.message); }
+
+    estat(`⚖️ Jutge avaluant el bloc (caps. ${fromIdx + 1}–${toIdx + 1})…`);
+    await executarJutgeInterval(fromIdx, toIdx, cfg);
+
+    estat('📦 Generant resum consolidat del bloc…');
+    try { await generarResumConsolidatBloc(fromIdx, toIdx, cfg); } catch (e) { console.warn('Resum consolidat:', e.message); }
+  } catch (err) {
+    console.warn(`Tancament de bloc ${fromIdx + 1}–${toIdx + 1}:`, err.message);
+    jutgePanelLog(`⚠️ Error al tancament del bloc: ${err.message}`);
+  } finally {
+    hideLoader(23);
+    renderLlistaCapitols();
+  }
 }
 
 // ─── Nova arquitectura de generació (CANVI 2+3+4) ────────────────────────────
@@ -10761,6 +10848,13 @@ async function generarCapitol(idx, intents = 0) {
     mostrarCapitol(idx, textNet);
     actualitzarEstatCapitol(idx, 'fet');
     if (capitolNum % 6 === 0) mostrarCheckpointIntermedi(idx);
+
+    // F2.2: tancament de bloc cada 4 capítols (i al darrer). Aquesta crida s'havia
+    // perdut quan es va convertir tancamentBlocComplet en un no-op, i amb ella tot
+    // el control de coherència creuada entre capítols.
+    if (esTancamentBloc(idx, totalCaps)) {
+      await tancamentBlocComplet(idx, obtenirRangBlocPerCapitol(idx, totalCaps), USER_CONFIG);
+    }
 
     // Continuar al proper
     const isLast = idx >= totalCaps - 1;
@@ -16947,15 +17041,48 @@ async function executarLoopCoherenciaFinal(userConfig) {
 //  JUTGE D'INTERVAL — Revisió d'inconsistències cada 4 caps
 // ═══════════════════════════════════════════════════════════
 
-// ── Helpers UI del Jutge (ELIMINAT — stubs) ────────────────
-function jutgePanelIniciar(titol) { console.log('[jutge stub] iniciar:', titol); }
-function jutgePanelLog(linia) { console.log('[jutge stub]', linia); }
-function jutgePanelFinalitzar(net, iteracions) { console.log('[jutge stub] finalitzar net:', net); }
+// ── Helpers UI del Jutge (F2.2 — restaurats) ───────────────
+// El marcatge de #jutge-panel ja existia a la fase 23 però quedava sempre buit
+// perquè aquestes tres funcions només escrivien a consola.
+function jutgePanelIniciar(titol) {
+  console.log('[jutge]', titol);
+  const panel = document.getElementById('jutge-panel');
+  const log   = document.getElementById('jutge-log');
+  const txt   = document.getElementById('jutge-status-text');
+  const spin  = document.getElementById('jutge-spinner-sm');
+  const det   = document.getElementById('jutge-details');
+  if (log) log.textContent = '';
+  if (txt) txt.textContent = titol || "⚖️ Jutge d'interval";
+  if (spin) spin.style.display = 'inline-block';
+  if (det) det.open = true;
+  panel?.classList.remove('hidden');
+}
+
+function jutgePanelLog(linia) {
+  console.log('[jutge]', linia);
+  const log = document.getElementById('jutge-log');
+  if (!log) return;
+  log.textContent += (log.textContent ? '\n' : '') + String(linia == null ? '' : linia);
+  log.scrollTop = log.scrollHeight;
+}
+
+function jutgePanelFinalitzar(net, iteracions) {
+  console.log('[jutge] finalitzat. net:', net);
+  const txt  = document.getElementById('jutge-status-text');
+  const spin = document.getElementById('jutge-spinner-sm');
+  const det  = document.getElementById('jutge-details');
+  if (spin) spin.style.display = 'none';
+  if (txt) txt.textContent = net
+    ? `✅ Jutge d'interval — bloc net (${iteracions} iteració)`
+    : `⚠️ Jutge d'interval — incidències registrades (${iteracions} iteració)`;
+  // Si tot ha anat bé, pleguem el panell; si hi ha incidències, el deixem obert.
+  if (det) det.open = !net;
+}
 // ──────────────────────────────────────────────────────────
 
+// F2.2 — restaurada. És la peça de DETECCIÓ: llegeix KSN, resums i timelines i
+// retorna inconsistències. No toca cap text.
 async function jutgeIntervalInconsistencies(fromIdx, toIdx, userConfig) {
-  // JUTGE ELIMINAT — stub
-  return { inconsistencies: [], instruccions_correccio: {}, correccions_perfils: {}, net: true };
   const cfg = userConfig || USER_CONFIG;
   const models = getModelConfig(cfg);
   const capitols = ESTAT.llibreRegistre?.capitols || [];
@@ -17069,9 +17196,18 @@ Les claus de instruccions_correccio han de ser índexs en string (0-based) dins 
   return { inconsistencies, instruccions_correccio: instruccions, correccions_perfils: perfils, net };
 }
 
+// F2.1 — decisió de disseny: el jutge es recupera, però la reescriptura automàtica
+// de capítols ja escrits queda desactivada per defecte (`USER_CONFIG.jutgeReescriu`).
+// Motiu: el jutge es va eliminar sencer en un commit sense justificació, i la part
+// arriscada era precisament aquesta — tocar text ja acceptat. La detecció, en canvi,
+// no té cap risc. Amb la reescriptura apagada, cada instrucció de correcció es
+// converteix en un fil 'error-continuïtat' que el capítol següent ha de reconciliar
+// (F2.5, mecanisme E.2 que ja existia i no cridava ningú).
+function jutgePotReescriure() {
+  return !!(USER_CONFIG && USER_CONFIG.jutgeReescriu === true);
+}
+
 async function aplicarCorreccionsJutge(fromIdx, toIdx, instruccions, userConfig) {
-  // JUTGE ELIMINAT — stub
-  return [];
   const cfg = userConfig || USER_CONFIG;
   const capitolsReescrits = [];
   const capitolsLocked = (ESTAT._capitolsLocked && typeof ESTAT._capitolsLocked === 'object') ? ESTAT._capitolsLocked : {};
@@ -17079,7 +17215,19 @@ async function aplicarCorreccionsJutge(fromIdx, toIdx, instruccions, userConfig)
   const clausOrdenades = Object.keys(instruccions)
     .map(k => ({ k, idx: parseInt(k, 10) }))
     .filter(it => !isNaN(it.idx))
-    .sort((a, b) => a.idx - b.idx);
+    // AGENT.md: si es reescriu dins d'un interval, es fa en ordre descendent
+    // (índex més alt primer) perquè cada reescriptura no invalidi la següent.
+    .sort((a, b) => b.idx - a.idx);
+
+  if (!jutgePotReescriure()) {
+    for (const { k, idx } of clausOrdenades) {
+      if (idx < fromIdx || idx > toIdx) continue;
+      const desc = String(instruccions[k] || '').slice(0, 400);
+      registrarContradiccioTardana(desc, idx + 1, toIdx + 1);
+      jutgePanelLog(`  ↪️ Cap. ${idx + 1}: registrat per reconciliar cap endavant (reescriptura desactivada).`);
+    }
+    return [];
+  }
 
   for (const { k, idx } of clausOrdenades) {
     if (isNaN(idx) || idx < fromIdx || idx > toIdx) continue; // guard: no tocar congelats
@@ -17127,9 +17275,9 @@ async function aplicarCorreccionsJutge(fromIdx, toIdx, instruccions, userConfig)
   return capitolsReescrits;
 }
 
+// F2.2 — restaurada. Correcció "gratuïta": actualitza bíblia i fets canònics,
+// mai el text d'un capítol. Compatible amb la immutabilitat d'AGENT.md.
 function aplicarCorreccionsPerfilsJutge(correccions) {
-  // JUTGE ELIMINAT — stub
-  return;
   if (!correccions || typeof correccions !== 'object') return;
 
   // Reutilitza aplicarCanvisBiblia per actualitzar personatges i fets canònics
@@ -17148,10 +17296,9 @@ function aplicarCorreccionsPerfilsJutge(correccions) {
   }
 }
 
+// F2.2 — restaurada. Single-pass (MAX_ITER = 1) i, per defecte, no destructiva:
+// les incidències es reconcilien cap endavant si la reescriptura està desactivada.
 async function executarJutgeInterval(fromIdx, toIdx, userConfig) {
-  // JUTGE ELIMINAT — stub
-  console.log(`[executarJutgeInterval] stub (jutge eliminat) — ${fromIdx + 1}–${toIdx + 1}`);
-  return;
   const cfg = userConfig || USER_CONFIG;
   for (let c = fromIdx; c <= toIdx; c++) {
     if (!canJudge(c)) {
@@ -17183,7 +17330,10 @@ async function executarJutgeInterval(fromIdx, toIdx, userConfig) {
   let resultat = { net: false };
   let iter = 0;
   let capitolsReescrits = [];
-  const esBloc58 = fromIdx === 4 && toIdx === 7;
+  // El BlockCanon 5-8 existeix per acotar les reescriptures d'aquest bloc, i com a
+  // efecte secundari posa un lock provisional als capítols 5-8. Si el jutge no
+  // reescriu, no cal congelar-lo: només trauria a l'usuari el botó de regenerar.
+  const esBloc58 = fromIdx === 4 && toIdx === 7 && jutgePotReescriure();
   let blockCanon = null;
   if (esBloc58) {
     blockCanon = generarICongeleBlockCanon58();
@@ -17260,15 +17410,26 @@ async function executarJutgeInterval(fromIdx, toIdx, userConfig) {
   };
   ESTAT._intervalLocks[intervalKey] = lock;
 
-  for (let i = fromIdx; i <= toIdx; i++) {
-    ESTAT._capitolsLocked[i] = true;
-    setFinalLock(i, 'Jutge interval completat');
+  // F2.4: la capa de locks torna a estar viva, però la seva força va lligada al
+  // mode del jutge. El lock d'INTERVAL sempre s'aplica: garanteix l'invariant
+  // d'AGENT.md que el jutge s'executa exactament un cop per bloc.
+  // El lock de CAPÍTOL (immutabilitat del text) només s'aplica quan la
+  // reescriptura automàtica està activada: si el jutge no toca el text, congelar
+  // els capítols només serviria per treure a l'usuari el botó de regenerar-los.
+  if (jutgePotReescriure()) {
+    for (let i = fromIdx; i <= toIdx; i++) {
+      ESTAT._capitolsLocked[i] = true;
+      setFinalLock(i, 'Jutge interval completat');
+    }
+    jutgePanelLog(`\n🔒 Capítols ${fromIdx + 1}–${toIdx + 1} congelats (immutables).`);
+  } else {
+    jutgePanelLog(`\n🔓 Capítols ${fromIdx + 1}–${toIdx + 1} editables: el jutge no reescriu, les incidències es reconcilien cap endavant.`);
   }
 
   const jaCongelat = ESTAT._intervalsCongelats.some(iv => iv && iv.fromIdx === fromIdx && iv.toIdx === toIdx);
   if (!jaCongelat) ESTAT._intervalsCongelats.push(lock);
 
-  jutgePanelLog(`\n🔒 Interval bloquejat: caps. ${fromIdx + 1}–${toIdx + 1}`);
+  jutgePanelLog(`Interval jutjat i tancat: caps. ${fromIdx + 1}–${toIdx + 1}`);
   jutgePanelLog(`Finalitzat. Net: ${lock.net} | Iteracions: ${lock.iteracions}`);
   jutgePanelFinalitzar(lock.net, lock.iteracions);
 }

@@ -164,9 +164,46 @@ Una peça entra aquí si compleix **tots** aquests punts:
 > emocional: temperatura per capítol, ratio de diàleg i cost emocional no
 > s'aplicaven mai. Si torna a aparèixer, la capa torna a quedar silenciosament morta.
 
-> **Proves**: `proves/f0_f1.mjs` i `proves/f3_estil_autors.mjs`
-> (Playwright + Chromium sobre `index.html` real). Executar amb el projecte servit:
-> `npx http-server -p 8099 -c-1 .` i després `node proves/<fitxer>.mjs`.
+## Peces consolidades a F2 (jutge d'interval)
+
+### `tancamentBlocComplet(idx, bloc, userConfig)` — `index.html`
+- **Responsabilitat**: orquestrar el tancament d'un bloc de 4 capítols —
+  derivats → resums → jutge → resum consolidat.
+- **Cridador**: `generarCapitol`, quan `esTancamentBloc(idx, totalCaps)`.
+- **Contracte**: cap pas pot tombar el flux d'escriptura; tot va dins de
+  try/catch i el loader es tanca sempre al `finally`.
+
+### `executarJutgeInterval(fromIdx, toIdx, userConfig)` — `index.html`
+- **Responsabilitat**: single-pass (`MAX_ITER = 1`) de detecció i, si escau,
+  correcció d'un bloc.
+- **Contracte**: si l'interval ja té lock, surt sense fer cap crida. En acabar
+  sempre escriu `_intervalLocks[fromIdx-toIdx]`. Els locks de capítol només
+  s'apliquen si `jutgePotReescriure()`.
+- **Checks mínims**: dues execucions seguides sobre el mateix interval fan una
+  sola crida a l'LLM.
+
+### `jutgePotReescriure()` — `index.html`
+- **Responsabilitat**: punt únic de decisió del mode del jutge
+  (`USER_CONFIG.jutgeReescriu`, per defecte fals).
+- **Governa**: si es reescriu el text, si es congelen els capítols i si es
+  congela el BlockCanon 5-8.
+
+### `jutgePanelIniciar / jutgePanelLog / jutgePanelFinalitzar` — `index.html`
+- **Responsabilitat**: registre visible del jutge a `#jutge-panel` (el marcatge
+  ja existia a la fase 23 i quedava sempre buit).
+
+### `selfCheckLockingInvariants()` — `index.html`
+- **Responsabilitat**: verificar invariants de **comportament** (cap stub, cap
+  interval jutjat dues vegades, tancament de bloc connectat).
+- **Nota**: s'executa a `load`, no amb `setTimeout(…, 0)`: el jutge viu al segon
+  bloc `<script>` i el parser pot disparar un timer de 0 ms entremig.
+
+> **Proves**: `proves/f0_f1.mjs`, `proves/f2_jutge.mjs` i
+> `proves/f3_estil_autors.mjs` (Playwright + Chromium sobre `index.html` real).
+> Executar amb el projecte servit: `npx http-server -p 8099 -c-1 .` i després
+> `node proves/<fitxer>.mjs`. La suite de F2 simula l'LLM i bloqueja `fetch`, de
+> manera que qualsevol crida real que se li escapi falla de seguida en lloc de
+> quedar-se penjada als reintents.
 
 ## Full de ruta de reducció de mida (pràctic)
 

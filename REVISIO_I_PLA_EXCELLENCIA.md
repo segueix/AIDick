@@ -24,7 +24,7 @@ cap crida a funció inexistent. El problema és un altre, i és més greu:
    mateix contenidor**, barrejant text del capítol anterior amb el nou. A sobre, cada capítol
    força un `scrollIntoView` cap amunt mentre el text apareix cap avall.
 
-3. **El motor de qualitat que la documentació promet ja no existeix al codi.**
+3. **El motor de qualitat que la documentació prometia no existia al codi** (resolt a F2).
    El jutge d'interval, el sistema de locks/immutabilitat i el bloc d'humanització estan
    *stubbed*, morts o mai implementats — però `AGENT.md`, el `README.md` i la pròpia UI els
    segueixen anunciant. La novel·la s'escriu, avui, sense cap control de coherència creuada.
@@ -37,10 +37,10 @@ cap crida a funció inexistent. El problema és un altre, i és més greu:
 
 El pla de la secció 5 ataca aquests quatre fronts en 5 fases.
 
-> **Estat**: **F0, F1 i F3 estan implementades i verificades** — `proves/f0_f1.mjs`
-> (15/15) i `proves/f3_estil_autors.mjs` (33/33). Els punts 1, 2 i 4 d'aquest resum
-> descriuen, doncs, el problema tal com era. El punt 3 continua obert: el jutge
-> d'interval i la capa de locks segueixen morts (F2), i queda F4 d'higiene.
+> **Estat**: **F0, F1, F2 i F3 estan implementades i verificades** — `proves/f0_f1.mjs`
+> (15/15), `proves/f2_jutge.mjs` (20/20) i `proves/f3_estil_autors.mjs` (33/33). Els
+> quatre punts d'aquest resum descriuen, doncs, el problema tal com era. Només queda
+> F4, d'higiene i neteja de codi mort.
 
 ---
 
@@ -447,7 +447,7 @@ capítol que s'està escrivint, (c) cap clic deixa la pàgina immòbil.
 
 ---
 
-### F2 — Reactivar el control de coherència *(2-3 dies)*
+### F2 — Reactivar el control de coherència ✅ FETA
 
 Sense això no hi ha excel·lència possible: una novel·la de 13 capítols escrita sense cap
 verificació creuada acumula contradiccions.
@@ -477,6 +477,33 @@ contradicció es detecta amb el capítol d'origen ja congelat: reconciliar cap e
 **F2.6 · Alinear la documentació amb la realitat.** `AGENT.md` § immutabilitat i § jutge, el
 `README.md` i el text del panell (`index.html:2606`) han de descriure el que s'executa. Si una
 peça queda desactivada, ha de dir-ho la UI, no un comentari al codi.
+
+> **Implementat.** Verificat amb `proves/f2_jutge.mjs` (20/20), que executa el cicle
+> sencer del jutge amb l'LLM simulat.
+>
+> **Decisió de F2.1: es recupera, amb la reescriptura automàtica desactivada per
+> defecte.** El jutge es va eliminar sencer en el commit `8800e3c`, amb un missatge
+> genèric i cap justificació. Com que no hi ha constància del motiu, s'ha separat el
+> que era arriscat del que no: la DETECCIÓ no pot fer cap mal i torna sempre; la
+> REESCRIPTURA de capítols ja acceptats queda darrere de `USER_CONFIG.jutgeReescriu`,
+> desactivada per defecte. Amb la reescriptura apagada, cada instrucció de correcció
+> es converteix en un fil `error-continuïtat` que el capítol següent ha de
+> reconciliar — el mecanisme E.2 que ja existia i no cridava ningú (F2.5).
+>
+> **Desviació respecte del pla:** F2.4 deia d'activar la capa de locks sense més. Fet
+> així, tots els capítols passats quedaven `final` i l'usuari perdia el botó de
+> regenerar-los, un canvi de comportament que no havia demanat. La força del lock va
+> ara lligada al mode del jutge: el lock d'INTERVAL s'aplica sempre (garanteix el
+> single-pass d'AGENT.md), i el lock de CAPÍTOL només quan el jutge reescriu de debò.
+> Pel mateix motiu, la congelació del BlockCanon 5-8 — que posa un lock provisional
+> com a efecte secundari — només s'executa en mode reescriptura, que és l'únic on
+> serveix per a alguna cosa.
+>
+> El self-check (F2.3) ja no llegeix el `toString()` de les funcions: comprova que cap
+> peça del jutge sigui un stub, que cap interval s'hagi jutjat més d'un cop i que
+> `generarCapitol` cridi el tancament de bloc. També s'ha hagut de moure a l'esdeveniment
+> `load`: vivia al primer bloc `<script>` amb un `setTimeout(…, 0)` i part del jutge és
+> al segon, així que el parser podia disparar-lo entremig i donava un fals negatiu.
 
 *Criteri de fet F2*: introduir deliberadament una contradicció factual al capítol 2 (canviar la
 ubicació d'un objecte) i verificar que el jutge del bloc 1–4 la detecta, la corregeix o obre un fil

@@ -19,9 +19,26 @@ Booki és una aplicació web (single-file `index.html` amb JS incrustat) que tra
 ## Regles del jutge d'interval
 
 - El jutge s'executa **exactament 1 vegada** per interval (single-pass). `MAX_ITER = 1`.
-- Si cal reescriure capítols dins l'interval, es fa **en ordre descendent** (índex més alt primer: cap.4 → cap.3 → cap.2 → cap.1).
-- Després de cada reescriptura individual, es resincronitzen registre i NKG abans de passar al capítol següent.
-- Un cop el jutge acaba, l'interval queda bloquejat (`_intervalLocks`).
+- S'invoca des de `tancamentBlocComplet`, que `generarCapitol` crida cada 4 capítols
+  i al darrer (`esTancamentBloc`).
+- **La detecció sempre s'executa; la reescriptura de capítols és opcional.**
+  `USER_CONFIG.jutgeReescriu` (casella de configuració, desactivada per defecte)
+  decideix quin dels dos modes s'aplica:
+  - **desactivada (per defecte)**: el jutge no toca cap text. Cada instrucció de
+    correcció es registra amb `registrarContradiccioTardana()` com a fil
+    `error-continuïtat` d'alta prioritat, i el capítol següent l'ha de reconciliar.
+    Els capítols queden editables.
+  - **activada**: el jutge reescriu **en ordre descendent** (índex més alt primer:
+    cap.4 → cap.3 → cap.2 → cap.1) i, en acabar, congela els capítols del bloc
+    (`setFinalLock`), que passen a ser immutables.
+- Després de cada reescriptura individual, es resincronitzen registre i NKG abans de
+  passar al capítol següent.
+- Un cop el jutge acaba, l'interval queda bloquejat (`_intervalLocks`) en tots dos
+  modes: és el que garanteix el single-pass.
+- Les correccions de perfils i fets canònics (`aplicarCorreccionsPerfilsJutge`) són
+  "gratuïtes" i s'apliquen sempre: no toquen el text de cap capítol.
+- `selfCheckLockingInvariants()` verifica **comportament**, no text del `toString()`.
+  Si afegeixes una peça al jutge, afegeix-la també a la seva llista.
 
 ## Context als prompts (estalvi de tokens)
 
