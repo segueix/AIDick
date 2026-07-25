@@ -260,10 +260,41 @@ Una peça entra aquí si compleix **tots** aquests punts:
   una llista tancada de fets canònics i incidències, no busca lliurement.
 - **Contracte**: retalla al 60% del context del model si cal, i ho diu a la UI.
 
+## Peces consolidades a F6 (lectura automàtica i calibratge)
+
+### `criteris_avaluacio` (per perfil) — `perfils_autor.js`
+- **Responsabilitat**: criteris d'examen redactats com a modes de fallada, que el
+  generador no veu mai. Complementen `criteris_excellencia`, que sí que s'injecten.
+- **Invariant**: cap dels dos conjunts pot contenir literals de l'altre.
+
+### `seleccionarModelLector(userConfig)` — `index.html`
+- **Responsabilitat**: triar un model per llegir que no sigui el que ha escrit.
+- **Contracte**: `{ model, decorrelacio, escriptor }`. Ordre de preferència: altre
+  proveïdor amb clau → altre model del mateix proveïdor → el mateix, amb
+  `decorrelacio` començant per `CAP` perquè la UI ho pugui advertir.
+
+### `lecturaAdversariaNovella()` — `index.html`
+- **Responsabilitat**: lectura hostil del text complet amb els criteris ocults.
+- **Contracte**: desa a `ESTAT._lecturaAdversaria`; retalla al 60% del context del
+  model lector i ho declara.
+
+### `calcularCalibratge(estat)` — `nkg_core.js`
+- **Responsabilitat**: convertir les lectures humanes de mostra en recall i precisió.
+- **Contracte**: funció pura. Retorna `fiable: false` i un avís explícit mentre la
+  mostra sigui inferior a `MOSTRA_MINIMA_CALIBRATGE` (5), encara que els números
+  surtin perfectes.
+- **Checks mínims**: mostra 0 → "no calibrat"; mostra 1 perfecta → no fiable;
+  recall < 0,6 → avís de que no substitueix una lectura.
+
+### `suggerirUnitatsPerLlegir(estat, lectures, quantes)` — `nkg_core.js`
+- **Responsabilitat**: dir quines unitats convé llegir a mà per calibrar millor.
+- **Contracte**: exclou el ja calibrat; pondera per incidències d'auditoria i per
+  troballes del lector; cada suggeriment porta el seu motiu.
+
 ## Proves de regressió
 
-`proves/` conté cinc suites de Playwright + Chromium que s'executen sobre
-l'`index.html` real (**103 comprovacions**):
+`proves/` conté sis suites de Playwright + Chromium que s'executen sobre
+l'`index.html` real (**126 comprovacions**):
 
 | Suite | Cobreix |
 |---|---|
@@ -272,6 +303,7 @@ l'`index.html` real (**103 comprovacions**):
 | `f3_estil_autors.mjs` | perfils d'autor, humanització i escenes per capítol |
 | `f4_higiene.mjs` | duplicats, models per defecte i codi mort |
 | `f5_verificacio.mjs` | validadors deterministes, llibre major i bloc d'estat |
+| `f6_lectura.mjs` | separació de criteris, decorrelació del lector i calibratge |
 
 ```
 npx http-server -p 8099 -c-1 .     # en una terminal

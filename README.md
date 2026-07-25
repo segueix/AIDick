@@ -56,6 +56,24 @@ Aquesta capa cobreix la continuïtat factual. La deriva de veu, si el final est�
 o si el llibre val la pena continuen sent judicis humans: Booki no pretén substituir
 una lectura, sinó fer que amb una n'hi hagi prou.
 
+## Lectura automàtica i calibratge
+
+Booki pot llegir-se a si mateix: una lectura hostil del text complet, feta per un model
+**diferent del que ha escrit** (d'un altre proveïdor si tens la clau) i amb criteris
+d'avaluació que el generador no ha vist mai. Se li demana que hi trobi el pitjor amb
+cites, no que posi nota.
+
+Però un lector automàtic pot emetre un veredicte sense poder fonamentar-lo. Per això
+Booki mesura **quant s'hi pot confiar**: llegeixes a mà una mostra de capítols i dius,
+de les seves troballes, quantes eren reals, quantes eren soroll i quantes se li van
+escapar. D'aquí surten dos números — quants problemes troba de debò (*recall*) i quants
+dels seus avisos són certs (*precisió*)— i amb menys de cinc lectures humanes Booki no
+te'ls dona per bons.
+
+Això no fa que les novel·les siguin coherents sense revisió. El que fa és substituir un
+acte de fe per una xifra: saps quant es deixa el lector, i decideixes tu quantes
+novel·les et pots saltar.
+
 ## Quality Gate 9
 
 El diagnòstic literari 9/10 analitza heurísticament abstractesa, repetició de motius, acció concreta, diàleg, contractes incomplets, tensió massa uniforme i personatges funcionals. No reescriu automàticament: diagnostica i proposa prioritats.

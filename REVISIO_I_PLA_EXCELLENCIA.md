@@ -37,12 +37,12 @@ cap crida a funció inexistent. El problema és un altre, i és més greu:
 
 El pla de la secció 5 ataca aquests quatre fronts en 5 fases.
 
-> **Estat**: **les sis fases (F0–F5) estan implementades i verificades.** Els quatre
+> **Estat**: **les set fases (F0–F6) estan implementades i verificades.** Els quatre
 > punts d'aquest resum descriuen, doncs, el problema tal com era, no com és ara.
 > Suites: `proves/f0_f1.mjs` (15/15), `proves/f2_jutge.mjs` (20/20),
-> `proves/f3_estil_autors.mjs` (33/33), `proves/f4_higiene.mjs` (11/11) i
-> `proves/f5_verificacio.mjs` (24/24) — **103 comprovacions**, executables de cop
-> amb `node proves/executa-totes.mjs`.
+> `proves/f3_estil_autors.mjs` (33/33), `proves/f4_higiene.mjs` (11/11),
+> `proves/f5_verificacio.mjs` (24/24) i `proves/f6_lectura.mjs` (23/23) —
+> **126 comprovacions**, executables de cop amb `node proves/executa-totes.mjs`.
 >
 > El que queda per fer no és codi: són els criteris de fet que necessiten l'API real i
 > el teu criteri (una novel·la curta de punta a punta per a cadascun dels 4 perfils).
@@ -733,6 +733,88 @@ guanyat o si el llibre val la pena segueixen sent judicis que cap gate pot subst
 
 ---
 
+### F6 — Lectura automàtica i calibratge ✅ FETA
+
+> Fase afegida en resposta a una objecció justa: *la lectura única també pot ser
+> automàtica*. És certa, i la meva formulació anterior era incorrecta — el projecte
+> ja automatitzava part de la lectura crítica (`detectarRepeticions`,
+> `detectarRepeticionsTematiques`, `generarAlertesEstil`, `detectarFormulacioTematica`,
+> `calcularTermometreVeritatEmocional`, l'informe post-mortem). Dir que "la lectura és
+> la part humana" era fals.
+
+#### On és la frontera de debò
+
+No a **llegir**, sinó a **acceptar**. Un validador determinista té condició de veritat;
+un judici estètic no en té. El lector automàtic pot emetre un veredicte, però res dins
+del sistema el fonamenta. Hi ha dos mecanismes que ho agreugen:
+
+- **Punts cecs correlacionats**: el lector és de la mateixa família que l'escriptor. Un
+  tic sistemàtic del generador és invisible per a un lector del mateix model.
+- **Goodhart**: a F3.3 els `criteris_excellencia` van passar a ser alhora la instrucció
+  i l'examen. Es demanava al generador que complís els quatre criteris i després
+  s'avaluava si els complia. Això puja la nota per construcció i no diu res del llibre.
+
+La conseqüència útil no és "cal llegir cada novel·la". És que **l'humà no ha d'estar al
+bucle per llibre, sinó al bucle de calibratge**: en llegeixes una mostra i el que en
+treus no són els errors d'aquella mostra, sinó si els veredictes de la resta valen res.
+
+#### F6.1 · Desfer el bucle
+
+Camp nou `criteris_avaluacio` per perfil, **mai injectat al prompt del generador**,
+redactat com a modes de fallada en lloc d'instruccions. Larsson: *"Si s'eliminés la
+crítica social, la trama se'n ressentiria? Si no, és decorativa."* Tolkien: *"El món
+sembla que ja existia abans del primer capítol?"* Dick: *"Després de l'esquerda de
+realitat, el lector pot tornar a confiar en el que llegeix? Si pot, l'esquerda era
+falsa."* Castaneda: *"El mestre arriba a explicar el sentit d'alguna lliçó? Si ho fa,
+el pacte s'ha trencat."* Els `criteris_excellencia` segueixen generant (F3.3 intacte).
+
+#### F6.2 · Lector adversari decorrelacionat
+
+`seleccionarModelLector()` tria, per ordre: un model **d'un altre proveïdor** si hi ha
+clau, un model diferent del mateix proveïdor, o —si no hi ha res més— el mateix model,
+**declarant-ho a la UI** amb un avís que comparteix els punts cecs de l'escriptor.
+L'enquadrament és hostil ("no has escrit això i no li deus res; troba'n el pitjor"),
+no de puntuació, i llegeix el text complet.
+
+#### F6.3 · Calibratge
+
+Per a cada unitat llegida a mà es registren tres números: quantes troballes del lector
+eren reals, quantes eren soroll i quants problemes se li van escapar. D'aquí surten:
+
+- **recall** = confirmades / (confirmades + perdudes) — quina fracció dels problemes
+  reals troba. És el número que decideix si et pots saltar una lectura.
+- **precisió** = confirmades / (confirmades + descartades) — si els seus avisos valen
+  la pena o s'acabaran ignorant tots.
+
+Amb menys de 5 unitats calibrades **no dona percentatges com a vàlids**: diu que la
+mostra és insuficient. Una sola lectura perfecta no converteix el lector en fiable.
+
+#### F6.4 · Mostreig
+
+`suggerirUnitatsPerLlegir()` prioritza el que més informa el calibratge: el que encara
+no s'ha calibrat, i dins d'això el que té incidències d'auditoria o troballes del
+lector — perquè és on val més la pena saber si s'equivoca. Cada suggeriment diu per què.
+
+#### Criteri de fet F6
+
+- Cap criteri d'avaluació es filtra al prompt del generador (verificat als 4 perfils).
+- El model lector és sempre diferent del que escriu, o es declara que no ho és.
+- El calibratge no dona percentatges per bons amb mostres petites, avisa quan el
+  recall baixa de 0,6 i quan la precisió baixa de 0,5.
+- Verificat: 23/23 a `proves/f6_lectura.mjs`.
+- Pendent amb API real i criteri humà: els valors de recall i precisió del lector
+  sobre novel·les de veritat. **Això no és una prova de codi, és l'ús del sistema.**
+
+#### Què canvia i què no
+
+F6 **no** converteix Booki en "novel·les coherents sense revisió humana". El que fa és
+substituir un acte de fe per un número: en lloc de confiar que el lector automàtic té
+raó, saps quin percentatge de problemes troba i quant del que diu és soroll. Amb el
+recall mesurat pots decidir tu quantes novel·les et pots saltar — i aquesta decisió,
+ara sí, està informada.
+
+---
+
 ## 6. Ordre recomanat i dependències
 
 ```
@@ -742,7 +824,8 @@ F1 (ordre visual) ─┴──> F3 (estil) ────────────�
 ```
 
 F5 depèn de F2: l'auditoria determinista s'executa dins del tancament de bloc i obre
-fils amb el mecanisme de reconciliació que F2 va reactivar.
+fils amb el mecanisme de reconciliació que F2 va reactivar. F6 depèn de F3 (n'hereta i
+en separa els criteris) i de F5 (el mostreig prioritza pels resultats de l'auditoria).
 
 F0 i F1 són independents entre elles i es poden fer en paral·lel; totes dues són prèvies a
 qualsevol prova end-to-end seriosa. F3 és la que respon directament a l'encàrrec d'excel·lència,

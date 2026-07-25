@@ -128,8 +128,9 @@ Cada capítol té un objecte `llibreRegistre.capitols[idx].ksn` amb:
   metadades i continuïtat d'escena.
 - **Un camp nou al perfil s'ha d'omplir per als quatre**, o tenir un valor genèric de
   fallback a `REGLES_ESTIL_GENERIQUES` / `HUMANITZACIO_GENERICA`.
-- `criteris_excellencia` són alhora condicions de generació i criteris d'avaluació:
-  si en canvies un, canvia el que es demana i el que es mesura.
+- `criteris_excellencia` són **només** condicions de generació. Els d'avaluació viuen a
+  `criteris_avaluacio` i no s'injecten mai al prompt (F6.1): abans eren els mateixos, i
+  això feia que l'examen mesurés el seu propi enunciat.
 - El perfil del projecte (`ESTAT._autorPerfilId`) mana sobre qualsevol detecció per
   text. Usa `resoldrePerfilAutor(text)`, mai `obtenirPerfilAutorId(text) || ...`.
 
@@ -148,6 +149,23 @@ Cada capítol té un objecte `llibreRegistre.capitols[idx].ksn` amb:
   **i** una del cas legítim que s'hi assembla.
 - El que es pot comprovar per codi no s'ha de preguntar a un LLM. L'auditoria
   s'executa abans del jutge i els seus resultats entren al seu context com a fets.
+
+## Lectura automàtica i calibratge (F6)
+
+- **`criteris_excellencia` generen; `criteris_avaluacio` avaluen. Mai es barregen.**
+  Si un criteri d'avaluació arriba al prompt del generador, l'examen passa a mesurar
+  el seu propi enunciat i el veredicte deixa de valer. La prova de F6 ho comprova als
+  quatre perfils: si n'afegeixes un, afegeix-lo a la llista correcta.
+- **El lector no pot ser el mateix model que escriu**, i quan no hi ha alternativa
+  s'ha de dir a la UI. Un lector del mateix model comparteix els punts cecs del
+  generador i tendeix a aprovar-se a si mateix.
+- **L'enquadrament del lector és adversari**, no de puntuació: se li demana que trobi
+  el pitjor amb cita, no que posi nota.
+- **Cap mètrica de calibratge es dona per bona per sota de `MOSTRA_MINIMA_CALIBRATGE`.**
+  Un recall del 100% sobre una sola lectura no vol dir res, i presentar-lo com si en
+  volgués és la manera més ràpida de perdre la confiança del sistema sencer.
+- Recall i precisió es reporten **per separat**. No inventis un índex únic: amaguen
+  coses diferents (deixar-se problemes vs. fer soroll) i es corregeixen diferent.
 
 ## Models i defaults (F4)
 

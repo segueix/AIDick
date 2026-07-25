@@ -1617,9 +1617,15 @@
       <button class="btn btn-secondary" id="btn-auditoria-determinista" onclick="mostrarAuditoriaDeterminista()">🔎 Auditoria de continuïtat</button>
       <!-- F5.5: única passada que llegeix la novel·la sencera -->
       <button class="btn btn-secondary" id="btn-verificacio-text" onclick="verificarNovellaTextComplet()">📚 Verificar contra el text complet</button>
+      <!-- F6.2: lectura hostil amb model decorrelacionat i criteris ocults al generador -->
+      <button class="btn btn-secondary" id="btn-lectura-adversaria" onclick="lecturaAdversariaNovella()">📖 Lectura adversària</button>
+      <!-- F6.3: mesura de quant es pot confiar en el lector automàtic -->
+      <button class="btn btn-secondary" id="btn-calibratge-lector" onclick="obrirCalibratgeLector()">🎯 Calibratge del lector</button>
     </div>
     <div id="auditoria-determinista-cos" class="hidden" style="margin-top:14px;"></div>
     <div id="verificacio-text-cos" class="hidden" style="margin-top:14px;"></div>
+    <div id="lectura-adversaria-cos" class="hidden" style="margin-top:14px;"></div>
+    <div id="calibratge-lector-cos" class="hidden" style="margin-top:14px;"></div>
     <div id="informe-excellencia-cos" class="hidden" style="margin-top:14px;"></div>
   </div>
   <div id="epileg-loader-wrap" class="hidden" style="padding:20px 0;border-top:1px solid var(--border);margin-top:20px;">
@@ -2865,6 +2871,18 @@ function checklistSortidaNovella() {
           ? `sense contradiccions demostrables (${aud.esdevenimentsAuditats} esdeveniments comprovats${aud.total > 0 ? `, ${aud.total} avisos menors` : ''})`
           : `${aud.altes} contradiccions d'alta gravetat — obre el diagnòstic per veure-les`
       };
+    })(),
+    // F6.3: la fila incòmoda. Sense calibratge, el veredicte del lector automàtic
+    // no té cap valor conegut, i donar el llibre per bo és un acte de fe.
+    (() => {
+      const cal = (typeof calcularCalibratge === 'function') ? calcularCalibratge(ESTAT) : { mostra: 0, fiable: false, avis: '' };
+      return {
+        nom: 'Lector automàtic calibrat',
+        ok: cal.fiable,
+        detall: cal.fiable
+          ? `recall ${Math.round(cal.recall * 100)}% · precisió ${Math.round(cal.precisio * 100)}% sobre ${cal.mostra} lectures humanes`
+          : (cal.avis || 'sense calibrar')
+      };
     })()
   ];
 }
@@ -2906,6 +2924,240 @@ function renderInformeExcellenciaHtml(resultats) {
       ${files}
     </div>`;
   }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  F6.2 — LECTOR ADVERSARI AMB DECORRELACIÓ
+//  El lector és de la mateixa família que l'escriptor, així que comparteix els
+//  seus punts cecs: un tic sistemàtic del generador és invisible per a un lector
+//  del mateix model. Es mitiga per tres vies alhora — model diferent (d'un altre
+//  proveïdor si es pot), enquadrament adversari (troba el pitjor, no puntuïs) i
+//  criteris que el generador no ha vist mai (criteris_avaluacio).
+//  No s'elimina. Per això existeix el calibratge de F6.3.
+// ═══════════════════════════════════════════════════════════
+function seleccionarModelLector(userConfig) {
+  const cfg = userConfig || USER_CONFIG || {};
+  const models = getModelConfig(cfg);
+  const escriptor = models.modelGeneracio;
+  const provEscriptor = (MODEL_REGISTRY[escriptor] || {}).proveidor || '';
+
+  const teClau = prov => {
+    if (prov === 'anthropic') return !!(ESTAT._anthropicApiKey || cfg.apiKey);
+    if (prov === 'openai')    return !!ESTAT._openaiApiKey;
+    if (prov === 'google' || prov === 'gemini') return !!ESTAT._geminiApiKey;
+    return false;
+  };
+
+  // 1r: un model d'un proveïdor diferent del que ha escrit, si hi ha clau.
+  const altres = Object.entries(MODEL_REGISTRY)
+    .filter(([id, m]) => m.proveidor !== provEscriptor && teClau(m.proveidor))
+    .sort((a, b) => (b[1].qualitat?.arquitectura || 0) - (a[1].qualitat?.arquitectura || 0));
+  if (altres.length > 0) {
+    return { model: altres[0][0], decorrelacio: 'proveïdor diferent', escriptor };
+  }
+
+  // 2n: un model diferent dins del mateix proveïdor.
+  const mateix = Object.entries(MODEL_REGISTRY)
+    .filter(([id, m]) => id !== escriptor && m.proveidor === provEscriptor)
+    .sort((a, b) => (b[1].qualitat?.arquitectura || 0) - (a[1].qualitat?.arquitectura || 0));
+  if (mateix.length > 0) {
+    return { model: mateix[0][0], decorrelacio: 'model diferent, mateix proveïdor', escriptor };
+  }
+
+  // 3r: no hi ha decorrelació possible. Es diu, no s'amaga.
+  return { model: escriptor, decorrelacio: 'CAP — mateix model que ha escrit', escriptor };
+}
+
+async function lecturaAdversariaNovella() {
+  const caps = (ESTAT._capitols_generats || []).filter(Boolean);
+  if (caps.length === 0) { toast('Encara no hi ha capítols escrits.'); return null; }
+
+  const idPerfil = obtenirAutorIdProjecte();
+  const perfil = (idPerfil && PERFILS_AUTOR[idPerfil]) || null;
+  // F6.1: criteris que el generador NO ha vist mai. Si s'usessin els mateixos
+  // que s'injecten al prompt del capítol, l'examen mesuraria el seu propi enunciat.
+  const criteris = (perfil && Array.isArray(perfil.criteris_avaluacio)) ? perfil.criteris_avaluacio : [];
+
+  const wrap = document.getElementById('lectura-adversaria-cos');
+  const btn = document.getElementById('btn-lectura-adversaria');
+  if (btn) { btn.disabled = true; btn.textContent = 'Llegint…'; }
+  if (wrap) { wrap.classList.remove('hidden'); wrap.innerHTML = '<p style="color:var(--text2);font-size:.86rem;">📖 Lectura adversària en curs…</p>'; }
+
+  const lector = seleccionarModelLector(USER_CONFIG);
+  const contextModel = (MODEL_REGISTRY[lector.model] || {}).context_max || 200000;
+  const pressupost = Math.floor(contextModel * 0.6 * 3.5);
+  let novella = caps.map((t, i) => `\n\n═══ CAPÍTOL ${i + 1} ═══\n${t}`).join('');
+  const retallada = novella.length > pressupost;
+  if (retallada) novella = novella.slice(0, pressupost);
+
+  const prompt = `Ets un lector hostil. No has escrit aquesta novel·la i no li deus res.
+La teva feina NO és puntuar-la ni dir què està bé: és trobar-hi el pitjor.
+
+Assumeix que el text té problemes i busca'ls. Sigues concret: cita el passatge.
+No acceptis com a bo res que no puguis defensar amb una cita.
+${criteris.length > 0 ? `
+PREGUNTES QUE T'HAS DE FER (respon-les totes, amb evidència):
+${criteris.map((c, i) => `${i + 1}. ${c}`).join('\n')}
+` : ''}
+Busca també, pel teu compte:
+- Frases o gestos que es repeteixin sense funció nova.
+- Personatges que sonin tots igual quan parlen.
+- Moments on la prosa explica el que hauria de mostrar.
+- Revelacions que no costin res a ningú.
+- Escenes que es podrien eliminar sense que passés res.
+
+NOVEL·LA${retallada ? ' (retallada al que cap al context)' : ''}:
+${novella}
+
+Retorna EXCLUSIVAMENT JSON vàlid:
+{"troballes":[{"capitol":3,"gravetat":"alta|mitjana|baixa","problema":"què falla, en una frase","cita":"fragment literal del text","per_que":"per què és un problema"}],
+ "criteris":[{"pregunta":"...","resposta":"...","compleix":false}],
+ "veredicte_global":"una frase sense floritures"}`;
+
+  try {
+    const raw = await callLLMMulti(
+      [{ role: 'user', content: prompt }],
+      'Ets un lector crític hostil i honest. No afalagues. Respon EXCLUSIVAMENT JSON vàlid.',
+      Object.assign({}, USER_CONFIG, { maxTokens: 4000, model: lector.model }),
+      'arquitectura'
+    );
+    const dades = parseJsonRobust(raw) || {};
+    const troballes = Array.isArray(dades.troballes) ? dades.troballes : [];
+    const resultat = {
+      quanISO: new Date().toISOString(),
+      lector: lector.model,
+      decorrelacio: lector.decorrelacio,
+      escriptor: lector.escriptor,
+      retallada,
+      troballes,
+      criteris: Array.isArray(dades.criteris) ? dades.criteris : [],
+      veredicte: String(dades.veredicte_global || '')
+    };
+    ESTAT._lecturaAdversaria = resultat;
+    renderLecturaAdversaria(resultat);
+    return resultat;
+  } catch (err) {
+    if (wrap) wrap.innerHTML = `<div class="veu-card"><div class="veu-card-nom">⚠️ Error de lectura</div><div class="veu-camp-val">${escHtml(err.message)}</div></div>`;
+    return null;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📖 Lectura adversària'; }
+  }
+}
+
+function renderLecturaAdversaria(res) {
+  const wrap = document.getElementById('lectura-adversaria-cos');
+  if (!wrap || !res) return;
+  const color = { alta: 'var(--error, #ef4444)', mitjana: 'var(--warning, #f59e0b)', baixa: 'var(--text2)' };
+  const avisDecorr = /^CAP/.test(res.decorrelacio)
+    ? `<div style="color:var(--warning, #f59e0b);font-size:.82rem;margin-bottom:8px;">⚠️ Aquesta lectura l'ha feta el mateix model que ha escrit la novel·la: comparteix els seus punts cecs i tendirà a aprovar-se a si mateix. Configura una clau d'un altre proveïdor per tenir una lectura independent.</div>`
+    : `<div style="color:var(--text2);font-size:.8rem;margin-bottom:8px;">Lector: ${escHtml(res.lector)} · decorrelació: ${escHtml(res.decorrelacio)} (escriptor: ${escHtml(res.escriptor)})</div>`;
+
+  const troballes = res.troballes.map(t => `
+    <li style="margin-bottom:10px;">
+      <span style="color:${color[t.gravetat] || 'var(--text2)'};font-weight:600;text-transform:uppercase;font-size:.72rem;">${escHtml(t.gravetat || '')}</span>
+      <span style="color:var(--text2);font-size:.75rem;"> · cap. ${escHtml(String(t.capitol || '?'))}</span><br>
+      <strong>${escHtml(t.problema || '')}</strong>
+      ${t.cita ? `<div style="color:var(--text2);font-style:italic;font-size:.82rem;margin:3px 0;">«${escHtml(String(t.cita).slice(0, 260))}»</div>` : ''}
+      ${t.per_que ? `<div style="font-size:.82rem;">${escHtml(t.per_que)}</div>` : ''}
+    </li>`).join('');
+
+  const criteris = res.criteris.map(c => `
+    <li style="margin-bottom:6px;">${c.compleix ? '✅' : '❌'} <strong>${escHtml(c.pregunta || '')}</strong>
+      <div style="color:var(--text2);font-size:.82rem;">${escHtml(c.resposta || '')}</div></li>`).join('');
+
+  wrap.classList.remove('hidden');
+  wrap.innerHTML = `<div class="veu-card">
+    <div class="veu-card-nom">📖 Lectura adversària — ${res.troballes.length} troballes${res.retallada ? ' (lectura parcial)' : ''}</div>
+    ${avisDecorr}
+    ${res.veredicte ? `<div class="veu-camp-val" style="margin-bottom:10px;"><strong>Veredicte:</strong> ${escHtml(res.veredicte)}</div>` : ''}
+    ${criteris ? `<div style="margin-bottom:10px;"><div class="veu-camp-label">Criteris d'avaluació (ocults al generador)</div><ul style="padding-left:18px;margin-top:6px;">${criteris}</ul></div>` : ''}
+    ${troballes ? `<ul style="padding-left:18px;">${troballes}</ul>` : '<div class="veu-camp-val">Cap troballa reportada. Desconfia: calibra-ho.</div>'}
+    <div class="btn-row" style="margin-top:12px;">
+      <button class="btn btn-secondary" style="padding:5px 12px;font-size:.8rem;" onclick="obrirCalibratgeLector()">🎯 Calibrar amb una lectura teva</button>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  F6.3 — CALIBRATGE DEL LECTOR
+//  No serveix per corregir la novel·la que tens al davant: serveix per saber si
+//  et pots creure els veredictes de les novel·les que NO llegiràs.
+// ═══════════════════════════════════════════════════════════
+function obrirCalibratgeLector() {
+  const wrap = document.getElementById('calibratge-lector-cos');
+  if (!wrap) return;
+  wrap.classList.remove('hidden');
+  renderCalibratgeLector();
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function unitatsLectorPerCalibrar() {
+  const lectura = ESTAT._lecturaAdversaria || { troballes: [] };
+  const perCap = new Map();
+  (lectura.troballes || []).forEach(t => {
+    const c = Number(t.capitol) || 0;
+    perCap.set(c, (perCap.get(c) || 0) + 1);
+  });
+  return (ESTAT._capitols_generats || [])
+    .map((txt, i) => txt ? { unitat: `cap-${i + 1}`, capitol: i + 1, troballes: perCap.get(i + 1) || 0 } : null)
+    .filter(Boolean);
+}
+
+function renderCalibratgeLector() {
+  const wrap = document.getElementById('calibratge-lector-cos');
+  if (!wrap) return;
+  const cal = calcularCalibratge(ESTAT);
+  const suggerides = suggerirUnitatsPerLlegir(ESTAT, unitatsLectorPerCalibrar(), 3);
+  const pct = v => v === null ? '—' : `${Math.round(v * 100)}%`;
+
+  const observacions = ((ESTAT._calibratgeLector || {}).observacions || []).map(o =>
+    `<li style="margin-bottom:4px;">${escHtml(o.unitat)} — ${o.confirmades} confirmades · ${o.descartades} descartades · ${o.perdudes} que se li van escapar</li>`).join('');
+
+  const files = suggerides.map(s => `
+    <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;">
+      <div style="font-weight:600;">${escHtml(s.unitat)}</div>
+      <div style="color:var(--text2);font-size:.8rem;margin-bottom:6px;">${escHtml(s.motiu)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <label style="font-size:.78rem;">Encerts<br><input type="number" min="0" value="0" id="cal-${s.unitat}-ok" style="width:70px;padding:4px;"></label>
+        <label style="font-size:.78rem;">Soroll<br><input type="number" min="0" value="0" id="cal-${s.unitat}-no" style="width:70px;padding:4px;"></label>
+        <label style="font-size:.78rem;">Se li ha escapat<br><input type="number" min="0" value="0" id="cal-${s.unitat}-perd" style="width:70px;padding:4px;"></label>
+        <button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;" onclick="desarObservacioCalibratge('${s.unitat}')">Desar</button>
+      </div>
+    </div>`).join('');
+
+  wrap.innerHTML = `<div class="veu-card">
+    <div class="veu-card-nom">🎯 Calibratge del lector automàtic</div>
+    <div class="veu-camp-val" style="margin-bottom:10px;">
+      Llegeix a mà les unitats suggerides i digues, de les troballes del lector, quantes eren reals,
+      quantes eren soroll i quants problemes se li van escapar. Això no arregla aquest llibre:
+      et diu si et pots refiar del lector en els llibres que no llegiràs.
+    </div>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px;">
+      <div><div class="veu-camp-label">Troba de debò (recall)</div><div style="font-size:1.3rem;font-weight:700;">${pct(cal.recall)}</div></div>
+      <div><div class="veu-camp-label">Encerta quan avisa (precisió)</div><div style="font-size:1.3rem;font-weight:700;">${pct(cal.precisio)}</div></div>
+      <div><div class="veu-camp-label">Mostra</div><div style="font-size:1.3rem;font-weight:700;">${cal.mostra}/${cal.mostraMinima}</div></div>
+    </div>
+    ${cal.avis ? `<div style="color:${cal.fiable ? 'var(--warning, #f59e0b)' : 'var(--text2)'};font-size:.85rem;margin-bottom:10px;">⚠️ ${escHtml(cal.avis)}</div>`
+               : `<div style="color:var(--ok, #2eb67d);font-size:.85rem;margin-bottom:10px;">✅ Mostra suficient i mètriques acceptables.</div>`}
+    ${files ? `<div class="veu-camp-label" style="margin-bottom:6px;">Suggerides per llegir</div>${files}` : '<div class="veu-camp-val">Totes les unitats disponibles ja estan calibrades.</div>'}
+    ${observacions ? `<div class="veu-camp-label" style="margin-top:10px;">Ja calibrades</div><ul style="padding-left:18px;">${observacions}</ul>` : ''}
+  </div>`;
+}
+
+function desarObservacioCalibratge(unitat) {
+  const val = sufix => Number((document.getElementById(`cal-${unitat}-${sufix}`) || {}).value) || 0;
+  afegirObservacioCalibratge(ESTAT, {
+    unitat,
+    confirmades: val('ok'),
+    descartades: val('no'),
+    perdudes: val('perd')
+  });
+  const cal = calcularCalibratge(ESTAT);
+  toast(cal.fiable
+    ? `Calibratge desat. Recall ${Math.round(cal.recall * 100)}%, precisió ${Math.round(cal.precisio * 100)}%.`
+    : `Calibratge desat (mostra ${cal.mostra}/${cal.mostraMinima}).`);
+  renderCalibratgeLector();
+  if (typeof renderPanellEtapes === 'function') renderPanellEtapes();
 }
 
 // F5.2 — Vista de l'auditoria determinista. Zero crides a l'LLM.
