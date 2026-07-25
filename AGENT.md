@@ -185,7 +185,17 @@ Cada capítol té un objecte `llibreRegistre.capitols[idx].ksn` amb:
   Per afegir un model: primer entra al registre (preu, context, qualitat) i només
   després pot ser un default. `validarDefaultsModels()` avisa a l'arrencada si un
   default no és al registre.
-- `PROVIDER_DEFAULTS` només aporta URLs d'API; els models en deriva.
+- `PROVIDER_DEFAULTS` només aporta URLs d'API; els models els llegeix amb un
+  **getter**, mai amb una còpia. `models_openai.js` muta `MODELS_PER_PROVEIDOR` a
+  `DOMContentLoaded`, i una còpia feta en temps de parseig queda congelada amb el
+  model antic: la font única deixa de ser-ho sense que res falli visiblement.
+- `validarDefaultsModels()` comprova dues coses: que tot ID existeixi al registre
+  **i** que `PROVIDER_DEFAULTS` no s'hagi desincronitzat de la font única. La
+  primera sola no detectava la deriva, perquè el model obsolet també era al registre.
+- **Els mòduls es carreguen amb `<script src>` directe a `index.html`.** No usis
+  `document.write` per injectar-los: els navegadors bloquegen els scripts injectats
+  així quan són cross-origin i la connexió és lenta, i l'app deixa d'arrencar sense
+  cap error clar. Si afegeixes un mòdul, afegeix-hi també l'etiqueta.
 
 ## Proves
 

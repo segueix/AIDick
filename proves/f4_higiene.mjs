@@ -41,6 +41,16 @@ check('F4 · Les funcions mortes ja no es defineixen', morts.length === 0, morts
 check('F4.4 · nkg_biblia.html ja no forma part del projecte',
   !existsSync(ARREL + 'nkg_biblia.html'), '');
 
+// Els mòduls s'han de carregar amb etiquetes directes: els scripts injectats amb
+// document.write els bloquegen els navegadors quan són cross-origin i la
+// connexió és lenta, i llavors l'app no arrenca sense donar cap error clar.
+check('Cap mòdul es carrega amb document.write',
+  !/document\.write\s*\([^)]*<script/i.test(html), '');
+const moduls = ['perfils_autor_base.js', 'models_openai.js', 'ui_fixes.js', 'nkg_core.js']
+  .filter(m => !new RegExp(`<script src="${m.replace('.', '\\.')}"`).test(html));
+check('Tots els mòduls es carreguen amb <script src> directe',
+  moduls.length === 0, moduls.join(', ') || '4 mòduls');
+
 const taulesHardcodades = [
   /const MODEL_DEFAULTS = \{/.test(senseComentaris) && 'MODEL_DEFAULTS',
   /gemini-1\.5-pro/.test(senseComentaris) && 'gemini-1.5-pro',
@@ -60,6 +70,12 @@ await page.goto(URL_BOOKI, { waitUntil: 'load' });
 await page.waitForTimeout(1200);
 check('Càrrega en fred sense pageerror', pageErrors.length === 0, pageErrors.join(' | ') || 'cap');
 
+// Cal capturar-ho ARA: més avall hi ha proves que provoquen aquests avisos a
+// posta, i comptar-los com a avisos d'arrencada seria un fals negatiu.
+const avisosArrencada = avisos.filter(a => /Invariants de jutge|Models per defecte desalineats/.test(a));
+check('Els self-checks d\'arrencada passen nets',
+  avisosArrencada.length === 0, avisosArrencada.join(' | ') || 'cap avís');
+
 // F4.2 — tot ID per defecte ha d'existir al registre de models
 const models = await page.evaluate(() => ({
   problemes: validarDefaultsModels(),
@@ -78,6 +94,33 @@ const coherents = await page.evaluate(() =>
   ['anthropic', 'openai', 'gemini'].filter(p => PROVIDER_DEFAULTS[p].model !== MODELS_PER_PROVEIDOR[p].generacio));
 check('F4.2 · PROVIDER_DEFAULTS deriva de la font única', coherents.length === 0,
   coherents.join(', ') || `anthropic=${models.providerDefaults.anthropic}, openai=${models.providerDefaults.openai}, gemini=${models.providerDefaults.gemini}`);
+
+// Regressió: models_openai.js muta MODELS_PER_PROVEIDOR a DOMContentLoaded.
+// Amb una còpia feta en temps de parseig, PROVIDER_DEFAULTS quedava congelat
+// amb el model antic i la font única deixava de ser-ho.
+const mutacioTardana = await page.evaluate(() => {
+  const previ = MODELS_PER_PROVEIDOR.openai.generacio;
+  MODELS_PER_PROVEIDOR.openai = { ...MODELS_PER_PROVEIDOR.openai, generacio: 'model-injectat-tard' };
+  const segueix = PROVIDER_DEFAULTS.openai.model;
+  const detectat = validarDefaultsModels();
+  MODELS_PER_PROVEIDOR.openai = { ...MODELS_PER_PROVEIDOR.openai, generacio: previ };
+  return { segueix, detectat, restaurat: PROVIDER_DEFAULTS.openai.model === previ };
+});
+check('F4.2 · PROVIDER_DEFAULTS segueix la font quan es muta després de carregar',
+  mutacioTardana.segueix === 'model-injectat-tard' && mutacioTardana.restaurat,
+  `→ ${mutacioTardana.segueix}`);
+
+// I si algú torna a copiar el valor en lloc de llegir-lo, el validador ho ha de dir.
+const detectaDivergencia = await page.evaluate(() => {
+  const original = Object.getOwnPropertyDescriptor(PROVIDER_DEFAULTS.openai, 'model');
+  Object.defineProperty(PROVIDER_DEFAULTS.openai, 'model', { value: 'gpt-obsolet', configurable: true });
+  const problemes = validarDefaultsModels();
+  Object.defineProperty(PROVIDER_DEFAULTS.openai, 'model', original);
+  return problemes;
+});
+check('F4.2 · El validador detecta la divergència que abans se li escapava',
+  detectaDivergencia.some(p => /PROVIDER_DEFAULTS\.openai/.test(p)),
+  detectaDivergencia.join(' | ') || 'cap problema detectat');
 
 const presets = await page.evaluate(() => {
   const fora = [];
@@ -111,10 +154,6 @@ const limit = await page.evaluate(() => {
 });
 check('F4.3 · El límit del text es deriva del context del model',
   limit.limit > 6000, `${limit.limit} caràcters (context ${limit.ctx})`);
-
-// Els self-checks d'arrencada no han de queixar-se de res
-const cap = avisos.filter(a => /Invariants de jutge|Models per defecte desalineats/.test(a));
-check('Els self-checks d\'arrencada passen nets', cap.length === 0, cap.join(' | ') || 'cap avís');
 
 await browser.close();
 const fallits = results.filter(r => !r.ok);
