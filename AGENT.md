@@ -105,6 +105,18 @@ Cada capítol té un objecte `llibreRegistre.capitols[idx].ksn` amb:
   Si s'afegeix un error nou a `detectarFaltantsNKG` o `detectarFaltantsDramaNKG`, cal
   afegir-hi també el mapatge a `obtenirAccioGeneracioPerFaltant` i el pas corresponent
   a `autocompletarNKGSilent`.
+- **Els noms de camp dels validadors han de coincidir amb els que generen els prompts.**
+  Aquesta ha estat la causa de dos blocants permanents: `teTramaPrincipalClara` no
+  acceptava `conflicte_central` i `teSubtramesConnectades` no acceptava
+  `personatges_implicats`, que són exactament els camps que produeix el prompt de
+  trames. Si canvies l'esquema d'un prompt, comprova qui el valida.
+- **Cap funció de merge parcial pot escriure sobre entitats que no surten a la
+  resposta.** `mergeObjectiusSecretsNKG` assignava `[]` a tothom qui no fos al tros
+  actual i, com que es crida per trossos de 2, només sobrevivia l'últim.
+- **Tot blocant del gate ha de tenir un fallback local determinista**, no només una
+  via LLM: si la crida falla, l'usuari no pot quedar-se davant d'una llista de
+  problemes per resoldre a mà. `completarMotorsDramaticsNKG` itera i, si el faltant
+  hi segueix, el construeix des del NKG.
 - **Cap fallback pot generar un estat invàlid.** Si una funció de fallback construeix
   una estructura que després es valida (p. ex. `crearSceneContractFallbackLocal` contra
   `detectarFaltantsSceneContract`), ha d'omplir tots els camps obligatoris.
