@@ -35,8 +35,11 @@ cap crida a funció inexistent. El problema és un altre, i és més greu:
    registre didàctic de Castaneda. Els `criteris_excellencia` de cada autor existeixen però
    **només s'usen per avaluar a posteriori, mai per generar**.
 
-El pla de la secció 5 ataca aquests quatre fronts en 5 fases, amb la F0 (desbloqueig) i la F1
-(ordre visual) fent-se en el mateix dia de feina.
+El pla de la secció 5 ataca aquests quatre fronts en 5 fases.
+
+> **Estat**: **F0 (desbloqueig) i F1 (ordre visual) ja estan implementades i verificades**
+> amb `proves/f0_f1.mjs` (15/15). Els punts 1 i 2 d'aquest resum, doncs, descriuen el
+> problema tal com era; els punts 3 i 4 continuen oberts (F2, F3 i F4 pendents).
 
 ---
 
@@ -291,7 +294,7 @@ capítols llargs i tardans, el model deriva.
 Cinc fases. La F0 i la F1 són el mínim per tenir una app utilitzable; la F2–F4 són el camí a
 l'excel·lència. Cada fase té criteri de fet verificable.
 
-### F0 — Desbloquejar el flux *(mig dia · imprescindible)*
+### F0 — Desbloquejar el flux ✅ FETA
 
 L'objectiu és que un projecte nou pugui arribar al capítol 1 pel camí oficial, sense culs-de-sac.
 
@@ -338,13 +341,32 @@ preservant `intensity_level`, `ganxo_final` i els fils per capítol.
 **F0.7 · Guardes de null** a `showCard/hideCard/showLoader/hideLoader/showBtn`
 (`index.html:1686-1694`): `document.getElementById(id)?.classList…` i un `console.warn` amb l'id.
 
+> **Implementat.** Verificat amb `proves/f0_f1.mjs` (Chromium real sobre `index.html`).
+>
+> Els passos F0.1 i F0.2 s'han unificat en una funció idempotent nova,
+> `completarMotorsDramaticsNKG()`, que cobreix exactament els blocants de
+> `detectarFaltantsDramaNKG`: trames, objectius/secrets i contractes d'escena.
+>
+> **Desviació respecte del pla:** F0.1 proposava encadenar `generarObjectiusSecrets()`
+> just després de `confirmarPersonatgesNou()` (b3). No serveix: en aquell punt
+> `_estructuraCapitols` encara és buit i els objectius porten `actiu_des_de_capitol` i
+> `resolt_a_capitol`, que necessiten la numeració de capítols. El ganxo s'ha posat al
+> final de `iniciarEscaletaSeqNou()` (b6), quan ja hi ha personatges, món, estructura i
+> escaleta. Els mateixos passos queden també disponibles com a botons individuals
+> (F0.3) i dins de la compleció automàtica (F0.4), de manera que el projecte es pot
+> recuperar encara que la passada de b6 falli.
+>
+> F0.6 s'ha resolt reconstruint `llibreRegistre` des de `_estructuraCapitols` (font de
+> veritat de la planificació) en lloc de fusionar-lo, cosa que també repara els
+> projectes que ja havien perdut les dades.
+
 *Criteri de fet F0*: crear un projecte nou de 10 capítols amb cada un dels 4 perfils i arribar al
 capítol 1 **sense tocar cap card de les fases 7–22 manualment**, amb el checklist de faltants en
 verd.
 
 ---
 
-### F1 — Arreglar l'ordre visual *(mig dia · imprescindible)*
+### F1 — Arreglar l'ordre visual ✅ FETA
 
 **F1.1 · Fer cancel·lable l'efecte d'escriptura.** *(la correcció clau)*
 A `efecteEscripturaHTML()` (`index.html:2489`):
@@ -399,6 +421,24 @@ semblar un error.
 ("Escriure capítols" → "Escaleta per escenes"), i canviar "Anar al pas 17"/"Anar al pas 21" per
 "Completar mapa i regles"/"Completar POV i cronologia" — el número de pas ja no vol dir res al
 flux nou.
+
+> **Implementat.** Verificat amb `proves/f0_f1.mjs`.
+>
+> La cancel·lació (F1.1) es fa amb un `Symbol` per contenidor a `_TOKENS_ESCRIPTURA`:
+> quan arriba un efecte nou sobre el mateix element, el bucle anterior mor al següent
+> tic. La prova llança el capítol N (llarg) i el N+1 a sobre i comprova que al final
+> no queda cap caràcter del primer.
+>
+> **Detall que el pla no preveia:** el pressupost de temps de F1.3 no n'hi havia prou
+> per si sol. Amb 18.000 caràcters i un `setTimeout` per lletra, el mínim de 4 ms que
+> els navegadors imposen als temporitzadors encadenats manté la durada per sobre d'un
+> minut per molt baix que sigui el `msPerChar`. Per això l'escriptura ara va **per
+> lots**: es calculen els caràcters per tic perquè el text sencer trigui com a màxim 8 s
+> a ~60 fps. Mesurat: 19.200 caràcters en 8,2 s (abans ~54 s) i uns 500 temporitzadors
+> en lloc de 18.000.
+>
+> S'ha afegit també la casella «Efecte de màquina d'escriure» a la configuració, per
+> desactivar-lo del tot en novel·les llargues.
 
 *Criteri de fet F1*: generar 4 capítols seguits en mode automàtic i verificar per gravació de
 pantalla que (a) mai apareix text de dos capítols barrejat, (b) la vista queda sempre al títol del

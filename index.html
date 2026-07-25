@@ -663,6 +663,14 @@
       </label>
     </div>
 
+    <div class="checkbox-row" onclick="document.getElementById('config-efecte-escriptura').click()">
+      <input type="checkbox" id="config-efecte-escriptura" checked onclick="event.stopPropagation()">
+      <label for="config-efecte-escriptura">
+        <strong>Efecte de màquina d'escriure</strong> — mostra el capítol lletra a lletra
+        <small style="display:block;color:var(--text2);font-size:.78rem;margin-top:2px;">Desactiva'l per veure cada capítol complet de cop (recomanat en novel·les llargues)</small>
+      </label>
+    </div>
+
     <label class="field-label" for="config-target-qualitat" style="margin-top:10px;">Qualitat objectiu del jutge (0-100)</label>
     <input type="number" id="config-target-qualitat" min="60" max="98" step="1" value="85" placeholder="85">
     <small style="display:block;color:var(--text2);font-size:.78rem;margin-top:4px;">El generador iterarà fins assolir aquest llindar (amb límit de seguretat d'intents).</small>
@@ -1439,7 +1447,7 @@
     <div id="estructura-cos"></div>
     <div id="estimacio-cost" style="white-space:pre;font-family:monospace;font-size:.82rem;color:var(--text2);background:var(--surface2);border-radius:8px;padding:12px 16px;margin:16px 0;border-left:3px solid var(--accent2);display:block;"></div>
     <div class="btn-row" style="margin-top:24px;">
-      <button class="btn btn-primary" onclick="iniciarFaseEscaleta()">📖 Escriure capítols <span class="badge-model badge-sonnet">Sonnet</span></button>
+      <button class="btn btn-primary" onclick="iniciarFaseEscaleta()">📋 Escaleta per escenes <span class="badge-model badge-sonnet">Sonnet</span></button>
     </div>
   </div>
 </div>
@@ -1683,15 +1691,33 @@ function escHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function showCard(id)  { document.getElementById(id).classList.remove('hidden'); }
-function hideCard(id)  { document.getElementById(id).classList.add('hidden'); }
-function showLoader(n) { document.getElementById('loader-' + n).classList.add('visible'); }
+// F0.7: aquestes cinc utilitats feien getElementById(...).classList sense guarda.
+// Un id inexistent llançava TypeError i tallava el flux en sec enmig d'una fase;
+// ara avisa per consola i continua.
+function _elFlux(id, origen) {
+  const el = document.getElementById(id);
+  if (!el) console.warn(`[${origen}] element "${id}" inexistent al DOM.`);
+  return el;
+}
+function showCard(id)  { _elFlux(id, 'showCard')?.classList.remove('hidden'); }
+function hideCard(id)  { _elFlux(id, 'hideCard')?.classList.add('hidden'); }
+function showLoader(n) { _elFlux('loader-' + n, 'showLoader')?.classList.add('visible'); }
 function hideLoader(n) {
-  document.getElementById('loader-' + n).classList.remove('visible');
+  _elFlux('loader-' + n, 'hideLoader')?.classList.remove('visible');
   // Autoguardat cada cop que un procés de la IA acaba
   guardarProjecteLocal();
 }
-function showBtn(id)   { document.getElementById(id).classList.remove('hidden'); }
+function showBtn(id)   { _elFlux(id, 'showBtn')?.classList.remove('hidden'); }
+
+// F1.6: tota transició de flux ha de deixar la vista al destí. Abans hi havia
+// showCard() sense scroll (iniciarFase11 → fase-22) i el botó semblava mort.
+function mostrarIAnarA(id, opcions = {}) {
+  showCard(id);
+  const ancora = opcions.ancora || id;
+  setTimeout(() => {
+    document.getElementById(ancora)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, opcions.retardMs === undefined ? 100 : opcions.retardMs);
+}
 
 // --- GESTOR DE FLUX AUTOMÀTIC (CUA RESILIENT) ---
 const GestorFlux = {
@@ -2486,48 +2512,105 @@ function restaurarInterficieDesDeEstat() {
 }
 
 // --- EFECTE D'ESCRIPTURA EN VIU ---
+// F1.1: cada contenidor té un token viu. Quan s'inicia un efecte nou sobre el
+// mateix element (p. ex. arriba el capítol N+1 mentre encara s'escriu el N),
+// el token canvia i el bucle anterior mor al següent tic en lloc de continuar
+// afegint text dins del mateix contenidor i barrejar dos capítols.
+const _TOKENS_ESCRIPTURA = new Map();
+
+// F1.3: pressupost de temps total en lloc de ms per caràcter fixos. Un capítol
+// de 18.000 caràcters es pintava en ~54 s i programava 18.000 timers; ara es
+// pinta en 8 s com a màxim i en lots, mantenint el ritme dels textos curts.
+const PRESSUPOST_MS_ESCRIPTURA = 8000;
+const MS_PER_TIC_ESCRIPTURA    = 16; // ~60 fps
+
+function efecteEscripturaActiu() {
+  return !(USER_CONFIG && USER_CONFIG.efecteEscriptura === false);
+}
+
 async function efecteEscripturaHTML(elementId, htmlContent, msPerChar = 3) {
   const el = document.getElementById(elementId);
-  if (!el) return;
+  if (!el) { console.warn(`[efecteEscripturaHTML] element "${elementId}" inexistent.`); return; }
+
+  // Invalida qualsevol efecte anterior sobre aquest mateix contenidor.
+  const token = Symbol(elementId);
+  _TOKENS_ESCRIPTURA.set(elementId, token);
+  const viu = () => _TOKENS_ESCRIPTURA.get(elementId) === token;
+
+  // Si l'usuari ha desactivat l'efecte, pintem de cop.
+  if (!efecteEscripturaActiu()) {
+    el.innerHTML = htmlContent;
+    _TOKENS_ESCRIPTURA.delete(elementId);
+    return;
+  }
+
   el.innerHTML = '';
 
   // Creem un element temporal per parsejar les etiquetes (com <p>, <strong>...)
   const temp = document.createElement('div');
   temp.innerHTML = htmlContent;
 
+  // Càlcul del lot: nombre de caràcters per tic perquè el text sencer trigui
+  // com a màxim PRESSUPOST_MS_ESCRIPTURA.
+  const totalChars   = (temp.textContent || '').length || 1;
+  const pressupost   = Math.min(PRESSUPOST_MS_ESCRIPTURA, totalChars * msPerChar);
+  const tics         = Math.max(1, Math.min(totalChars, Math.round(pressupost / MS_PER_TIC_ESCRIPTURA)));
+  const charsPerTic  = Math.max(1, Math.ceil(totalChars / tics));
+
+  const scrollContainer = el.closest('.conte-reader') || el;
+  let scrollProgramat = false;
+  // F1.4: el scroll es demanava a cada caràcter i forçava un reflow per lletra.
+  // Ara es fa com a molt un cop per frame.
+  const programarScroll = () => {
+    if (scrollProgramat) return;
+    scrollProgramat = true;
+    requestAnimationFrame(() => {
+      scrollProgramat = false;
+      if (!viu()) return;
+      if (scrollContainer.scrollHeight - scrollContainer.scrollTop > scrollContainer.clientHeight) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    });
+  };
+
+  // Si l'usuari clica l'element, accelera l'escriptura (salta l'efecte)
+  let saltarEfecte = false;
+  el.onclick = () => { saltarEfecte = true; };
+
   async function typeNode(node, parent) {
+    // F1.2: la comprovació de "saltar" i la de cancel·lació també viuen aquí
+    // dins, no només al bucle exterior; abans un paràgraf llarg havia d'acabar
+    // d'escriure's sencer abans de reaccionar al clic.
+    if (!viu() || saltarEfecte) return;
+
     if (node.nodeType === Node.TEXT_NODE) {
       const text = node.textContent;
-      for (let i = 0; i < text.length; i++) {
-        parent.appendChild(document.createTextNode(text[i]));
-        // Scroll automàtic suau cap avall mentre escriu
-        const scrollContainer = el.closest('.conte-reader') || el;
-        if (scrollContainer.scrollHeight - scrollContainer.scrollTop > scrollContainer.clientHeight) {
-            scrollContainer.scrollTop = scrollContainer.scrollHeight;
-        }
-        await new Promise(r => setTimeout(r, msPerChar));
+      for (let i = 0; i < text.length; i += charsPerTic) {
+        if (!viu() || saltarEfecte) return;
+        parent.appendChild(document.createTextNode(text.slice(i, i + charsPerTic)));
+        programarScroll();
+        await new Promise(r => setTimeout(r, MS_PER_TIC_ESCRIPTURA));
       }
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       const clone = node.cloneNode(false); // Copia l'etiqueta buida
       parent.appendChild(clone);
       for (let i = 0; i < node.childNodes.length; i++) {
         await typeNode(node.childNodes[i], clone);
+        if (!viu() || saltarEfecte) return;
       }
     }
   }
 
-  // Si l'usuari clica l'element, accelera l'escriptura (salta l'efecte)
-  let saltarEfecte = false;
-  el.onclick = () => { saltarEfecte = true; };
-
   for (let i = 0; i < temp.childNodes.length; i++) {
-    if (saltarEfecte) {
-      el.innerHTML = htmlContent;
-      break;
-    }
+    if (!viu()) return; // un efecte més nou ha pres el contenidor: sortim sense tocar res
+    if (saltarEfecte) break;
     await typeNode(temp.childNodes[i], el);
   }
-  el.onclick = null; // Netegem l'esdeveniment
+
+  if (!viu()) return;
+  if (saltarEfecte) el.innerHTML = htmlContent;
+  el.onclick = null; // Netegem l'esdeveniment (només si encara som l'efecte actiu)
+  _TOKENS_ESCRIPTURA.delete(elementId);
 }
 
 function toast(msg) {
@@ -3233,6 +3316,9 @@ function guardarIComencar() {
     const modelGeneracioInput    = document.getElementById('config-model-generacio').value.trim();
     const modelArquitecturaInput = document.getElementById('config-model-arquitectura').value.trim();
     const fluxAutomatic     = document.getElementById('config-flux-automatic').checked;
+    // F1.3: l'efecte d'escriptura és opcional (per defecte actiu).
+    const efecteEscripturaEl = document.getElementById('config-efecte-escriptura');
+    const efecteEscriptura   = efecteEscripturaEl ? efecteEscripturaEl.checked : true;
     const targetQualitatEl  = document.getElementById('config-target-qualitat');
     const targetQualitatRaw = targetQualitatEl ? Number(targetQualitatEl.value) : 85;
     const targetQualitat    = Math.max(60, Math.min(98, Number.isFinite(targetQualitatRaw) ? targetQualitatRaw : 85));
@@ -3279,6 +3365,7 @@ function guardarIComencar() {
         arquitecte: modelArquitectura
       },
       fluxAutomatic,
+      efecteEscriptura,
       targetQualitat,
       delayEntreCapitolsMs
     };
@@ -3336,6 +3423,9 @@ function actualitzarConfiguracioActiva() {
     const modelGeneracioInput    = document.getElementById('config-model-generacio').value.trim();
     const modelArquitecturaInput = document.getElementById('config-model-arquitectura').value.trim();
     const fluxAutomatic     = document.getElementById('config-flux-automatic').checked;
+    // F1.3: l'efecte d'escriptura és opcional (per defecte actiu).
+    const efecteEscripturaEl = document.getElementById('config-efecte-escriptura');
+    const efecteEscriptura   = efecteEscripturaEl ? efecteEscripturaEl.checked : true;
     const targetQualitatEl  = document.getElementById('config-target-qualitat');
     const targetQualitatRaw = targetQualitatEl ? Number(targetQualitatEl.value) : 85;
     const targetQualitat    = Math.max(60, Math.min(98, Number.isFinite(targetQualitatRaw) ? targetQualitatRaw : 85));
@@ -3369,7 +3459,7 @@ function actualitzarConfiguracioActiva() {
       modelGeneracio, modelArquitectura, modelDraft,
       modelArquitecte: modelArquitectura,
       models: { draft: modelDraft, generacio: modelGeneracio, arquitecte: modelArquitectura },
-      fluxAutomatic, targetQualitat, delayEntreCapitolsMs
+      fluxAutomatic, efecteEscriptura, targetQualitat, delayEntreCapitolsMs
     };
 
     if (typeof poblarSelectorsModels === 'function') poblarSelectorsModels();
@@ -4058,8 +4148,10 @@ async function confirmarFinalNou() {
     veritat_que_es_revela:  final.veritat || ''
   };
 
-  showCard('fase-b2');
-  setTimeout(() => document.getElementById('fase-b2')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  // F1.7: ESTAT.fase només s'assignava a 'b1'; el botó "Continuar fonaments"
+  // del panell d'etapes tornava sempre al primer pas en lloc del pas actual.
+  ESTAT.fase = 'b2';
+  mostrarIAnarA('fase-b2');
   showLoader('b2');
   try {
     const endingText = `${final.titol || ''}\nEmoció: ${final.emocio || ''}\nProtagonista: ${final.protagonista || ''}\nImatge: ${final.imatge || ''}\nVeritat: ${final.veritat || ''}\nTipus: ${final.tipus || ''}`;
@@ -4234,8 +4326,10 @@ async function confirmarTemaNou() {
     toast('Avís: no s\'ha pogut generar la sinopsi: ' + err.message);
   }
 
-  showCard('fase-b3');
-  setTimeout(() => document.getElementById('fase-b3')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  // F1.7: ESTAT.fase només s'assignava a 'b1'; el botó "Continuar fonaments"
+  // del panell d'etapes tornava sempre al primer pas en lloc del pas actual.
+  ESTAT.fase = 'b3';
+  mostrarIAnarA('fase-b3');
   showLoader('b3');
   try {
     const personatgesText = (ESTAT._prefetchNouFlux && ESTAT._prefetchNouFlux.personatgesText)
@@ -4414,8 +4508,10 @@ async function confirmarPersonatgesNou() {
   ).join('; ');
   ESTAT._arcsResumitNou = arcsResumit;
 
-  showCard('fase-b4');
-  setTimeout(() => document.getElementById('fase-b4')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  // F1.7: ESTAT.fase només s'assignava a 'b1'; el botó "Continuar fonaments"
+  // del panell d'etapes tornava sempre al primer pas en lloc del pas actual.
+  ESTAT.fase = 'b4';
+  mostrarIAnarA('fase-b4');
   showLoader('b4');
   try {
     const monText = (ESTAT._prefetchNouFlux && ESTAT._prefetchNouFlux.monText)
@@ -4562,8 +4658,10 @@ async function confirmarMonNou() {
     ESTAT.bibliaNarrativa.llocs_importants = [{ nom: llocMatch[1].trim(), descripcio: monTriat.substring(0, 200) }];
   }
 
-  showCard('fase-b5');
-  setTimeout(() => document.getElementById('fase-b5')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  // F1.7: ESTAT.fase només s'assignava a 'b1'; el botó "Continuar fonaments"
+  // del panell d'etapes tornava sempre al primer pas en lloc del pas actual.
+  ESTAT.fase = 'b5';
+  mostrarIAnarA('fase-b5');
   showLoader('b5');
   try {
     const estructuraText = (ESTAT._prefetchNouFlux && ESTAT._prefetchNouFlux.estructuraText)
@@ -4741,8 +4839,10 @@ async function confirmarEstructuraNou() {
 
   nkgInicialitzar();
 
-  showCard('fase-b6');
-  setTimeout(() => document.getElementById('fase-b6')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  // F1.7: ESTAT.fase només s'assignava a 'b1'; el botó "Continuar fonaments"
+  // del panell d'etapes tornava sempre al primer pas en lloc del pas actual.
+  ESTAT.fase = 'b6';
+  mostrarIAnarA('fase-b6');
   showLoader('b6');
   await iniciarEscaletaSeqNou();
 }
@@ -4858,10 +4958,21 @@ function obtenirAccioGeneracioPerFaltant(faltant = '') {
   if (f.includes('backstory') || f.includes('graf de relacions')) return { id: 'backstory_relacions', label: 'Generar' };
   if (f.includes('trets immutables')) return { id: 'trets_immutables', label: 'Generar' };
   if (f.includes('objectes narratius')) return { id: 'objectes_narratius', label: 'Generar' };
-  if (f.includes('mapa de llocs') || f.includes('regles del món')) return { id: 'llocs_regles', label: 'Anar al pas 17' };
-  if (f.includes('tipus de perspectiva') || f.includes('pov per capítol') || f.includes('cronologia per capítol')) return { id: 'perspectiva_cronologia', label: 'Anar al pas 21' };
+  if (f.includes('mapa de llocs') || f.includes('regles del món')) return { id: 'llocs_regles', label: 'Completar mapa i regles' };
+  if (f.includes('tipus de perspectiva') || f.includes('pov per capítol') || f.includes('cronologia per capítol')) return { id: 'perspectiva_cronologia', label: 'Completar POV i cronologia' };
   if (f.includes('contractes d’escena') || f.includes('contractes d\'escena') || f.includes('scene contracts') || f.includes('conflicte dramàtic') || f.includes('contracte d’escena')) return { id: 'scene_contracts', label: 'Completar' };
   if (f.includes('exemples narratius de veu') || f.includes('vocabulari recurrent')) return { id: 'veu_exemples', label: 'Generar' };
+  // F0.3: els faltants dramàtics no tenien cap mapatge, així que es pintaven
+  // sense botó mentre bloquejaven el botó de continuar. Cul-de-sac.
+  if (f.includes('objectius dramàtics') || f.includes('secrets, pressions ocultes') || f.includes('personatges purament funcionals')) {
+    return { id: 'objectius_secrets', label: 'Generar objectius i secrets' };
+  }
+  if (f.includes('trama principal') || f.includes('subtrames connectades')) {
+    return { id: 'trames', label: 'Dissenyar trames' };
+  }
+  if (f.includes('esdeveniments sense conseqüències')) {
+    return { id: 'motors_dramatics', label: 'Completar' };
+  }
   return null;
 }
 
@@ -4900,6 +5011,13 @@ async function generarFaltantNKG(itemId, btnEl = null) {
       await generarVeuExemples(USER_CONFIG);
     } else if (itemId === 'scene_contracts') {
       await generarCompletarSceneContracts(USER_CONFIG, msg => console.log(msg));
+    // F0.3: accions noves per als faltants dramàtics, que fins ara no en tenien cap.
+    } else if (itemId === 'objectius_secrets') {
+      await generarObjectiusSecrets(USER_CONFIG, msg => { if (btn) btn.textContent = '⏳ ' + msg; });
+    } else if (itemId === 'trames') {
+      await generarIDesarTrames(USER_CONFIG, msg => { if (btn) btn.textContent = '⏳ ' + msg; });
+    } else if (itemId === 'motors_dramatics') {
+      await completarMotorsDramaticsNKG(USER_CONFIG, msg => { if (btn) btn.textContent = '⏳ ' + msg; });
     }
     toast('Element generat correctament.');
     mostrarVeuExemples((ESTAT._nkg && ESTAT._nkg.personatges) || {});
@@ -4913,11 +5031,25 @@ async function generarFaltantNKG(itemId, btnEl = null) {
   }
 }
 
+// F0.3: aquests faltants bloquegen el botó d'escriptura, així que han de portar
+// la seva pròpia acció de resolució, igual que els de continuïtat. Abans eren
+// una llista morta i el projecte quedava en un cul-de-sac.
 function renderitzarFaltantsDrama(faltants) {
   const llista = Array.isArray(faltants) ? faltants : [];
   if (llista.length === 0) return '';
-  const items = llista.map(f => `<li style="margin-bottom:6px;">${escHtml(String(f))}</li>`).join('');
-  return `<div class="veu-card"><div class="veu-card-nom">⚠️ Falten motors dramàtics</div><ul style="padding-left:18px;margin-top:8px;">${items}</ul></div>`;
+  const items = llista.map(f => {
+    const accio = obtenirAccioGeneracioPerFaltant(f);
+    const boto = accio
+      ? `<button class="btn btn-ghost" style="padding:4px 10px;font-size:.76rem;" onclick="generarFaltantNKG('${accio.id}', this)">${escHtml(accio.label)}</button>`
+      : '';
+    return `<li style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;"><span>${escHtml(String(f))}</span>${boto}</li>`;
+  }).join('');
+  return `<div class="veu-card"><div class="veu-card-nom">⚠️ Falten motors dramàtics</div>
+    <ul style="padding-left:18px;margin-top:8px;">${items}</ul>
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn btn-secondary" style="padding:5px 12px;font-size:.8rem;" onclick="generarFaltantNKG('motors_dramatics', this)">🧩 Completar-ho tot automàticament</button>
+    </div>
+  </div>`;
 }
 
 function mostrarFaltantsNKG() {
@@ -4999,8 +5131,11 @@ function mostrarResumNKGiTransicio(nkg, capitolsEscaleta, validacio, modeCreacio
 
 async function modeRedaccioAutomatic() {
   ESTAT._autoRedaccioMode = true;
-  // Auto-completar NKG si falten dades abans de començar la redacció
-  const faltants = detectarFaltantsNKG(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {});
+  // Auto-completar NKG si falten dades abans de començar la redacció.
+  // F0.4: es mira la validació completa (continuïtat + drama), no només la de
+  // continuïtat; si no, s'entrava a iniciarFase11 amb els blocants dramàtics vius.
+  const chkPrevi = validarNKGPreparatPerCapitol1(ESTAT._nkg || {}, ESTAT.bibliaNarrativa || {});
+  const faltants = Array.isArray(chkPrevi.errors) ? chkPrevi.errors : [];
   if (faltants.length > 0) {
     toast(`Completant ${faltants.length} element(s) NKG faltants…`);
     try {
@@ -5056,11 +5191,37 @@ async function autocompletarNKGSilent(setStatus = () => {}) {
       etiqueta: 'Veu i exemples narratius',
       detecta: txt => txt.includes('exemples narratius de veu') || txt.includes('vocabulari recurrent'),
       executar: async () => { await generarVeuExemples(USER_CONFIG); }
+    },
+    // F0.4: passos nous. Sense aquests, la compleció automàtica deixava sempre
+    // pendents els faltants dramàtics i el gate del capítol 1 seguia bloquejat.
+    {
+      etiqueta: 'Trama principal i subtrames',
+      detecta: txt => txt.includes('trama principal') || txt.includes('subtrames connectades'),
+      executar: async () => { await generarIDesarTrames(USER_CONFIG, setStatus); }
+    },
+    {
+      etiqueta: 'Objectius i secrets',
+      detecta: txt => txt.includes('objectius dramàtics') || txt.includes('secrets, pressions ocultes') || txt.includes('personatges purament funcionals'),
+      executar: async () => { await generarObjectiusSecrets(USER_CONFIG, setStatus); }
+    },
+    {
+      etiqueta: "Contractes d'escena",
+      detecta: txt => txt.includes('contracte d’escena') || txt.includes("contracte d'escena") || txt.includes('contractes d’escena') || txt.includes("contractes d'escena"),
+      executar: async () => { await generarCompletarSceneContracts(USER_CONFIG, setStatus); }
     }
   ];
 
+  // F0.4: abans s'iterava només sobre detectarFaltantsNKG (continuïtat), de manera
+  // que els errors dramàtics no es corregien mai tot i ser els que bloquegen.
+  const faltantsTotals = () => {
+    const chk = (typeof validarNKGPreparatPerCapitol1 === 'function')
+      ? validarNKGPreparatPerCapitol1(nkg, biblia)
+      : { errors: detectarFaltantsNKG(nkg, biblia) };
+    return Array.isArray(chk.errors) ? chk.errors : [];
+  };
+
   for (let intent = 0; intent < 3; intent++) {
-    const faltantsLlista = detectarFaltantsNKG(nkg, biblia);
+    const faltantsLlista = faltantsTotals();
     if (faltantsLlista.length === 0) break;
     const faltantsText = faltantsLlista.join(' | ').toLowerCase();
     const pendents = passos.filter(p => p.detecta(faltantsText));
@@ -5210,9 +5371,84 @@ async function iniciarEscaletaSeqNou() {
 
   verificarDistribucioGanxos(ESTAT._estructuraCapitols);
   generarMapaTransicionsCapitolsNKG();
+
+  // F0.1 + F0.2: els motors dramàtics (trames, objectius i secrets) es completen
+  // aquí, quan ja hi ha personatges, estructura i escaleta. Abans el flux b1–b6
+  // no els omplia mai i el gate de validarNKGPreparatPerCapitol1 bloquejava el
+  // capítol 1 de manera determinista, sense cap acció per resoldre-ho.
+  const loaderB6 = document.getElementById('loader-b6-text');
+  try {
+    await completarMotorsDramaticsNKG(USER_CONFIG, msg => { if (loaderB6) loaderB6.textContent = msg; });
+  } catch (err) {
+    console.warn('Compleció de motors dramàtics:', err.message);
+  }
+
   hideLoader('b6');
   const validacioNKG = validarNKGComplet(ESTAT._nkg, ESTAT._estructuraCapitols);
   mostrarResumNKGiTransicio(ESTAT._nkg, ESTAT._estructuraCapitols, validacioNKG, ESTAT._modeCreacio || 'guiat');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  F0 — Compleció dels motors dramàtics del NKG
+//  Cobreix exactament els errors que detectarFaltantsDramaNKG marca com a
+//  bloquejants: trama principal, subtrames, objectius i secrets per personatge
+//  i contractes d'escena incomplets. És idempotent: cada pas només s'executa
+//  si el seu faltant encara hi és.
+// ═══════════════════════════════════════════════════════════
+function personatgesSenseMotorDramatic() {
+  const nkg = ESTAT._nkg || {};
+  const dramatics = (typeof obtenirPersonatgesDramatics === 'function')
+    ? obtenirPersonatgesDramatics(nkg)
+    : Object.values(nkg.personatges || {});
+  return dramatics.filter(p => {
+    const teObjectiu = (typeof teObjectiuExternConcret === 'function') ? teObjectiuExternConcret(p) : false;
+    const teSecret   = (typeof teSecretOPressioInterna === 'function') ? teSecretOPressioInterna(p) : false;
+    return !teObjectiu || !teSecret;
+  });
+}
+
+function sceneContractsIncomplets() {
+  const contractes = ((ESTAT._nkg || {}).scene_contracts) || [];
+  if (!Array.isArray(contractes)) return [];
+  return contractes.filter(c => (typeof detectarFaltantsSceneContract === 'function')
+    ? detectarFaltantsSceneContract(c).length > 0
+    : false);
+}
+
+async function completarMotorsDramaticsNKG(userConfig, onProgress = () => {}) {
+  const cfg = userConfig || USER_CONFIG;
+  const nkg = ESTAT._nkg || {};
+  const biblia = ESTAT.bibliaNarrativa || {};
+
+  const tramesOk = (typeof teTramaPrincipalClara === 'function')
+    ? (teTramaPrincipalClara(nkg, biblia) && teSubtramesConnectades(nkg, biblia))
+    : true;
+  if (!tramesOk) {
+    onProgress('🕸️ Dissenyant trama principal i subtrames…');
+    try {
+      await generarIDesarTrames(cfg, onProgress);
+    } catch (err) {
+      console.warn('Trames automàtiques:', err.message);
+    }
+  }
+
+  if (personatgesSenseMotorDramatic().length > 0) {
+    onProgress('🎯 Generant objectius i secrets dels personatges…');
+    try {
+      await generarObjectiusSecrets(cfg, onProgress);
+    } catch (err) {
+      console.warn('Objectius/secrets automàtics:', err.message);
+    }
+  }
+
+  if (sceneContractsIncomplets().length > 0) {
+    onProgress("🎬 Completant contractes d'escena…");
+    try {
+      await generarCompletarSceneContracts(cfg, onProgress);
+    } catch (err) {
+      console.warn("Contractes d'escena automàtics:", err.message);
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -8832,19 +9068,40 @@ function resumConflicteSceneContract(contracte = {}) {
   return `Conflicte: ${x} contra ${y} | Cost: ${cost}`;
 }
 
+// F0.5: aquest fallback deixava buits asimetria_poder, decisio_irreversible i
+// cost_immediat, que són els tres camps obligatoris de detectarFaltantsSceneContract.
+// És a dir, el "pla B" garantia un estat invàlid i un bloqueig permanent del gate.
+// Ara omple els set camps obligatoris amb valors derivats de l'escena; queden
+// marcats com a provisionals (_auto_generat) perquè el pas de compleció els millori.
 function crearSceneContractFallbackLocal(capitol, escena, escenaInfo = {}) {
   const base = (typeof crearSceneContractBase === 'function')
     ? crearSceneContractBase(capitol, escena)
     : { id: `C${capitol}E${escena}`, capitol, escena, personatges_presents: [], prohibicio_escena: 'No resumir el conflicte: mostrar-lo en acció, gest, diàleg o decisió.' };
-  return Object.assign({}, base, {
-    pov: (Array.isArray(escenaInfo.personatges) && escenaInfo.personatges[0]) || '',
-    personatges_presents: Array.isArray(escenaInfo.personatges) ? escenaInfo.personatges : [],
-    objectiu_visible_pov: escenaInfo.funcio_narrativa || '',
-    obstacle_concret: escenaInfo.beat_narratiu ? `Resistència concreta durant un beat de ${escenaInfo.beat_narratiu}` : '',
-    consequencia_narrativa: escenaInfo.funcio_narrativa || '',
-    _auto_generat: true,
-    _incomplet: true
+
+  const presents = Array.isArray(escenaInfo.personatges) ? escenaInfo.personatges : [];
+  const pov      = presents[0] || 'Personatge POV';
+  const oponent  = presents[1] || 'la persona o instància que s’hi oposa';
+  const funcio   = String(escenaInfo.funcio_narrativa || '').trim() || 'fer avançar el conflicte del capítol';
+  const beat     = escenaInfo.beat_narratiu || 'confrontació';
+
+  const contracte = Object.assign({}, base, {
+    pov,
+    personatges_presents: presents,
+    objectiu_visible_pov: funcio,
+    obstacle_concret: `${oponent} bloqueja activament l’objectiu de ${pov} durant un beat de ${beat}.`,
+    asimetria_poder: `${oponent} controla l’espai, la informació o el temps de l’escena; ${pov} hi entra en desavantatge.`,
+    decisio_irreversible: `${pov} ha de decidir si insisteix o cedeix, i la decisió no es pot desfer després.`,
+    cost_immediat: `${pov} paga la decisió en el mateix moment: perd una aliança, una certesa o un marge de maniobra.`,
+    consequencia_narrativa: funcio,
+    _auto_generat: true
   });
+
+  // Només marquem _incomplet si de debò ho està (p. ex. si canvien els obligatoris).
+  const faltants = (typeof detectarFaltantsSceneContract === 'function')
+    ? detectarFaltantsSceneContract(contracte)
+    : [];
+  if (faltants.length > 0) contracte._incomplet = true;
+  return contracte;
 }
 
 function normalitzarSceneContractEscaleta(contracte, capitol, escena, escenaInfo = {}) {
@@ -9059,10 +9316,13 @@ async function iniciarFase11() {
     console.error('NKG incomplet abans del capítol 1:', chkNKG.errors);
     ESTAT.fase = 22;
     updateProgress(22);
-    showCard('fase-22');
-    document.getElementById('veu-exemples-result').classList.remove('hidden');
+    document.getElementById('veu-exemples-result')?.classList.remove('hidden');
     mostrarVeuExemples((ESTAT._nkg && ESTAT._nkg.personatges) || {});
     mostrarFaltantsNKG();
+    // F1.6: aquest showCard no tenia scroll. La card de destí (fase-22) queda molt
+    // per sobre de fase-b6, així que l'usuari premia el botó, la vista no es movia
+    // i semblava que no passés res. Ancorem a la llista de faltants.
+    mostrarIAnarA('fase-22', { ancora: 'nkg-faltants-cos' });
     return;
   }
 
@@ -9099,7 +9359,21 @@ async function iniciarFase11() {
   ESTAT._metaCapitols       = {};
   ESTAT._revisionsOpus      = {};
   ESTAT._revisionsOpusFinals= {};
-  ESTAT.llibreRegistre      = { capitols: [], estat_personatges: [], fils_oberts: [], fils_tancats: [] };
+  // F0.6: aquesta línia reinicialitzava llibreRegistre i destruïa l'intensity_level,
+  // el ganxo_final i els fils per capítol que confirmarEstructuraNou i
+  // iniciarEscaletaSeqNou acabaven de calcular. Ara es reconstrueix des de
+  // _estructuraCapitols, que és la font de veritat de la planificació.
+  ESTAT.llibreRegistre = {
+    capitols: (ESTAT._estructuraCapitols || []).map(c => ({
+      intensity_level:   c.intensity_level || c.intensitat || 3,
+      ganxo_final:       c.ganxo_final || null,
+      threads_advancing: Array.isArray(c.threads_advancing) ? c.threads_advancing : [],
+      threads_closing:   Array.isArray(c.threads_closing)   ? c.threads_closing   : []
+    })),
+    estat_personatges: [],
+    fils_oberts:  [],
+    fils_tancats: []
+  };
   ESTAT._traitsImmutablesInicialitzats = false;
   ESTAT._controlLongitud = {
     objectiu: Number((ESTAT.estil && ESTAT.estil.paraules) || 3000),
@@ -9342,11 +9616,18 @@ function renderLlistaCapitols() {
   document.getElementById('capitol-progress-text').textContent = `${total} capítols planificats`;
 
   wrap.innerHTML = ESTAT._estructuraCapitols.map((cap, i) => {
-    const completat = i < ESTAT._capitolActual;
-    const actiu     = i === ESTAT._capitolActual;
-    const cls  = completat ? 'fet' : actiu ? 'actiu' : '';
-    const ico  = completat ? '✓'  : actiu  ? '✍️'   : '○';
     const teText = !!(ESTAT._capitols_generats && ESTAT._capitols_generats[i]);
+    // F1.8: els capítols reservats (els dos últims, o l'últim en mode automàtic)
+    // se salten al bucle normal i es generen després amb Opus. Si es pinten com a
+    // "○ pendent" indistingible, el retorn enrere a omplir-los sembla un error.
+    const reservat  = typeof esCapitolReservat === 'function' && esCapitolReservat(i + 1, total) && !teText;
+    const completat = i < ESTAT._capitolActual && !reservat;
+    const actiu     = i === ESTAT._capitolActual && !reservat;
+    const cls  = completat ? 'fet' : actiu ? 'actiu' : '';
+    const ico  = completat ? '✓'  : actiu  ? '✍️'   : reservat ? '🔵' : '○';
+    const notaReservat = reservat
+      ? '<small style="margin-left:8px;color:var(--text2);font-size:.72rem;">reservat per a Opus</small>'
+      : '';
     const lockTxt = textLockCapitol(i);
     const lock = obtenirLockCapitol(i);
     const btnCopia = teText ? `<button class="capitol-copy" onclick="event.stopPropagation();copiarCapitol(${i})" title="Copiar capítol final">⎘</button>` : '';
@@ -9355,7 +9636,7 @@ function renderLlistaCapitols() {
     const regenBtn = teText ? `<button class="capitol-delete" ${potRegenerar ? `onclick=\"event.stopPropagation();esborrarIRegenerarCapitol(${i})\"` : ''} ${potRegenerar ? '' : 'disabled'} title="${potRegenerar ? 'Esborrar i regenerar capítol' : 'Bloquejat per lock state'}">🗑️</button>` : '';
     return `<div class="capitol-item ${cls}" id="cap-item-${i}" ${onClick}>
       <span class="capitol-num">${ico}</span>
-      <span class="capitol-titol">${escHtml(cap.titol || 'Capítol ' + (i + 1))}<small style="margin-left:8px;color:var(--text2);font-size:.72rem;">${escHtml(lockTxt)}</small></span>
+      <span class="capitol-titol">${escHtml(cap.titol || 'Capítol ' + (i + 1))}${notaReservat}<small style="margin-left:8px;color:var(--text2);font-size:.72rem;">${escHtml(lockTxt)}</small></span>
       ${regenBtn}${btnCopia}
     </div>`;
   }).join('\n');
@@ -10952,7 +11233,10 @@ function mostrarCapitol(idx, text) {
   document.getElementById('capitol-actual-wordcount').textContent = `${wc.toLocaleString('ca')} paraules`;
   document.getElementById('capitol-actual-wrap').classList.remove('hidden');
 
-  setTimeout(() => document.getElementById('fase-23').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  // F1.5: abans s'ancorava a #fase-23, o sigui a la capçalera de la card (llista
+  // de capítols i panell del jutge), just quan el text començava a aparèixer molt
+  // més avall. La vista saltava amunt mentre el capítol creixia fora de pantalla.
+  setTimeout(() => document.getElementById('capitol-actual-titol')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
 
   // Executar efecte d'escriptura
   efecteEscripturaHTML('capitol-actual-cos', html, 3);
@@ -12354,50 +12638,64 @@ function aplicarCanvisBiblia(canvis) {
 }
 
 // ─── SISTEMA 2: Fase de Trames ────────────────────────────────────────────────
-async function iniciarFaseTrames() {
-  ESTAT.fase = 18;
-  showCard('fase-18');
-  updateProgress(18);
-  setTimeout(() => document.getElementById('fase-18')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-  showLoader('18');
-  document.getElementById('trames-result').classList.add('hidden');
-  try {
-    const res   = await generarTrames(USER_CONFIG);
-    let dades = parseJsonRobust(res.response, ['nombre_capitols', 'trama_principal', 'subtrames', 'mapa_entrellacat']);
-    if (!dades) {
-      const reparada = await repararRespostaTrames(res.response, USER_CONFIG);
-      if (reparada && reparada.trim()) dades = parseJsonRobust(reparada, ['nombre_capitols', 'trama_principal', 'subtrames', 'mapa_entrellacat']);
-    }
-    if (dades) {
-      ESTAT.trames.trama_principal  = dades.trama_principal  || null;
-      ESTAT.trames.subtrames        = dades.subtrames        || [];
-      ESTAT.trames.mapa_entrellacat = dades.mapa_entrellacat || [];
+// F0.2: nucli de generació de trames extret d'iniciarFaseTrames perquè el flux
+// nou (b1–b6) el pugui executar sense obrir la card de la fase 18. Sense trama
+// principal i subtrames, detectarFaltantsDramaNKG bloqueja el capítol 1 per
+// sempre i el flux nou no visitava mai aquesta fase.
+async function generarIDesarTrames(userConfig, onProgress = () => {}) {
+  const cfg = userConfig || USER_CONFIG;
+  const res = await generarTrames(cfg);
+  let dades = parseJsonRobust(res.response, ['nombre_capitols', 'trama_principal', 'subtrames', 'mapa_entrellacat']);
+  if (!dades) {
+    const reparada = await repararRespostaTrames(res.response, cfg);
+    if (reparada && reparada.trim()) dades = parseJsonRobust(reparada, ['nombre_capitols', 'trama_principal', 'subtrames', 'mapa_entrellacat']);
+  }
+  if (dades) {
+    ESTAT.trames = ESTAT.trames || { trama_principal: null, subtrames: [], mapa_entrellacat: [] };
+    ESTAT.trames.trama_principal  = dades.trama_principal  || null;
+    ESTAT.trames.subtrames        = dades.subtrames        || [];
+    ESTAT.trames.mapa_entrellacat = dades.mapa_entrellacat || [];
 
-      // Retry: si el mapa està incomplet, completar-lo per separat
-      const capsModel = Number(dades && dades.nombre_capitols);
-      const capsEsperats = (Number.isFinite(capsModel) && capsModel >= 12 && capsModel <= 14)
-        ? Math.round(capsModel)
-        : (ESTAT._nombreCapitols || 12);
-      if (Number.isFinite(capsModel) && capsModel >= 12 && capsModel <= 14) ESTAT._nombreCapitols = Math.round(capsModel);
-      if (!dades.mapa_entrellacat || dades.mapa_entrellacat.length < capsEsperats) {
-        console.warn(`Mapa entrellaçat incomplet: ${(dades.mapa_entrellacat||[]).length}/${capsEsperats}. Regenerant...`);
-        document.getElementById('loader-18-text').textContent = '🔵 Completant mapa de trames…';
-        try {
-          const mapaRes = await completarMapaTrames(dades, capsEsperats, USER_CONFIG);
-          const mapaDades = parseJsonRobust(mapaRes.response);
-          if (mapaDades && mapaDades.mapa_entrellacat && mapaDades.mapa_entrellacat.length >= capsEsperats) {
-            ESTAT.trames.mapa_entrellacat = mapaDades.mapa_entrellacat;
-            dades.mapa_entrellacat = mapaDades.mapa_entrellacat;
-          }
-        } catch (retryErr) {
-          console.warn('Retry mapa trames: ' + retryErr.message);
+    // Retry: si el mapa està incomplet, completar-lo per separat
+    const capsModel = Number(dades && dades.nombre_capitols);
+    const capsEsperats = (Number.isFinite(capsModel) && capsModel >= 12 && capsModel <= 14)
+      ? Math.round(capsModel)
+      : (ESTAT._nombreCapitols || 12);
+    if (Number.isFinite(capsModel) && capsModel >= 12 && capsModel <= 14) ESTAT._nombreCapitols = Math.round(capsModel);
+    if (!dades.mapa_entrellacat || dades.mapa_entrellacat.length < capsEsperats) {
+      console.warn(`Mapa entrellaçat incomplet: ${(dades.mapa_entrellacat||[]).length}/${capsEsperats}. Regenerant...`);
+      onProgress('🔵 Completant mapa de trames…');
+      try {
+        const mapaRes = await completarMapaTrames(dades, capsEsperats, cfg);
+        const mapaDades = parseJsonRobust(mapaRes.response);
+        if (mapaDades && mapaDades.mapa_entrellacat && mapaDades.mapa_entrellacat.length >= capsEsperats) {
+          ESTAT.trames.mapa_entrellacat = mapaDades.mapa_entrellacat;
+          dades.mapa_entrellacat = mapaDades.mapa_entrellacat;
         }
+      } catch (retryErr) {
+        console.warn('Retry mapa trames: ' + retryErr.message);
       }
     }
-    mostrarTrames(res.response, dades);
+  }
+  return { dades, textOriginal: res.response };
+}
+
+async function iniciarFaseTrames() {
+  ESTAT.fase = 18;
+  updateProgress(18);
+  mostrarIAnarA('fase-18');
+  showLoader('18');
+  document.getElementById('trames-result')?.classList.add('hidden');
+  try {
+    const { dades, textOriginal } = await generarIDesarTrames(USER_CONFIG, msg => {
+      const el = document.getElementById('loader-18-text');
+      if (el) el.textContent = msg;
+    });
+    mostrarTrames(textOriginal, dades);
   } catch (err) {
     hideLoader('18');
-    alert('Error generant les trames: ' + err.message);
+    toast('Error generant les trames: ' + err.message);
+    console.error('iniciarFaseTrames:', err);
   }
 }
 

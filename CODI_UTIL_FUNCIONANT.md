@@ -95,6 +95,41 @@ Una peça entra aquí si compleix **tots** aquests punts:
 > Pendent (pas 3 del pla original): `prompts.js` — les funcions de prompt criden
 > `nouFluxCall`/`callLLMMulti` i toquen ESTAT; extreure-les requereix més cura.
 
+## Peces consolidades a F0 i F1 (REVISIO_I_PLA_EXCELLENCIA.md)
+
+### `completarMotorsDramaticsNKG(userConfig, onProgress)`
+- **Responsabilitat**: omplir els blocants de `detectarFaltantsDramaNKG` (trames,
+  objectius/secrets per personatge, contractes d'escena incomplets).
+- **Dependències**: `generarIDesarTrames`, `generarObjectiusSecrets`,
+  `generarCompletarSceneContracts`, i els predicats purs de `nkg_core.js`.
+- **Contracte**: idempotent — cada pas només s'executa si el seu faltant hi és.
+  Cap pas que falla atura els altres (es registra a consola).
+- **Checks mínims**: després d'executar-la sobre un NKG del flux b1–b6,
+  `validarNKGPreparatPerCapitol1(...).ok === true`.
+- **Ubicació**: `index.html`, just després de `iniciarEscaletaSeqNou`.
+
+### `generarIDesarTrames(userConfig, onProgress)`
+- **Responsabilitat**: generar trama principal, subtrames i mapa entrellaçat i
+  desar-los a `ESTAT.trames`, sense tocar la UI de la fase 18.
+- **Contracte**: retorna `{ dades, textOriginal }`. `iniciarFaseTrames()` l'embolcalla
+  per a la card; el flux b1–b6 i la compleció automàtica la criden directament.
+
+### `efecteEscripturaHTML(elementId, htmlContent, msPerChar)` (reescrita)
+- **Responsabilitat**: pintar HTML amb efecte de màquina d'escriure, cancel·lable.
+- **Contracte**: un sol efecte viu per `elementId` (`_TOKENS_ESCRIPTURA`); una crida
+  nova invalida l'anterior. Durada acotada a `PRESSUPOST_MS_ESCRIPTURA` (8 s)
+  escrivint per lots. Respecta `USER_CONFIG.efecteEscriptura === false`.
+- **Checks mínims**: dues crides encavalcades sobre el mateix element deixen
+  només el contingut de la segona; 19k caràcters en menys de 12 s.
+
+### `mostrarIAnarA(id, { ancora, retardMs })`
+- **Responsabilitat**: `showCard` + scroll al destí, per no deixar transicions cegues.
+- **Contracte**: tolera ids inexistents (avís per consola, sense excepció).
+
+> **Proves**: `proves/f0_f1.mjs` (Playwright + Chromium sobre `index.html` real).
+> Executar amb el projecte servit: `npx http-server -p 8099 -c-1 .` i després
+> `node proves/f0_f1.mjs`.
+
 ## Full de ruta de reducció de mida (pràctic)
 
 1. **Consolidar** aquí una peça cada cop que es toqui i quedi estable.

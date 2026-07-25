@@ -82,6 +82,23 @@ Cada capítol té un objecte `llibreRegistre.capitols[idx].ksn` amb:
 - `ESTAT._intervalLocks`: `{ [intervalId]: { fromIdx, toIdx, lockedAtISO, net } }`
 - Les snapshots d'ESTAT es guarden a localStorage. No trencar l'estructura existent; afegir camps nous és acceptable.
 
+## Regles de flux i validació (F0/F1)
+
+- **Cap validador pot bloquejar un botó sense oferir l'acció que resol el bloqueig.**
+  Si s'afegeix un error nou a `detectarFaltantsNKG` o `detectarFaltantsDramaNKG`, cal
+  afegir-hi també el mapatge a `obtenirAccioGeneracioPerFaltant` i el pas corresponent
+  a `autocompletarNKGSilent`.
+- **Cap fallback pot generar un estat invàlid.** Si una funció de fallback construeix
+  una estructura que després es valida (p. ex. `crearSceneContractFallbackLocal` contra
+  `detectarFaltantsSceneContract`), ha d'omplir tots els camps obligatoris.
+- **Tota transició de flux ha de deixar la vista al destí**: usa `mostrarIAnarA(id)` en
+  lloc de `showCard(id)` a soles.
+- **Cap efecte visual de llarga durada sense cancel·lació.** `efecteEscripturaHTML`
+  manté un token viu per contenidor; qualsevol animació incremental futura sobre un
+  element compartit ha de seguir el mateix patró.
+- `ESTAT.fase` ha de reflectir el pas real (`'b1'`…`'b6'` als fonaments, número a la
+  resta): el panell d'etapes hi confia per tornar on eres.
+
 ## Restriccions generals per a qualsevol canvi
 
 - No refactoritzar funcions que no estiguin explícitament mencionades al prompt.
