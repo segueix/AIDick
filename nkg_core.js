@@ -869,3 +869,125 @@ function auditarCoherenciaNKG(nkg = {}, opcions = {}) {
     esdevenimentsAuditats: ((nkg.registre_estat || {}).esdeveniments || []).length
   };
 }
+
+// ═══════════════════════════════════════════════════════════
+//  F6 — LECTURA AUTOMÀTICA I CALIBRATGE
+//  Un lector automàtic pot emetre un veredicte, però no pot fonamentar-lo: un
+//  judici estètic no té condició de veritat com en té "l'objecte és a dos llocs".
+//  L'única manera honesta d'usar-lo és mesurar quant s'hi pot confiar, i això
+//  només es pot fer contrastant una MOSTRA amb lectures humanes.
+//
+//  L'humà, doncs, no ha d'estar al bucle per llibre: ha d'estar al bucle de
+//  calibratge. Llegeixes cinc de cada cent i el que en treus no són els errors
+//  d'aquells cinc, sinó si els altres noranta-cinc veredictes valen alguna cosa.
+// ═══════════════════════════════════════════════════════════
+
+function crearRegistreCalibratge() {
+  return { observacions: [], versio: 1 };
+}
+
+function assegurarRegistreCalibratge(estat) {
+  if (!estat || typeof estat !== 'object') return null;
+  if (!estat._calibratgeLector || typeof estat._calibratgeLector !== 'object') {
+    estat._calibratgeLector = crearRegistreCalibratge();
+  }
+  if (!Array.isArray(estat._calibratgeLector.observacions)) estat._calibratgeLector.observacions = [];
+  return estat._calibratgeLector;
+}
+
+// Una observació = una unitat llegida per les dues parts.
+//   confirmades : troballes del lector que l'humà valida
+//   descartades : troballes del lector que l'humà rebutja (soroll)
+//   perdudes    : problemes que l'humà veu i el lector no va veure
+function normalitzarObservacioCalibratge(obs = {}) {
+  const n = v => Math.max(0, Number(v) || 0);
+  return {
+    unitat: String(obs.unitat || '').trim() || 'sense identificar',
+    quanISO: obs.quanISO || new Date().toISOString(),
+    confirmades: n(obs.confirmades),
+    descartades: n(obs.descartades),
+    perdudes: n(obs.perdudes),
+    nota: String(obs.nota || '')
+  };
+}
+
+function afegirObservacioCalibratge(estat, obs) {
+  const reg = assegurarRegistreCalibratge(estat);
+  if (!reg) return null;
+  const o = normalitzarObservacioCalibratge(obs);
+  // Una unitat només es calibra un cop: si es torna a jutjar, se substitueix.
+  const idx = reg.observacions.findIndex(x => x.unitat === o.unitat);
+  if (idx >= 0) reg.observacions[idx] = o; else reg.observacions.push(o);
+  return o;
+}
+
+// Llindar de mostra per sota del qual els percentatges no volen dir res.
+const MOSTRA_MINIMA_CALIBRATGE = 5;
+
+function calcularCalibratge(estat) {
+  const reg = (estat && estat._calibratgeLector) || { observacions: [] };
+  const obs = Array.isArray(reg.observacions) ? reg.observacions : [];
+  const mostra = obs.length;
+
+  const suma = camp => obs.reduce((t, o) => t + (Number(o[camp]) || 0), 0);
+  const confirmades = suma('confirmades');
+  const descartades = suma('descartades');
+  const perdudes    = suma('perdudes');
+
+  const reals    = confirmades + perdudes;      // problemes que existien de debò
+  const reportats = confirmades + descartades;  // problemes que el lector va dir
+
+  // Recall: quina fracció dels problemes reals troba el lector. És el número que
+  // decideix si et pots saltar la lectura d'un llibre.
+  const recall = reals > 0 ? confirmades / reals : null;
+  // Precisió: quina fracció del que diu el lector és certa. Decideix si val la
+  // pena llegir-ne els avisos o s'acaben ignorant tots.
+  const precisio = reportats > 0 ? confirmades / reportats : null;
+
+  const fiable = mostra >= MOSTRA_MINIMA_CALIBRATGE && recall !== null && precisio !== null;
+  let avis = '';
+  if (mostra === 0) {
+    avis = "Cap lectura humana registrada: els veredictes del lector automàtic no estan calibrats i no se'n sap la fiabilitat.";
+  } else if (mostra < MOSTRA_MINIMA_CALIBRATGE) {
+    avis = `Mostra de ${mostra} — insuficient. Calen ${MOSTRA_MINIMA_CALIBRATGE} unitats llegides perquè els percentatges signifiquin res.`;
+  } else if (recall !== null && recall < 0.6) {
+    avis = `El lector només troba el ${Math.round(recall * 100)}% dels problemes reals: no substitueix una lectura.`;
+  } else if (precisio !== null && precisio < 0.5) {
+    avis = `Més de la meitat del que reporta el lector és soroll: els seus avisos es faran ignorar.`;
+  }
+
+  return {
+    mostra, confirmades, descartades, perdudes,
+    recall, precisio, fiable, avis,
+    mostraMinima: MOSTRA_MINIMA_CALIBRATGE
+  };
+}
+
+// ─── Quines unitats convé llegir a mà ──────────────────────────────────────
+// Prioritza el que més informació aporta al calibratge: el que encara no s'ha
+// calibrat mai, i dins d'això el que el lector ha marcat com a més problemàtic
+// (si s'hi equivoca, ho vols saber) i el que té incidències d'auditoria.
+function suggerirUnitatsPerLlegir(estat, lectures = [], quantes = 3) {
+  const reg = (estat && estat._calibratgeLector) || { observacions: [] };
+  const jaCalibrades = new Set((reg.observacions || []).map(o => o.unitat));
+  const auditoria = (estat && estat._auditoriaDeterminista) || { incidencies: [] };
+  const incidenciesPerCap = new Map();
+  (auditoria.incidencies || []).forEach(i => {
+    incidenciesPerCap.set(Number(i.capitol), (incidenciesPerCap.get(Number(i.capitol)) || 0) + 1);
+  });
+
+  return (Array.isArray(lectures) ? lectures : [])
+    .filter(l => l && !jaCalibrades.has(String(l.unitat)))
+    .map(l => ({
+      unitat: String(l.unitat),
+      capitol: Number(l.capitol) || 0,
+      pes: (Number(l.troballes) || 0) + 2 * (incidenciesPerCap.get(Number(l.capitol)) || 0),
+      motiu: (incidenciesPerCap.get(Number(l.capitol)) || 0) > 0
+        ? "té incidències d'auditoria: comprova si el lector les ha sabut llegir"
+        : (Number(l.troballes) || 0) > 0
+          ? 'el lector hi ha trobat problemes: comprova si són reals'
+          : 'el lector el dona per bo: comprova si se li ha escapat res'
+    }))
+    .sort((a, b) => b.pes - a.pes)
+    .slice(0, Math.max(1, Number(quantes) || 3));
+}

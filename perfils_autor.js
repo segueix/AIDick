@@ -41,6 +41,12 @@ Ritme metòdic i pausat en la investigació, amb pics d'acció breu, directa i b
       objecte_emocional: "una carpeta d'arxiu amb l'etiqueta mig esborrada",
       temps_mort: "el soroll del radiador, el trànsit llunyà i la llum d'hivern que s'apaga aviat"
     },
+    criteris_avaluacio: [
+      "Si s'eliminés la crítica social del capítol, la trama se'n ressentiria? Si no, la crítica és decorativa.",
+      "Hi ha alguna escena on el lector descobreix la informació ALHORA que el personatge, o sempre se li explica després?",
+      "El protagonista pateix alguna conseqüència que no es revertirà mai?",
+      "Els personatges amb poder parlen com parla el poder de debò, o com un dolent de ficció?"
+    ],
     criteris_excellencia: [
       "La violència té conseqüència institucional o social dins la trama, mai és gratuïta",
       "La investigació avança per documents, fonts i procediments versemblants",
@@ -78,6 +84,12 @@ El mal té pes físic i sensorial: no s'explica, es percep en l'aire que s'espes
       objecte_emocional: "un anell, una fíbula o una moneda antiga amb una inscripció il·legible",
       temps_mort: "el vent damunt l'herba alta, una campana llunyana i l'olor de pedra molla"
     },
+    criteris_avaluacio: [
+      "El món sembla que ja existia abans del primer capítol, o sembla fabricat per a aquesta trama?",
+      "Hi ha algun topònim o nom propi que soni inventat aquesta setmana i no fa mil anys?",
+      "El moment de més bellesa del capítol, té cost? O surt gratis?",
+      "La natura fa alguna cosa a la trama, o només és decorat?"
+    ],
     criteris_excellencia: [
       "El llenguatge crea món: topònims i noms propis amb memòria i coherència fonològica",
       "Hi ha un moment d'eucatàstrofe, o el seu cost es fa físicament present",
@@ -116,6 +128,12 @@ Empatia com a única brúixola moral: en un món on res és real, la capacitat d
       objecte_emocional: "un objecte de consum quotidià amb la marca mal impresa o el logotip desalineat",
       temps_mort: "el brunzit d'un electrodomèstic, un anunci que es repeteix a l'altra habitació"
     },
+    criteris_avaluacio: [
+      "Després de l'esquerda de realitat, el lector pot tornar a confiar en el que llegeix? Si pot, l'esquerda era falsa.",
+      "La paranoia del protagonista té base verificable dins del text, o només és to?",
+      "El sistema menteix d'una manera que el lector pot comprovar, o només se'ns diu que menteix?",
+      "Hi ha alguna decisió on tenir empatia li costi alguna cosa al personatge?"
+    ],
     criteris_excellencia: [
       "La realitat s'esquerda almenys un cop i no es resol del tot",
       "El sistema (estat, corporació, tecnologia) menteix de manera verificable dins la trama",
@@ -154,6 +172,12 @@ El desert, la nit, els somnis lúcids i les plantes de poder com a espais on les
       objecte_emocional: "una planta seca guardada dins un drap plegat",
       temps_mort: "el xiscle d'un ocell al xaparral, el vent sec i la calor que puja del terra"
     },
+    criteris_avaluacio: [
+      "El mestre arriba a explicar el sentit d'alguna lliçó? Si ho fa, el pacte del llibre s'ha trencat.",
+      "L'escèptic ofereix resistència real, o dubta per quedar bé i cedeix de seguida?",
+      "Les regles de l'experiència alterada es mantenen entre escenes, o canvien segons convé?",
+      "El text resol la tensió entre racionalitat i realitat separada? Si la resol, ha fallat."
+    ],
     criteris_excellencia: [
       "Tensió mestre-deixeble amb lliçó implícita, mai explicada directament",
       "La percepció alterada té regles internes coherents i precisió sensorial",
