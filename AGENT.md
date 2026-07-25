@@ -73,6 +73,37 @@ Cada capítol té un objecte `llibreRegistre.capitols[idx].ksn` amb:
 - La deduplicació es fa per `id` i per mapa d'aliassos, no per coincidència de text.
 - Un fil nou ha de ser: aliàs d'un fil existent, part d'una subtrama existent, o rebutjat.
 
+## Generació que escala amb la mida de la novel·la
+
+Cap pas pot demanar a l'LLM una resposta que creixi amb el nombre de capítols
+dins d'un límit de tokens fix. Si ho fa, una novel·la llarga topa amb el límit,
+la resposta arriba tallada i `parseJsonRobust` la "repara": el pas sembla haver
+anat bé però hi falten capítols, o mor amb un "Resposta invàlida".
+
+Regles per a qualsevol pas nou que produeixi una llista per capítol:
+
+1. **Genera per blocs** (`BLOC_PERSPECTIVA`, `BLOC` de l'escaleta) o, com a
+   mínim, calcula `maxTokens` a partir del nombre de capítols
+   (`pressupostTokensLlistaCapitols`, `pressupostTokensPerspectivaBloc`).
+   Sempre passat per `capsMaxTokens` perquè no superi el `max_output` del model.
+2. **Comprova la cobertura per capítol**, no que la llista no sigui buida
+   (`faltantsPerspectivaCronologia`, `completarLlistaPerCapitol`).
+3. **Reclama el que falti** i, si el model continua sense col·laborar, omple-ho
+   per codi (`completarPerspectivaCronologiaLocal`). Els reintents han de tenir
+   sostre: `MAX_RECUPERACIONS_PERSPECTIVA`.
+4. **Informa del progrés** al loader de la fase: un pas llarg sense senyal de
+   vida és indistingible d'un pas penjat.
+5. **No enviïs el NKG ni les escaletes senceres** al prompt si el pas només
+   necessita un resum: infla el prompt, el cost i el raonament del model.
+
+### OpenAI (GPT-5) i el pressupost de raonament
+
+A GPT-5 el raonament intern es descompta de `max_completion_tokens`, així que el
+pressupost real de contingut és *(límit − tokens de raonament)*. `buildOpenAIPayload`
+hi reserva un marge proporcional (`reservaRaonamentGPT5`, mínim 4096) i
+`executarOpenAIAmbControlBuit` torna a demanar la resposta si arriba tallada amb
+menys contingut del que s'havia demanat. No tornis a un marge fix.
+
 ## Funcions principals (referència ràpida)
 
 | Àrea | Funcions |
@@ -82,6 +113,8 @@ Cada capítol té un objecte `llibreRegistre.capitols[idx].ksn` amb:
 | Reescriptura | `microReescripturaBlocOpus`, `executarLoopCoherenciaFinal` |
 | Seguiment narratiu | `actualitzarFilsNarratius`, `reconciliarFilsRegistre`, `generarDirectivaFils` |
 | NKG | `nkgActualitzarPostEscena` |
+| Fase 21 per blocs | `generarPerspectivaCronologia`, `generarPerspectivaCronologiaBloc`, `fusionarBlocPerspectiva`, `completarPerspectivaCronologiaLocal` |
+| Pressupost de tokens | `getMaxTokens`, `capsMaxTokens`, `limitSortidaGPT5`, `executarOpenAIAmbControlBuit` |
 | Diagnòstic | `exportarDiagnosticResums` |
 
 ## Regles de dramatització 9/10

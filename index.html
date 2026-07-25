@@ -8544,8 +8544,16 @@ function construirResumCapitolsTemperatura() {
   });
 }
 
-async function generarTemperaturaEmocionalCapitols(userConfig) {
-  const capitols = construirResumCapitolsTemperatura();
+// Pressupost de sortida proporcional al nombre de capítols. Amb un límit fix,
+// una novel·la llarga es quedava sense espai a mitja llista i els capítols del
+// final es perdien sense cap avís.
+function pressupostTokensLlistaCapitols(nCapitols, tokensPerCapitol, base) {
+  return Math.min(12000, base + Math.max(1, nCapitols) * tokensPerCapitol);
+}
+
+async function generarTemperaturaEmocionalCapitols(userConfig, capitolsDemanats = null, jaAssignades = []) {
+  const totsCapitols = construirResumCapitolsTemperatura();
+  const capitols = Array.isArray(capitolsDemanats) && capitolsDemanats.length > 0 ? capitolsDemanats : totsCapitols;
   if (!Array.isArray(capitols) || capitols.length === 0) return [];
   const nkg = ESTAT._nkg || {};
   const tema = nkg.macronarrativa?.theme || '';
@@ -8558,10 +8566,14 @@ async function generarTemperaturaEmocionalCapitols(userConfig) {
   - POV: ${c.pov || '(sense POV)'}
   - Waypoints emocionals en aquest capítol: ${c.waypoints_capitol.length > 0 ? 'sí, ' + c.waypoints_capitol.join(', ') : 'no'}`).join('\n');
 
+  const jaTxt = (jaAssignades || []).length > 0
+    ? `\nTEMPERATURES JA ASSIGNADES (no les tornis a retornar, però respecta-les per mantenir la corba):\n${jaAssignades.map(t => `- Capítol ${t.capitol}: ${t.temperatura}/10`).join('\n')}\n`
+    : '';
+
   const prompt = `Aquesta és l'estructura de capítols de la novel·la:
 
 ${llistaTxt}
-
+${jaTxt}
 El tema de la novel·la és: "${tema}"
 L'estil base és: "${estilBase}"
 El final busca l'emoció: "${emocioFinal}"
@@ -8583,15 +8595,16 @@ Regles:
 - La corba ha de tenir alts i baixos, no ser ascendent constant.
 - El capítol final ha de tenir la temperatura coherent amb "${emocioFinal}", no necessàriament la més alta.
 
-Retorna EXCLUSIVAMENT un array JSON:
-[{"capitol": 1, "temperatura": N, "justificacio": "..."}]`;
+Retorna EXCLUSIVAMENT un array JSON amb una entrada per a CADA capítol de la llista (${capitols.map(c => c.capitol).join(', ')}):
+[{"capitol": ${capitols[0].capitol}, "temperatura": N, "justificacio": "..."}]`;
 
   const msgs = [{ role: 'user', content: prompt }];
+  const maxTokens = capsMaxTokens(models.modelArquitecte, pressupostTokensLlistaCapitols(capitols.length, 110, 700));
   for (let intent = 1; intent <= 2; intent++) {
     const raw = await callLLMMulti(
       msgs,
       'Ets un editor d arquitectura emocional de novel·la. Retorna només JSON vàlid en català.',
-      Object.assign({}, userConfig || USER_CONFIG || {}, { maxTokens: 2600, model: models.modelArquitecte }),
+      Object.assign({}, userConfig || USER_CONFIG || {}, { maxTokens, model: models.modelArquitecte }),
       'arquitectura'
     );
     const parsed = parseJsonRobust(raw);
@@ -8600,6 +8613,23 @@ Retorna EXCLUSIVAMENT un array JSON:
     msgs.push({ role: 'user', content: 'Resposta invàlida. Torna EXCLUSIVAMENT un array JSON de capítol+temperatura+justificació.' });
   }
   return [];
+}
+
+// Una llista parcial es donava per bona i els capítols que hi faltaven es
+// quedaven sense el camp per sempre. Ara es reclamen en una segona passada.
+async function completarLlistaPerCapitol(assignades, totsCapitols, demanar) {
+  let resultat = Array.isArray(assignades) ? assignades.slice() : [];
+  for (let ronda = 1; ronda <= 2; ronda++) {
+    const cobertes = new Set(resultat.map(r => Number(r.capitol)));
+    const faltants = totsCapitols.filter(c => !cobertes.has(Number(c.capitol)));
+    if (faltants.length === 0) break;
+    console.warn(`[Fase 21] Falten ${faltants.length} capítols a la llista (${faltants.map(c => c.capitol).join(', ')}). Reclamant-los…`);
+    const extra = await demanar(faltants, resultat);
+    const nous = (extra || []).filter(e => !cobertes.has(Number(e.capitol)));
+    if (nous.length === 0) break;
+    resultat = resultat.concat(nous);
+  }
+  return resultat.sort((a, b) => Number(a.capitol) - Number(b.capitol));
 }
 
 function aplicarTemperaturaEmocionalAEstructura(temperatures = []) {
@@ -8616,7 +8646,10 @@ function aplicarTemperaturaEmocionalAEstructura(temperatures = []) {
 async function assegurarTemperaturaEmocionalCapitols(userConfig, setStatus = null) {
   if (!Array.isArray(ESTAT._estructuraCapitols) || ESTAT._estructuraCapitols.length === 0) return;
   if (typeof setStatus === 'function') setStatus('Calculant temperatura emocional per capítol...');
-  const temperatures = await generarTemperaturaEmocionalCapitols(userConfig);
+  const totsCapitols = construirResumCapitolsTemperatura();
+  const primera = await generarTemperaturaEmocionalCapitols(userConfig);
+  const temperatures = await completarLlistaPerCapitol(primera, totsCapitols,
+    (faltants, ja) => generarTemperaturaEmocionalCapitols(userConfig, faltants, ja));
   if (temperatures.length > 0) aplicarTemperaturaEmocionalAEstructura(temperatures);
   await assegurarRatioDialegCapitols(userConfig, setStatus);
   await assegurarCostEmocionalCapitols(userConfig, setStatus);
@@ -8717,16 +8750,25 @@ Regles:
 - NO tots els capítols poden tenir el mateix percentatge.
 - Variació mínima de 10 punts entre capítol amb menys i més diàleg.
 
-Retorna EXCLUSIVAMENT un array JSON:
-[{"capitol": 1, "percentatge_dialeg": N, "tipus_dialeg": "...", "qualitat_dialeg": "...", "notes": "..."}]`;
+Retorna EXCLUSIVAMENT un array JSON amb una entrada per a CADA capítol (${ctxCaps.map(c => c.capitol).join(', ')}):
+[{"capitol": ${ctxCaps[0].capitol}, "percentatge_dialeg": N, "tipus_dialeg": "...", "qualitat_dialeg": "...", "notes": "..."}]`;
   const models = getModelConfig(userConfig || USER_CONFIG || {});
   const msgs = [{ role: 'user', content: prompt }];
+  const maxTokens = capsMaxTokens(models.modelArquitecte, pressupostTokensLlistaCapitols(ctxCaps.length, 130, 800));
   for (let intent = 1; intent <= 2; intent++) {
-    const raw = await callLLMMulti(msgs, 'Ets un editor de diàlegs literaris. Retorna només JSON vàlid en català.', Object.assign({}, userConfig || USER_CONFIG || {}, { maxTokens: 2600, model: models.modelArquitecte }), 'arquitectura');
+    const raw = await callLLMMulti(msgs, 'Ets un editor de diàlegs literaris. Retorna només JSON vàlid en català.', Object.assign({}, userConfig || USER_CONFIG || {}, { maxTokens, model: models.modelArquitecte }), 'arquitectura');
     const parsed = parseJsonRobust(raw);
     const arr = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.ratios) ? parsed.ratios : []);
     if (arr.length > 0) {
-      const out = ctxCaps.map((ctx, i) => normalitzarSortidaDialegCapitol(arr.find(x => Number(x.capitol) === ctx.capitol) || arr[i] || {}, ctx));
+      if (arr.length < ctxCaps.length) {
+        console.warn(`[Fase 21] Ratio de diàleg incomplet: ${arr.length}/${ctxCaps.length} capítols. La resta es dedueix del context de cada capítol.`);
+      }
+      // Si la llista arriba incompleta, l'índex posicional assignaria a un
+      // capítol el ratio d'un altre. Quan no hi ha entrada pròpia, val més la
+      // heurística local, que sí que mira els personatges i la temperatura.
+      const complet = arr.length === ctxCaps.length;
+      const out = ctxCaps.map((ctx, i) => normalitzarSortidaDialegCapitol(
+        arr.find(x => Number(x.capitol) === ctx.capitol) || (complet ? arr[i] : {}) || {}, ctx));
       const min = Math.min(...out.map(o => o.percentatge_dialeg));
       const max = Math.max(...out.map(o => o.percentatge_dialeg));
       if ((max - min) < 10 && out.length > 1) {
@@ -8859,8 +8901,11 @@ function construirBlocEstatInicialCapitol(capitolNum) {
 
   const crono = ((nkg.context_creacio || {}).cronologia || {}).per_capitol || [];
   const moment = (Array.isArray(crono) ? crono : []).find(c => Number(c.capitol) === Number(capitolNum));
+  // normalitzarCronologiaNarrativa desa els camps com a data_ficticia i
+  // moment_del_dia: llegint 'data'/'moment' el rellotge sortia sempre buit i la
+  // cronologia de la fase 21 no arribava mai al prompt del capítol.
   const rellotge = moment
-    ? `${moment.data || ''} ${moment.moment || ''}`.trim()
+    ? `${moment.data_ficticia || moment.data || ''} ${moment.moment_del_dia || moment.moment || ''}`.trim()
     : '';
 
   const morts = Object.values(nkg.personatges || {}).filter(p => p && p.viu === false).map(p => p.nom);
@@ -9029,6 +9074,44 @@ function formatTimelineAccio(entry = {}) {
   const hora = entry.hora_aproximada ? ` (${entry.hora_aproximada})` : '';
   return `${cap}:${pers} ${entry.accio || ''}${hora}${ubi}`.trim();
 }
+// Amb la generació per blocs, un bloc pot arrencar la data una mica enrere
+// respecte del bloc anterior. Abans, un sol salt cap enrere feia petar tota la
+// fase 21 i es perdia tot el que ja s'havia generat. Ara s'arregla el salt i
+// es documenta la correcció; validarCronologiaPerCapitol queda com a garantia.
+function sanejarCronologiaPerCapitol(cronologia = {}) {
+  const ordreMoment = { matinada: 0, mati: 1, migdia: 2, tarda: 3, vespre: 4, nit: 5 };
+  const correccions = [];
+  const llista = (cronologia.per_capitol || []).sort((a, b) => Number(a.capitol) - Number(b.capitol));
+  let ultimaData = '';
+  let ultimMoment = -1;
+
+  for (const c of llista) {
+    if (c.data_ficticia) {
+      const actual = Date.parse(c.data_ficticia);
+      const previa = Date.parse(ultimaData);
+      if (ultimaData && !Number.isNaN(actual) && !Number.isNaN(previa) && actual < previa) {
+        correccions.push(`Cap.${c.capitol}: data ${c.data_ficticia} → ${ultimaData} (retrocedia)`);
+        c.data_ficticia = ultimaData;
+      }
+    } else if (ultimaData) {
+      c.data_ficticia = ultimaData;
+    }
+
+    const ordre = ordreMoment[c.moment_del_dia] ?? 0;
+    if (c.data_ficticia === ultimaData && ultimMoment >= 0 && ordre + 1 < ultimMoment) {
+      const nou = MOMENTS_DEL_DIA[ultimMoment] || 'tarda';
+      correccions.push(`Cap.${c.capitol}: moment ${c.moment_del_dia} → ${nou} (salt il·lògic)`);
+      c.moment_del_dia = nou;
+    }
+
+    ultimaData = c.data_ficticia || ultimaData;
+    ultimMoment = ordreMoment[c.moment_del_dia] ?? 0;
+  }
+
+  cronologia.per_capitol = llista;
+  return correccions;
+}
+
 function validarCronologiaPerCapitol(cronologia = {}) {
   const ordreMoment = { matinada: 0, mati: 1, migdia: 2, tarda: 3, vespre: 4, nit: 5 };
   const llista = (cronologia.per_capitol || []).slice().sort((a, b) => a.capitol - b.capitol);
@@ -9073,18 +9156,83 @@ function mostrarPerspectivaCronologia(perspectiva = {}, cronologia = {}, timelin
   `;
 }
 
-async function generarPerspectivaCronologia(userConfig) {
+// ═══════════════════════════════════════════════════════════
+//  FASE 21: Perspectiva, cronologia i timeline PER BLOCS
+//  Abans es demanava tota la novel·la en una sola resposta de 3.600 tokens.
+//  Una novel·la de 20-30 capítols necessita POV + cronologia + una entrada de
+//  timeline per personatge i capítol: molt per sobre d'aquest pressupost. La
+//  resposta arribava tallada i, segons on quedés el tall, o bé es perdien
+//  capítols en silenci o bé faltava "timeline_accions" i la fase moria amb
+//  "Resposta invàlida". Amb ChatGPT era sistemàtic, perquè el raonament intern
+//  de GPT-5 encara es menja part d'aquest pressupost.
+//  Ara es genera per blocs, com l'escaleta de la fase 20: cada bloc cap
+//  folgadament a la resposta i el que falli es recupera capítol a capítol.
+// ═══════════════════════════════════════════════════════════
+const BLOC_PERSPECTIVA = 5;
+const MAX_RECUPERACIONS_PERSPECTIVA = 10;
+const MOMENTS_DEL_DIA = ['matinada', 'mati', 'migdia', 'tarda', 'vespre', 'nit'];
+
+function capitolsPerspectiva() {
+  return (ESTAT._estructuraCapitols || []).map((cap, idx) =>
+    Object.assign({}, cap, { numero: Number(cap.numero || idx + 1) }));
+}
+
+// Fitxa mínima per decidir POV: el NKG sencer inflava el prompt fins a desenes
+// de milers de tokens sense aportar res a aquesta decisió.
+function resumPersonatgesPerspectiva() {
   const nkg = ESTAT._nkg || {};
+  return Object.entries(nkg.personatges || {}).map(([clau, p]) => ({
+    id: clau,
+    nom: (p && p.nom) || clau,
+    ocupacio: String((p && p.trets_immutables && p.trets_immutables.ocupacio) || '').trim(),
+    necessitat_interna: String((p && p.motivacions_base && p.motivacions_base.necessitat_interna) || '').trim()
+  }));
+}
+
+function resumEscenesCapitol(numero) {
+  const escaletes = ESTAT._escaletes || [];
+  const esc = escaletes.find(e => e && Number(e.capitol) === Number(numero)) || escaletes[numero - 1] || {};
+  return (Array.isArray(esc.escenes) ? esc.escenes : []).map(e => ({
+    nom: String((e && e.nom) || '').trim(),
+    funcio: String((e && e.funcio_narrativa) || '').trim(),
+    personatges: Array.isArray(e && e.personatges) ? e.personatges : [],
+    pov: String((e && e.scene_contract && e.scene_contract.pov) || '').trim()
+  }));
+}
+
+function contextCapitolsPerspectiva(capitols) {
+  return capitols.map(cap => ({
+    capitol: cap.numero,
+    titol: String(cap.titol || '').trim(),
+    funcio: String(cap.resum || cap.funcio_narrativa || '').trim(),
+    personatges: Array.isArray(cap.personatges) ? cap.personatges.filter(Boolean) : [],
+    escenes: resumEscenesCapitol(cap.numero)
+  }));
+}
+
+function pressupostTokensPerspectivaBloc(nCapitols, nPersonatges) {
+  // ~420 tokens per capítol (POV + entrada de cronologia) i ~120 per acció de
+  // timeline (una per personatge i capítol, que és el que demana el prompt).
+  const base = 800 + nCapitols * 420;
+  const timeline = nCapitols * Math.max(1, nPersonatges) * 120;
+  return Math.min(12000, base + timeline);
+}
+
+async function generarPerspectivaCronologiaBloc(capitols, context, userConfig) {
+  const numeros = capitols.map(c => c.numero);
+  const personatges = context.personatges || [];
   const payload = {
-    estructura_capitols: ESTAT._estructuraCapitols || [],
-    escaletes: ESTAT._escaletes || [],
-    synopsis: nkg.macronarrativa?.synopsis_core || '',
-    personatges: nkg.personatges || {},
-    llocs_ids: Object.keys(nkg.llocs || {})
+    synopsis: context.synopsis || '',
+    personatges,
+    llocs_ids: context.llocsIds || [],
+    capitols: contextCapitolsPerspectiva(capitols)
   };
+  if (context.global) payload.decisions_ja_preses = context.global;
+  if (context.ultimaCronologia) payload.on_acaba_el_capitol_anterior = context.ultimaCronologia;
+
   const systemPrompt = `Ets un editor literari expert en estructura temporal i punt de vista.
-A partir de l'estructura de capítols (amb funcions, threads i escaletes),
-la sinopsi, i les fitxes de personatges, has de definir:
+A partir de l'estructura dels capítols que se't donen, la sinopsi i les fitxes
+resumides de personatges, has de definir NOMÉS per als capítols ${numeros.join(', ')}:
 
 1. PERSPECTIVA NARRATIVA:
    - Tipus de narrador global
@@ -9109,7 +9257,7 @@ Respon EXCLUSIVAMENT amb JSON vàlid:
   "perspectiva": {
     "tipus": "tercera_limitada",
     "pov_per_capitol": [
-      {"capitol": 1, "personatge_pov": "biel_santamaria", "justificacio": "..."}
+      {"capitol": ${numeros[0]}, "personatge_pov": "biel_santamaria", "justificacio": "..."}
     ],
     "restriccions_informacio": "..."
   },
@@ -9117,30 +9265,197 @@ Respon EXCLUSIVAMENT amb JSON vàlid:
     "data_inici_historia": "...",
     "duracio_total_estimada": "...",
     "per_capitol": [
-      {"capitol": 1, "data_ficticia": "...", "duracio_capitol": "...", "moment_del_dia": "vespre", "ubicacio_principal": "pis_barcelona_biel"}
+      {"capitol": ${numeros[0]}, "data_ficticia": "...", "duracio_capitol": "...", "moment_del_dia": "vespre", "ubicacio_principal": "pis_barcelona_biel"}
     ]
   },
   "timeline_accions": [
-    {"capitol": 1, "personatge": "biel_santamaria", "accio": "...", "hora_aproximada": "21:00", "ubicacio": "pis_barcelona_biel"}
+    {"capitol": ${numeros[0]}, "personatge": "biel_santamaria", "accio": "...", "hora_aproximada": "21:00", "ubicacio": "pis_barcelona_biel"}
   ]
 }
 
 REGLES:
+- Retorna una entrada de POV i una de cronologia per a CADA capítol d'aquesta llista: ${numeros.join(', ')}. Ni un de més, ni un de menys.
 - El POV ha de coincidir amb el focus narratiu de l'escaleta.
-- La cronologia ha de ser CONTÍNUA.
+- La cronologia ha de ser CONTÍNUA i no pot retrocedir respecte del capítol anterior.
+- "moment_del_dia" només pot ser: ${MOMENTS_DEL_DIA.join(', ')}.
 - Cada personatge ha de tenir almenys 1 entrada de timeline per capítol on apareix.
-- Les ubicacions de la timeline han de coincidir amb els IDs del mapa de llocs.`;
+- Els identificadors de personatge i les ubicacions han de coincidir amb els IDs que rebs al context.${context.global ? '\n- "tipus", "restriccions_informacio", "data_inici_historia" i "duracio_total_estimada" ja estan decidits: repeteix-los tal com te’ls donem a "decisions_ja_preses".' : ''}`;
 
   const msgs = [{ role: 'user', content: `Context:\n${JSON.stringify(payload, null, 2)}` }];
   const models = getModelConfig(userConfig || USER_CONFIG || {});
+  const maxTokens = capsMaxTokens(models.modelArquitecte, pressupostTokensPerspectivaBloc(capitols.length, personatges.length));
+
   for (let intent = 1; intent <= 2; intent++) {
-    const raw = await callLLMMulti(msgs, systemPrompt, Object.assign({}, userConfig || USER_CONFIG || {}, { maxTokens: 3600, model: models.modelArquitecte }), 'arquitectura');
+    const raw = await callLLMMulti(msgs, systemPrompt, Object.assign({}, userConfig || USER_CONFIG || {}, { maxTokens, model: models.modelArquitecte }), 'arquitectura');
     const parsed = parseJsonRobust(raw);
-    if (parsed && parsed.perspectiva && parsed.cronologia && Array.isArray(parsed.timeline_accions)) return parsed;
-    if (intent === 2) throw new Error('Resposta invàlida a Perspectiva i Cronologia.');
-    msgs.push({ role: 'user', content: 'Resposta invàlida. Torna JSON estricte amb perspectiva + cronologia + timeline_accions.' });
+    const povs = parsed?.perspectiva?.pov_per_capitol;
+    const crono = parsed?.cronologia?.per_capitol;
+    if (Array.isArray(povs) && povs.length > 0 && Array.isArray(crono) && crono.length > 0) return parsed;
+    if (intent === 2) return null;
+    msgs.push({ role: 'user', content: `Resposta invàlida. Torna JSON estricte amb perspectiva.pov_per_capitol i cronologia.per_capitol per als capítols ${numeros.join(', ')}.` });
   }
-  throw new Error('No s\'ha pogut generar perspectiva i cronologia.');
+  return null;
+}
+
+function fusionarBlocPerspectiva(acumulat, bloc, numerosPermesos) {
+  if (!bloc) return;
+  const permesos = new Set(numerosPermesos.map(Number));
+  // Un bloc pot respondre amb capítols que no li tocaven, i la passada de
+  // recuperació pot tornar a portar un capítol que ja tenia POV però no
+  // cronologia (o a l'inrevés): cal filtrar per bloc i no duplicar res.
+  const jaTePov = new Set(acumulat.perspectiva.pov_per_capitol.map(e => Number(e.capitol)));
+  const jaTeCrono = new Set(acumulat.cronologia.per_capitol.map(e => Number(e.capitol)));
+  const jaTeTimeline = new Set(acumulat.timeline_accions.map(e => Number(e.capitol)));
+  const dinsDelBloc = e => e && permesos.has(Number(e.capitol));
+
+  const persp = bloc.perspectiva || {};
+  if (!acumulat.perspectiva.tipus && persp.tipus) acumulat.perspectiva.tipus = persp.tipus;
+  if (!acumulat.perspectiva.restriccions_informacio && persp.restriccions_informacio) {
+    acumulat.perspectiva.restriccions_informacio = persp.restriccions_informacio;
+  }
+  (Array.isArray(persp.pov_per_capitol) ? persp.pov_per_capitol : [])
+    .filter(e => dinsDelBloc(e) && !jaTePov.has(Number(e.capitol)))
+    .forEach(e => { jaTePov.add(Number(e.capitol)); acumulat.perspectiva.pov_per_capitol.push(e); });
+
+  const crono = bloc.cronologia || {};
+  if (!acumulat.cronologia.data_inici_historia && crono.data_inici_historia) {
+    acumulat.cronologia.data_inici_historia = crono.data_inici_historia;
+  }
+  if (!acumulat.cronologia.duracio_total_estimada && crono.duracio_total_estimada) {
+    acumulat.cronologia.duracio_total_estimada = crono.duracio_total_estimada;
+  }
+  (Array.isArray(crono.per_capitol) ? crono.per_capitol : [])
+    .filter(e => dinsDelBloc(e) && !jaTeCrono.has(Number(e.capitol)))
+    .forEach(e => { jaTeCrono.add(Number(e.capitol)); acumulat.cronologia.per_capitol.push(e); });
+
+  (Array.isArray(bloc.timeline_accions) ? bloc.timeline_accions : [])
+    .filter(e => dinsDelBloc(e) && !jaTeTimeline.has(Number(e.capitol)))
+    .forEach(e => acumulat.timeline_accions.push(e));
+}
+
+function capitolsSensePerspectiva(acumulat, capitols) {
+  const ambPov = new Set((acumulat.perspectiva.pov_per_capitol || []).map(e => Number(e.capitol)));
+  const ambCrono = new Set((acumulat.cronologia.per_capitol || []).map(e => Number(e.capitol)));
+  return capitols.filter(c => !ambPov.has(c.numero) || !ambCrono.has(c.numero));
+}
+
+// Xarxa de seguretat sense LLM: cap capítol pot quedar sense POV ni sense
+// entrada de cronologia, perquè les fases 22-24 hi compten. El que no s'hagi
+// pogut generar es dedueix de l'estructura i del capítol anterior.
+function completarPerspectivaCronologiaLocal(acumulat, capitols) {
+  const completats = [];
+  const povsPerCap = new Map((acumulat.perspectiva.pov_per_capitol || []).map(e => [Number(e.capitol), e]));
+  const cronoPerCap = new Map((acumulat.cronologia.per_capitol || []).map(e => [Number(e.capitol), e]));
+
+  capitols.forEach(cap => {
+    const num = cap.numero;
+    if (!povsPerCap.has(num)) {
+      const escenes = resumEscenesCapitol(num);
+      const candidat = escenes.map(e => e.pov).find(Boolean)
+        || (Array.isArray(cap.personatges) ? cap.personatges.filter(Boolean)[0] : '')
+        || escenes.flatMap(e => e.personatges).filter(Boolean)[0]
+        || '';
+      if (candidat) {
+        const entrada = { capitol: num, personatge_pov: candidat, justificacio: 'Deduït de l’escaleta del capítol.' };
+        acumulat.perspectiva.pov_per_capitol.push(entrada);
+        povsPerCap.set(num, entrada);
+        completats.push(num);
+      }
+    }
+    if (!cronoPerCap.has(num)) {
+      const anterior = cronoPerCap.get(num - 1);
+      const entrada = {
+        capitol: num,
+        data_ficticia: (anterior && anterior.data_ficticia) || acumulat.cronologia.data_inici_historia || '',
+        duracio_capitol: 'unes hores',
+        moment_del_dia: (anterior && anterior.moment_del_dia) || 'tarda',
+        ubicacio_principal: (anterior && anterior.ubicacio_principal) || ''
+      };
+      acumulat.cronologia.per_capitol.push(entrada);
+      cronoPerCap.set(num, entrada);
+      if (!completats.includes(num)) completats.push(num);
+    }
+  });
+
+  acumulat.perspectiva.pov_per_capitol.sort((a, b) => Number(a.capitol) - Number(b.capitol));
+  acumulat.cronologia.per_capitol.sort((a, b) => Number(a.capitol) - Number(b.capitol));
+  return completats;
+}
+
+async function generarPerspectivaCronologia(userConfig, onProgress) {
+  const nkg = ESTAT._nkg || {};
+  const capitols = capitolsPerspectiva();
+  if (capitols.length === 0) throw new Error('No hi ha estructura de capítols per analitzar.');
+
+  const context = {
+    synopsis: nkg.macronarrativa?.synopsis_core || '',
+    personatges: resumPersonatgesPerspectiva(),
+    llocsIds: Object.keys(nkg.llocs || {})
+  };
+  const acumulat = {
+    perspectiva: { tipus: '', pov_per_capitol: [], restriccions_informacio: '' },
+    cronologia: { data_inici_historia: '', duracio_total_estimada: '', per_capitol: [] },
+    timeline_accions: []
+  };
+
+  for (let offset = 0; offset < capitols.length; offset += BLOC_PERSPECTIVA) {
+    const bloc = capitols.slice(offset, offset + BLOC_PERSPECTIVA);
+    const rang = `${bloc[0].numero}-${bloc[bloc.length - 1].numero}`;
+    if (onProgress) onProgress(`Definint POV i cronologia: capítols ${rang} de ${capitols.length}…`);
+
+    const ultima = acumulat.cronologia.per_capitol[acumulat.cronologia.per_capitol.length - 1] || null;
+    const ctxBloc = Object.assign({}, context, {
+      ultimaCronologia: ultima,
+      global: acumulat.perspectiva.tipus ? {
+        tipus: acumulat.perspectiva.tipus,
+        restriccions_informacio: acumulat.perspectiva.restriccions_informacio,
+        data_inici_historia: acumulat.cronologia.data_inici_historia,
+        duracio_total_estimada: acumulat.cronologia.duracio_total_estimada
+      } : null
+    });
+
+    try {
+      const parcial = await generarPerspectivaCronologiaBloc(bloc, ctxBloc, userConfig);
+      fusionarBlocPerspectiva(acumulat, parcial, bloc.map(c => c.numero));
+    } catch (err) {
+      console.warn(`[Fase 21] Bloc ${rang} fallit: ${err.message}`);
+    }
+  }
+
+  // Recuperació capítol a capítol del que hagi quedat pendent. Amb un límit:
+  // si el model no col·labora, encadenar desenes de reintents és justament el
+  // que fa que la fase sembli penjada. La resta la cobreix la xarxa local.
+  const pendents = capitolsSensePerspectiva(acumulat, capitols).slice(0, MAX_RECUPERACIONS_PERSPECTIVA);
+  for (const cap of pendents) {
+    if (onProgress) onProgress(`Recuperant capítol ${cap.numero}…`);
+    const ultima = acumulat.cronologia.per_capitol.filter(e => Number(e.capitol) < cap.numero).pop() || null;
+    try {
+      const parcial = await generarPerspectivaCronologiaBloc([cap], Object.assign({}, context, {
+        ultimaCronologia: ultima,
+        global: {
+          tipus: acumulat.perspectiva.tipus,
+          restriccions_informacio: acumulat.perspectiva.restriccions_informacio,
+          data_inici_historia: acumulat.cronologia.data_inici_historia,
+          duracio_total_estimada: acumulat.cronologia.duracio_total_estimada
+        }
+      }), userConfig);
+      fusionarBlocPerspectiva(acumulat, parcial, [cap.numero]);
+    } catch (err) {
+      console.warn(`[Fase 21] Recuperació del capítol ${cap.numero} fallida: ${err.message}`);
+    }
+  }
+
+  const completatsLocalment = completarPerspectivaCronologiaLocal(acumulat, capitols);
+  if (completatsLocalment.length > 0) {
+    console.warn(`[Fase 21] Capítols completats sense LLM: ${completatsLocalment.join(', ')}`);
+  }
+
+  if (acumulat.perspectiva.pov_per_capitol.length === 0 || acumulat.cronologia.per_capitol.length === 0) {
+    throw new Error('Resposta invàlida a Perspectiva i Cronologia.');
+  }
+
+  acumulat._completats_localment = completatsLocalment;
+  return acumulat;
 }
 
 function injectarPerspectivaCronologia(data = {}) {
@@ -9149,6 +9464,8 @@ function injectarPerspectivaCronologia(data = {}) {
   if (!ESTAT._nkg.context_creacio.estil || typeof ESTAT._nkg.context_creacio.estil !== 'object') ESTAT._nkg.context_creacio.estil = {};
   const perspectiva = normalitzarPerspectivaNarrativa(data.perspectiva || {});
   const cronologia = normalitzarCronologiaNarrativa(data.cronologia || {});
+  const correccions = sanejarCronologiaPerCapitol(cronologia);
+  if (correccions.length > 0) console.warn('[Fase 21] Cronologia corregida automàticament:', correccions);
   validarCronologiaPerCapitol(cronologia);
   const llocsIds = new Set(Object.keys(ESTAT._nkg.llocs || {}));
   const timeline = (Array.isArray(data.timeline_accions) ? data.timeline_accions : [])
@@ -9176,9 +9493,26 @@ async function assegurarPerspectivaCronologiaPipeline(setStatus = null) {
   if (typeof setStatus === 'function') {
     setStatus("Definint POV, cronologia interna i timeline d'accions...");
   }
-  const data = await generarPerspectivaCronologia(USER_CONFIG);
+  const data = await generarPerspectivaCronologia(USER_CONFIG, setStatus);
   injectarPerspectivaCronologia(data);
   await assegurarTemperaturaEmocionalCapitols(USER_CONFIG, setStatus);
+}
+
+// Cobertura real: quins capítols de l'estructura han quedat sense POV o sense
+// entrada de cronologia. Abans només es mirava que les llistes no fossin buides,
+// i una resposta tallada a la meitat passava el control com si res.
+function faltantsPerspectivaCronologia() {
+  const persp = (((ESTAT._nkg || {}).context_creacio || {}).estil || {}).perspectiva || {};
+  const crono = ((ESTAT._nkg || {}).context_creacio || {}).cronologia || {};
+  const ambPov = new Set((persp.pov_per_capitol || []).map(e => Number(e.capitol)));
+  const ambCrono = new Set((crono.per_capitol || []).map(e => Number(e.capitol)));
+  const senseP = [];
+  const senseC = [];
+  capitolsPerspectiva().forEach(cap => {
+    if (!ambPov.has(cap.numero)) senseP.push(cap.numero);
+    if (!ambCrono.has(cap.numero)) senseC.push(cap.numero);
+  });
+  return { senseP, senseC };
 }
 
 async function iniciarFasePerspectivaCronologia() {
@@ -9188,10 +9522,12 @@ async function iniciarFasePerspectivaCronologia() {
   setTimeout(() => document.getElementById('fase-21')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   document.getElementById('perspectiva-crono-result').classList.add('hidden');
   showLoader('21');
+  const loaderText = document.getElementById('loader-21-text');
+  const onProgress = msg => { if (loaderText) loaderText.textContent = msg; };
   try {
-    const data = await generarPerspectivaCronologia(USER_CONFIG);
+    const data = await generarPerspectivaCronologia(USER_CONFIG, onProgress);
     injectarPerspectivaCronologia(data);
-    await assegurarTemperaturaEmocionalCapitols(USER_CONFIG);
+    await assegurarTemperaturaEmocionalCapitols(USER_CONFIG, onProgress);
     hideLoader('21');
     mostrarPerspectivaCronologia(
       ESTAT._nkg.context_creacio.estil.perspectiva,
@@ -9202,13 +9538,15 @@ async function iniciarFasePerspectivaCronologia() {
     document.getElementById('btn-fase22').classList.remove('hidden');
 
     const faltantsPersp = [];
-    const persp = ((ESTAT._nkg.context_creacio || {}).estil || {}).perspectiva || {};
-    const crono = (ESTAT._nkg.context_creacio || {}).cronologia || {};
-    if (!persp.tipus) faltantsPersp.push('Falta tipus de perspectiva');
-    if (!Array.isArray(persp.pov_per_capitol) || persp.pov_per_capitol.length === 0) faltantsPersp.push('Falta POV per capítol');
-    if (!Array.isArray(crono.per_capitol) || crono.per_capitol.length === 0) faltantsPersp.push('Falta cronologia per capítol');
+    const { senseP, senseC } = faltantsPerspectivaCronologia();
+    if (senseP.length > 0) faltantsPersp.push(`Sense POV: capítols ${senseP.join(', ')}`);
+    if (senseC.length > 0) faltantsPersp.push(`Sense cronologia: capítols ${senseC.join(', ')}`);
+    if ((ESTAT._nkg.timeline_accions || []).length === 0) faltantsPersp.push('Timeline d’accions buida');
+    if ((data._completats_localment || []).length > 0) {
+      faltantsPersp.push(`Deduïts sense model: capítols ${data._completats_localment.join(', ')}`);
+    }
     if (faltantsPersp.length > 0) {
-      toast(`Avís perspectiva: ${faltantsPersp.join('; ')}`);
+      toast(`Avís perspectiva: ${faltantsPersp.join('; ')}. Pots tornar a prémer "Regenerar POV/Cronologia".`);
     } else {
       toast('Perspectiva i cronologia injectades al NKG.');
     }
@@ -14353,6 +14691,33 @@ function isGPT5Model(modelId) {
   return typeof modelId === 'string' && modelId.toLowerCase().startsWith('gpt-5');
 }
 
+// GPT-5: el raonament intern es descompta de max_completion_tokens, així que el
+// pressupost real de contingut és (límit − tokens de raonament). Amb els prompts
+// grans de les fases 21+ (estructura, escaletes i NKG sencers) el raonament passa
+// de llarg dels 2048 tokens fixos que reservàvem, i la resposta arribava tallada
+// a mitja frase: el JSON quedava incomplet i la fase es penjava. Reservem un marge
+// proporcional a la sortida demanada, mai per sota de 4096.
+const RESERVA_RAONAMENT_MIN = 4096;
+const RESERVA_RAONAMENT_MAX = 16000;
+
+function reservaRaonamentGPT5(maxTokens) {
+  const base = (typeof maxTokens === 'number' && Number.isFinite(maxTokens)) ? maxTokens : RESERVA_RAONAMENT_MIN;
+  return Math.min(RESERVA_RAONAMENT_MAX, Math.max(RESERVA_RAONAMENT_MIN, Math.round(base)));
+}
+
+function maxOutputDelModel(modelId) {
+  const reg = MODEL_REGISTRY[modelId];
+  return (reg && Number(reg.max_output)) || 0;
+}
+
+function limitSortidaGPT5(modelId, maxTokens) {
+  const total = maxTokens + reservaRaonamentGPT5(maxTokens);
+  const maxOut = maxOutputDelModel(modelId);
+  // Sense el sostre del model, un maxTokens que ja iguali max_output generaria
+  // un límit superior al permès i l'API respondria amb un 400.
+  return maxOut ? Math.min(total, maxOut) : total;
+}
+
 function buildOpenAIPayload(messages, systemPrompt, model, maxTokens) {
   const finalModel = model || PROVIDER_DEFAULTS.openai.model;
   const payload = {
@@ -14361,15 +14726,13 @@ function buildOpenAIPayload(messages, systemPrompt, model, maxTokens) {
   };
 
   if (isGPT5Model(finalModel)) {
-    // GPT-5: el raonament intern consumeix max_completion_tokens. Si el límit
-    // és just, el model esgota el pressupost raonant i retorna contingut BUIT
-    // amb finish_reason 'length'. Reduïm el raonament (escriptura creativa)
-    // i donem marge extra perquè el contingut sempre hi càpiga.
+    // Reduïm el raonament (escriptura creativa) i donem marge extra perquè el
+    // contingut sempre hi càpiga.
     // 'low' és el valor comú entre variants gpt-5 (uns accepten 'minimal',
     // altres 'none'…'xhigh'); si un model el rebutja, el fallback el treu.
     payload.reasoning_effort = 'low';
     if (typeof maxTokens === 'number' && Number.isFinite(maxTokens)) {
-      payload.max_completion_tokens = maxTokens + 2048;
+      payload.max_completion_tokens = limitSortidaGPT5(finalModel, maxTokens);
     }
   } else if (typeof maxTokens === 'number' && Number.isFinite(maxTokens)) {
     payload.max_tokens = maxTokens;
@@ -14430,14 +14793,59 @@ async function fetchOpenAIWithFallback(payload, apiKey) {
   return result;
 }
 
-// GPT-5: si el raonament esgota el límit, l'API retorna contingut buit amb
-// finish_reason 'length' (sense error). Detectem aquest cas i reintentem un
-// cop sense límit de tokens perquè el contingut real pugui sortir.
-async function executarOpenAIAmbControlBuit(payload, apiKey) {
+function tokensRaonamentOpenAI(respostaJSON) {
+  const detall = respostaJSON && respostaJSON.usage && respostaJSON.usage.completion_tokens_details;
+  const n = detall ? Number(detall.reasoning_tokens) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function ambLimitSortida(payload, nouLimit) {
+  const next = Object.assign({}, payload);
+  if (next.max_completion_tokens) next.max_completion_tokens = nouLimit;
+  else next.max_tokens = nouLimit;
+  return next;
+}
+
+// GPT-5: si el raonament esgota el límit, l'API retorna contingut BUIT o TALLAT
+// amb finish_reason 'length' (sense error).
+//   · Tallat  → el JSON arriba incomplet. Les heurístiques de parseJsonRobust el
+//     "reparen" i la fase continua amb capítols o personatges que falten sense
+//     avisar de res. Reintentem restituint el pressupost que s'ha menjat raonar.
+//   · Buit    → reintentem sense cap límit.
+async function executarOpenAIAmbControlBuit(payload, apiKey, maxTokensContingut) {
   let result = await fetchOpenAIWithFallback(payload, apiKey);
   if (result.error) throw new Error(result.error.message || "Error desconegut d'OpenAI.");
   let analitzat = analitzarRespostaGenerica(result, 'openai');
-  if (!String(analitzat.text || '').trim() && analitzat.textIncomplet && (payload.max_completion_tokens || payload.max_tokens)) {
+
+  const limitActual = payload.max_completion_tokens || payload.max_tokens || 0;
+  if (analitzat.textIncomplet && limitActual) {
+    const raonament = tokensRaonamentOpenAI(result);
+    const base = Number.isFinite(maxTokensContingut) ? maxTokensContingut : limitActual;
+    const contingutAprox = Math.round(String(analitzat.text || '').length / 4);
+    const maxOut = maxOutputDelModel(payload.model);
+    // Només reintentem si el text lliurat es queda clarament per sota del
+    // pressupost demanat: llavors el que ha desaparegut del límit és raonament,
+    // no text. Si el contingut ja arriba al pressupost, la resposta és
+    // legítimament més llarga que el que s'ha demanat i ho resol qui crida
+    // (callLLMWithContinuation demana la continuació).
+    if (contingutAprox < base * 0.9) {
+      let nouLimit = Math.max(base + raonament + RESERVA_RAONAMENT_MIN, limitActual * 2);
+      if (maxOut) nouLimit = Math.min(nouLimit, maxOut);
+      if (nouLimit > limitActual) {
+        console.warn(`[OpenAI] Resposta tallada amb només ~${contingutAprox} tokens de contingut dels ${base} demanats (raonament: ${raonament || 'no informat'}). Reintentant amb un límit de ${nouLimit}…`);
+        const reintent = await fetchOpenAIWithFallback(ambLimitSortida(payload, nouLimit), apiKey);
+        if (!reintent.error) {
+          const nou = analitzarRespostaGenerica(reintent, 'openai');
+          if (String(nou.text || '').length > String(analitzat.text || '').length) {
+            result = reintent;
+            analitzat = nou;
+          }
+        }
+      }
+    }
+  }
+
+  if (!String(analitzat.text || '').trim() && analitzat.textIncomplet && limitActual) {
     console.warn('[OpenAI] Contingut buit per límit de tokens (raonament GPT-5). Reintentant sense límit…');
     result = await fetchOpenAIWithFallback(removeOpenAITokenLimits(payload), apiKey);
     if (result.error) throw new Error(result.error.message || "Error desconegut d'OpenAI.");
@@ -14451,12 +14859,12 @@ async function executarOpenAIAmbControlBuit(payload, apiKey) {
 
 async function callOpenAI(messages, systemPrompt, apiKey, model, maxTokens) {
   const payload = buildOpenAIPayload(messages, systemPrompt, model, maxTokens);
-  return (await executarOpenAIAmbControlBuit(payload, apiKey)).text;
+  return (await executarOpenAIAmbControlBuit(payload, apiKey, maxTokens)).text;
 }
 
 async function callOpenAIWithFinishReason(messages, systemPrompt, apiKey, model, maxTokens) {
   const payload = buildOpenAIPayload(messages, systemPrompt, model, maxTokens);
-  return await executarOpenAIAmbControlBuit(payload, apiKey);
+  return await executarOpenAIAmbControlBuit(payload, apiKey, maxTokens);
 }
 
 // ─── Google Gemini ──────────────────────────────────────────
