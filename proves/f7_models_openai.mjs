@@ -25,15 +25,20 @@ comprova('Booki manté tres selectors de model',
   ['selectModelDraft', 'selectModelGen', 'selectModelArq'].every(id => index.includes(`id="${id}"`)));
 comprova('Tots els proveïdors mostren la configuració de tres rols',
   index.includes("document.getElementById('config-anthropic-fields').classList.remove('hidden')"));
-comprova('Draft OpenAI: GPT-5.4 Nano', extensio.includes("draft: 'gpt-5.4-nano'"));
-comprova('Generació OpenAI: GPT-5.6 Luna', extensio.includes("generacio: 'gpt-5.6-luna'"));
-comprova('Arquitecte OpenAI: GPT-5.6 Terra', extensio.includes("arquitectura: 'gpt-5.6-terra'"));
-comprova('GPT-5.4 Nano té cost registrat',
-  /'gpt-5\.4-nano':[\s\S]*?input_per_m:\s*0\.20,[\s\S]*?output_per_m:\s*1\.25/.test(extensio));
-comprova('GPT-5.6 Luna té cost registrat',
-  /'gpt-5\.6-luna':[\s\S]*?input_per_m:\s*1\.00,[\s\S]*?output_per_m:\s*6\.00/.test(extensio));
-comprova('GPT-5.6 Terra té cost registrat',
-  /'gpt-5\.6-terra':[\s\S]*?input_per_m:\s*2\.50,[\s\S]*?output_per_m:\s*15\.00/.test(extensio));
+
+comprova('Draft OpenAI econòmic: GPT-5 Nano', extensio.includes("draft: 'gpt-5-nano'"));
+comprova('Generació OpenAI equilibrada: GPT-5 Mini', extensio.includes("generacio: 'gpt-5-mini'"));
+comprova('Arquitectura OpenAI equilibrada: GPT-5 Mini', extensio.includes("arquitectura: 'gpt-5-mini'"));
+comprova('GPT-5 Nano té cost oficial registrat',
+  /'gpt-5-nano':[\s\S]*?input_per_m:\s*0\.05,[\s\S]*?output_per_m:\s*0\.40/.test(extensio));
+comprova('GPT-5 Mini té cost oficial registrat',
+  /'gpt-5-mini':[\s\S]*?input_per_m:\s*0\.25,[\s\S]*?output_per_m:\s*2\.00/.test(extensio));
+comprova('Nano queda reservat al rol mecànic',
+  extensio.includes("draft: 'gpt-5-nano'") &&
+  !extensio.includes("generacio: 'gpt-5-nano'") &&
+  !extensio.includes("arquitectura: 'gpt-5-nano'"));
+comprova('Els models superiors continuen disponibles per pujar qualitat després',
+  ['gpt-5.4-nano', 'gpt-5.6-luna', 'gpt-5.6-terra'].every(id => extensio.includes(`'${id}'`)));
 comprova('Els models es registren abans de la inicialització de la pàgina',
   extensio.includes("document.addEventListener('DOMContentLoaded', installar"));
 comprova('La configuració continua persistint els tres rols',
