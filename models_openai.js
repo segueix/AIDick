@@ -60,6 +60,16 @@
     }
   };
 
+  function carregarRecuperacioNKG() {
+    if (document.getElementById('booki-nkg-recovery-script')) return;
+    const script = document.createElement('script');
+    script.id = 'booki-nkg-recovery-script';
+    script.src = 'nkg_recovery.js';
+    script.async = false;
+    script.onerror = () => console.warn('No s’ha pogut carregar el mòdul de recuperació NKG.');
+    document.head.appendChild(script);
+  }
+
   function assegurarCampDraftVisible() {
     if (document.getElementById('config-model-draft')) return;
 
@@ -129,6 +139,8 @@
   }
 
   function installar() {
+    carregarRecuperacioNKG();
+
     if (typeof MODEL_REGISTRY === 'undefined' || typeof MODELS_PER_PROVEIDOR === 'undefined') {
       console.error('No s’han pogut registrar els models OpenAI: falta el registre principal de Booki.');
       return;
