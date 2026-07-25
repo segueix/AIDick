@@ -633,3 +633,239 @@ function detectarFaltantsNKG(nkg = {}, biblia = {}) {
 }
 
 
+
+// ═══════════════════════════════════════════════════════════
+//  F5 — CAPA DE VERIFICACIÓ DETERMINISTA
+//  Fins ara tota la coherència es jutjava amb un LLM sobre resums. Aquesta capa
+//  comprova per codi el que és mecànicament comprovable: on és cada cosa, qui és
+//  viu, què sap cadascú i si el temps avança. No pot al·lucinar ni passar per alt
+//  un cas: si les dades hi són, el troba.
+//
+//  Requisit previ: un llibre major COMPLET. Les timelines del NKG es trunquen
+//  (40/40/20 entrades) perquè van als prompts; auditar-hi només veuria els
+//  darrers capítols. `registre_estat` és append-only i no es trunca mai.
+// ═══════════════════════════════════════════════════════════
+
+function crearRegistreEstat() {
+  return { esdeveniments: [], versio: 1 };
+}
+
+function assegurarRegistreEstat(nkg) {
+  if (!nkg || typeof nkg !== 'object') return null;
+  if (!nkg.registre_estat || typeof nkg.registre_estat !== 'object') nkg.registre_estat = crearRegistreEstat();
+  if (!Array.isArray(nkg.registre_estat.esdeveniments)) nkg.registre_estat.esdeveniments = [];
+  return nkg.registre_estat;
+}
+
+// Tipus: 'ubicacio' | 'objecte' | 'mort' | 'fet' | 'coneixement' | 'aparicio'
+function registrarEsdevenimentEstat(nkg, esdeveniment) {
+  const reg = assegurarRegistreEstat(nkg);
+  if (!reg || !esdeveniment || !esdeveniment.tipus) return null;
+  const e = Object.assign({
+    capitol: 0,
+    escena: 0,
+    tipus: '',
+    subjecte: '',
+    valor: '',
+    detall: ''
+  }, esdeveniment);
+  e.capitol = Math.max(0, Number(e.capitol) || 0);
+  e.escena  = Math.max(0, Number(e.escena) || 0);
+  reg.esdeveniments.push(e);
+  return e;
+}
+
+function esdevenimentsPerTipus(nkg, tipus) {
+  const reg = (nkg && nkg.registre_estat && Array.isArray(nkg.registre_estat.esdeveniments))
+    ? nkg.registre_estat.esdeveniments : [];
+  return reg.filter(e => e && e.tipus === tipus)
+            .sort((a, b) => (a.capitol - b.capitol) || (a.escena - b.escena));
+}
+
+function _ordreMomentDia(moment) {
+  const ordre = { matinada: 0, mati: 1, matí: 1, migdia: 2, tarda: 3, vespre: 4, nit: 5 };
+  return ordre[String(moment || '').toLowerCase().trim()];
+}
+
+function _incidencia(tipus, gravetat, capitol, missatge) {
+  return { tipus, gravetat, capitol: Number(capitol) || 0, missatge };
+}
+
+// ─── 1. Un objecte no pot ser a dos llocs alhora ───────────────────────────
+function auditarObjectes(nkg = {}) {
+  const incidencies = [];
+  const moviments = esdevenimentsPerTipus(nkg, 'objecte');
+  const estat = new Map(); // objecte → { on, capitol }
+
+  moviments.forEach(m => {
+    const previ = estat.get(m.subjecte);
+    // Un moviment ha de partir d'on era l'objecte. Si el punt de partida no
+    // coincideix amb l'últim estat conegut, algú l'ha teletransportat.
+    if (previ && m.detall && previ.on && m.detall !== previ.on) {
+      incidencies.push(_incidencia('objecte', 'alta', m.capitol,
+        `"${m.subjecte}" surt de "${m.detall}" al capítol ${m.capitol}, però l'últim registre el situava a "${previ.on}" (capítol ${previ.capitol}).`));
+    }
+    estat.set(m.subjecte, { on: m.valor, capitol: m.capitol });
+  });
+
+  return incidencies;
+}
+
+// ─── 2. Un personatge no pot ser a dos llocs al mateix moment ──────────────
+function auditarUbicacions(nkg = {}) {
+  const incidencies = [];
+  const moviments = esdevenimentsPerTipus(nkg, 'ubicacio');
+  const perCapitol = new Map(); // capitol → Map(personatge → Set(ubicacions))
+
+  moviments.forEach(m => {
+    if (!perCapitol.has(m.capitol)) perCapitol.set(m.capitol, new Map());
+    const delCap = perCapitol.get(m.capitol);
+    if (!delCap.has(m.subjecte)) delCap.set(m.subjecte, []);
+    delCap.get(m.subjecte).push({ ubicacio: m.valor, escena: m.escena });
+  });
+
+  perCapitol.forEach((pers, capitol) => {
+    pers.forEach((llocs, nom) => {
+      const perEscena = new Map();
+      llocs.forEach(l => {
+        if (!perEscena.has(l.escena)) perEscena.set(l.escena, new Set());
+        perEscena.get(l.escena).add(l.ubicacio);
+      });
+      perEscena.forEach((set, escena) => {
+        if (set.size > 1) {
+          incidencies.push(_incidencia('ubicacio', 'alta', capitol,
+            `"${nom}" apareix a ${set.size} llocs alhora al capítol ${capitol}, escena ${escena}: ${[...set].join(' / ')}.`));
+        }
+      });
+    });
+  });
+
+  return incidencies;
+}
+
+// ─── 3. Els morts no actuen ────────────────────────────────────────────────
+function auditarMorts(nkg = {}) {
+  const incidencies = [];
+  const morts = esdevenimentsPerTipus(nkg, 'mort');
+  if (morts.length === 0) return incidencies;
+
+  const capitolMort = new Map();
+  morts.forEach(m => {
+    if (!capitolMort.has(m.subjecte)) capitolMort.set(m.subjecte, m.capitol);
+  });
+
+  ['ubicacio', 'aparicio', 'coneixement'].forEach(tipus => {
+    esdevenimentsPerTipus(nkg, tipus).forEach(e => {
+      const mort = capitolMort.get(e.subjecte);
+      if (mort !== undefined && e.capitol > mort) {
+        incidencies.push(_incidencia('mort', 'alta', e.capitol,
+          `"${e.subjecte}" mor al capítol ${mort} però encara té activitat registrada (${tipus}) al capítol ${e.capitol}.`));
+      }
+    });
+  });
+
+  return incidencies;
+}
+
+// ─── 4. El temps avança, llevat que s'hi declari un salt ───────────────────
+function auditarCronologia(nkg = {}) {
+  const incidencies = [];
+  const crono = ((nkg.context_creacio || {}).cronologia || {}).per_capitol || [];
+  const llista = (Array.isArray(crono) ? crono : []).slice()
+    .sort((a, b) => Number(a.capitol) - Number(b.capitol));
+
+  let ultimaData = '';
+  let ultimMoment = -1;
+  llista.forEach(c => {
+    const esFlashback = /flashback|analepsi|retrospec|anys enrere|temps enrere/i
+      .test(`${c.moment || ''} ${c.data || ''} ${c.nota || ''} ${c.tipus || ''}`);
+    const data = String(c.data || '').trim();
+    const moment = _ordreMomentDia(c.moment);
+
+    if (!esFlashback && data && ultimaData && data < ultimaData) {
+      incidencies.push(_incidencia('cronologia', 'mitjana', c.capitol,
+        `El capítol ${c.capitol} va a "${data}", anterior a "${ultimaData}" del capítol previ, i no està marcat com a flashback.`));
+    } else if (!esFlashback && data && ultimaData && data === ultimaData &&
+               moment !== undefined && ultimMoment >= 0 && moment < ultimMoment) {
+      incidencies.push(_incidencia('cronologia', 'baixa', c.capitol,
+        `El capítol ${c.capitol} retrocedeix dins del mateix dia (${c.moment}) sense marcar-ho com a flashback.`));
+    }
+
+    if (data && !esFlashback) ultimaData = data;
+    if (moment !== undefined && !esFlashback) ultimMoment = moment;
+  });
+
+  return incidencies;
+}
+
+// ─── 5. Ningú actua sobre informació que encara no té ──────────────────────
+function auditarConeixement(nkg = {}) {
+  const incidencies = [];
+  const adquisicions = esdevenimentsPerTipus(nkg, 'coneixement');
+  if (adquisicions.length === 0) return incidencies;
+
+  // subjecte → fet → capítol en què l'adquireix
+  const saps = new Map();
+  adquisicions.forEach(a => {
+    if (a.valor !== 'usa') {
+      const clau = `${a.subjecte}::${a.detall}`;
+      if (!saps.has(clau) || a.capitol < saps.get(clau)) saps.set(clau, a.capitol);
+    }
+  });
+
+  adquisicions.filter(a => a.valor === 'usa').forEach(u => {
+    const clau = `${u.subjecte}::${u.detall}`;
+    const quan = saps.get(clau);
+    if (quan === undefined) {
+      incidencies.push(_incidencia('coneixement', 'alta', u.capitol,
+        `"${u.subjecte}" actua sobre "${u.detall}" al capítol ${u.capitol} però no consta que ho hagi arribat a saber mai.`));
+    } else if (u.capitol < quan) {
+      incidencies.push(_incidencia('coneixement', 'alta', u.capitol,
+        `"${u.subjecte}" actua sobre "${u.detall}" al capítol ${u.capitol}, però no ho sap fins al capítol ${quan}.`));
+    }
+  });
+
+  return incidencies;
+}
+
+// ─── 6. Cap fil pot arribar obert al final ─────────────────────────────────
+function auditarFils(nkg = {}, totalCapitols = 0) {
+  const incidencies = [];
+  const oberts = ((nkg.threads || {}).oberts) || [];
+  if (!Array.isArray(oberts) || oberts.length === 0) return incidencies;
+  const pendents = ((nkg.threads || {}).pendents_resolucio) || [];
+  const justificats = new Set(Array.isArray(pendents) ? pendents.map(String) : []);
+  oberts.forEach(f => {
+    const txt = typeof f === 'string' ? f : (f && (f.descripcio || f.id)) || String(f);
+    if (!justificats.has(String(txt))) {
+      incidencies.push(_incidencia('fils', 'mitjana', totalCapitols,
+        `El fil "${txt}" arriba obert al final sense justificació de final obert.`));
+    }
+  });
+  return incidencies;
+}
+
+// ─── Auditoria completa ────────────────────────────────────────────────────
+function auditarCoherenciaNKG(nkg = {}, opcions = {}) {
+  const total = Number(opcions.totalCapitols) || 0;
+  const incidencies = [
+    ...auditarObjectes(nkg),
+    ...auditarUbicacions(nkg),
+    ...auditarMorts(nkg),
+    ...auditarCronologia(nkg),
+    ...auditarConeixement(nkg)
+  ];
+  // Els fils només són un problema quan la novel·la s'ha acabat.
+  if (opcions.novellaAcabada) incidencies.push(...auditarFils(nkg, total));
+
+  const ordreGravetat = { alta: 0, mitjana: 1, baixa: 2 };
+  incidencies.sort((a, b) => (ordreGravetat[a.gravetat] - ordreGravetat[b.gravetat]) || (a.capitol - b.capitol));
+
+  return {
+    ok: incidencies.length === 0,
+    incidencies,
+    total: incidencies.length,
+    altes: incidencies.filter(i => i.gravetat === 'alta').length,
+    esdevenimentsAuditats: ((nkg.registre_estat || {}).esdeveniments || []).length
+  };
+}

@@ -224,10 +224,46 @@ Una peça entra aquí si compleix **tots** aquests punts:
 > a patches sota canon congelat i esborrar-lo deixaria òrfena la modalitat
 > `'patch'` de `canRewrite`.
 
+## Peces consolidades a F5 (verificació determinista)
+
+### `registre_estat` + `registrarEsdevenimentEstat()` — `nkg_core.js`
+- **Responsabilitat**: llibre major append-only de tots els canvis d'estat.
+- **Contracte**: **no es trunca mai** (a diferència de les timelines, que van als
+  prompts i es tallen a 40/20 entrades). És la font de l'auditoria.
+- **Alimentat per**: `nkgRegistrarMovimentObjecte`, `nkgRegistrarCanvisPersonatge`,
+  el canvi de `viu` i el camp `coneixement` de l'extracció post-capítol.
+
+### `auditarCoherenciaNKG(nkg, opcions)` — `nkg_core.js`
+- **Responsabilitat**: agregar els sis validaors deterministes (objectes,
+  ubicacions, morts, cronologia, coneixement, fils) i ordenar per gravetat.
+- **Contracte**: funció pura, sense LLM ni DOM. `{ ok, incidencies, altes,
+  esdevenimentsAuditats }`. Els fils només es comproven si `novellaAcabada`.
+- **Checks mínims**: cap incidència sobre un registre coherent; una incidència
+  d'alta gravetat per cada contradicció plantada.
+
+### `executarAuditoriaDeterminista(opcions)` — `index.html`
+- **Responsabilitat**: embolcall d'aplicació — desa el resultat a
+  `ESTAT._auditoriaDeterminista` i obre un fil `error-continuïtat` per cada
+  incidència alta (idempotent: no duplica fils).
+- **Cridada des de**: `tancamentBlocComplet` (abans del jutge), el botó de la
+  fase 24 i `checklistSortidaNovella`.
+
+### `construirBlocEstatInicialCapitol(capitolNum)` — `index.html`
+- **Responsabilitat**: muntar del NKG l'estat real amb què comença el capítol
+  (ubicació, estat físic, inventari, indumentària, què sap ja cada personatge,
+  rellotge i morts) i injectar-lo al prompt.
+- **Contracte**: cap crida a LLM. El coneixement es filtra per capítol: no pot
+  llistar el que el personatge aprèn més endavant.
+
+### `verificarNovellaTextComplet()` — `index.html`
+- **Responsabilitat**: única passada que llegeix la novel·la sencera. Contrasta
+  una llista tancada de fets canònics i incidències, no busca lliurement.
+- **Contracte**: retalla al 60% del context del model si cal, i ho diu a la UI.
+
 ## Proves de regressió
 
-`proves/` conté quatre suites de Playwright + Chromium que s'executen sobre
-l'`index.html` real (**79 comprovacions**):
+`proves/` conté cinc suites de Playwright + Chromium que s'executen sobre
+l'`index.html` real (**103 comprovacions**):
 
 | Suite | Cobreix |
 |---|---|
@@ -235,6 +271,7 @@ l'`index.html` real (**79 comprovacions**):
 | `f2_jutge.mjs` | jutge de bloc, locks i reconciliació cap endavant |
 | `f3_estil_autors.mjs` | perfils d'autor, humanització i escenes per capítol |
 | `f4_higiene.mjs` | duplicats, models per defecte i codi mort |
+| `f5_verificacio.mjs` | validadors deterministes, llibre major i bloc d'estat |
 
 ```
 npx http-server -p 8099 -c-1 .     # en una terminal

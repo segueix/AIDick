@@ -37,11 +37,12 @@ cap crida a funció inexistent. El problema és un altre, i és més greu:
 
 El pla de la secció 5 ataca aquests quatre fronts en 5 fases.
 
-> **Estat**: **les cinc fases (F0–F4) estan implementades i verificades.** Els quatre
+> **Estat**: **les sis fases (F0–F5) estan implementades i verificades.** Els quatre
 > punts d'aquest resum descriuen, doncs, el problema tal com era, no com és ara.
 > Suites: `proves/f0_f1.mjs` (15/15), `proves/f2_jutge.mjs` (20/20),
-> `proves/f3_estil_autors.mjs` (33/33) i `proves/f4_higiene.mjs` (11/11) —
-> **79 comprovacions**, executables de cop amb `node proves/executa-totes.mjs`.
+> `proves/f3_estil_autors.mjs` (33/33), `proves/f4_higiene.mjs` (11/11) i
+> `proves/f5_verificacio.mjs` (24/24) — **103 comprovacions**, executables de cop
+> amb `node proves/executa-totes.mjs`.
 >
 > El que queda per fer no és codi: són els criteris de fet que necessiten l'API real i
 > el teu criteri (una novel·la curta de punta a punta per a cadascun dels 4 perfils).
@@ -647,13 +648,101 @@ donar ≥ 3/4 criteris complerts sense retocs manuals.
 
 ---
 
+### F5 — Verificació determinista i model de coneixement ✅ FETA
+
+> Fase afegida després de F0–F4, en resposta a la pregunta de si les novel·les poden
+> arribar a ser coherents sense revisió humana. **La resposta honesta és que no**, i
+> convé que consti al pla. El que sí que es pot fer és treure del terreny del judici
+> tot el que és mecànicament comprovable, que és molt més del que hi havia.
+
+#### El problema
+
+Tot el control de coherència previ a F5 tenia tres límits estructurals:
+
+1. **Es validava una compressió, no l'obra.** `executarCheckpoint()` construeix el
+   context amb `resum_capitol`, o amb els primers 300 caràcters. La card de la fase 24
+   ho deia literalment: *"Opus avalua la novel·la a partir dels resums — sense llegir
+   el cos íntegre — per estalviar tokens."*
+2. **Un LLM jutjant un altre LLM**, amb els mateixos punts cecs i sense veritat de
+   referència.
+3. **Ningú sabia qui sap què.** L'única cosa que s'hi acostava era `coneixement_mutu`,
+   un booleà de "aquests dos es coneixen". L'error de continuïtat més freqüent en
+   novel·la — actuar sobre informació que encara no s'ha rebut — era indetectable
+   perquè no es modelava.
+
+#### F5.1 · Llibre major complet
+
+Les timelines del NKG es trunquen (`timeline_objectes` i `timeline_personatges` a 40
+entrades, `timeline_accions` a 20) perquè van als prompts. Auditar-hi només hauria
+vist els darrers capítols. `nkg.registre_estat` és **append-only i no es trunca mai**;
+les timelines es queden com estaven per al context. S'alimenta dels mateixos punts que
+ja registraven estat: `nkgRegistrarMovimentObjecte`, `nkgRegistrarCanvisPersonatge` i
+el camp `viu`.
+
+#### F5.2 · Validadors deterministes (`nkg_core.js`, zero LLM)
+
+| Validador | Detecta |
+|---|---|
+| `auditarObjectes` | un objecte que surt d'un lloc on no era |
+| `auditarUbicacions` | un personatge a dos llocs a la mateixa escena |
+| `auditarMorts` | activitat registrada després de morir |
+| `auditarCronologia` | retrocés temporal no declarat com a flashback |
+| `auditarConeixement` | actuar sobre informació que encara no es té, o que no s'aprèn mai |
+| `auditarFils` | fils oberts en acabar sense justificació de final obert |
+
+`auditarCoherenciaNKG()` els agrega i ordena per gravetat. S'executa al tancament de
+cada bloc **abans** del jutge (el que es demostra per codi no cal que un model ho
+endevini), té botó propi a la fase 24 i és una fila nova del checklist de sortida —
+l'única que no depèn de cap model.
+
+#### F5.3 · Model de coneixement
+
+L'extracció post-capítol emet ara `coneixement: [{personatge, informacio, operacio:
+apren|usa, via}]`, amb la instrucció d'usar etiquetes curtes i estables perquè es
+puguin encreuar entre capítols. Amb això, `auditarConeixement` compara el capítol en
+què algú fa servir una informació amb el capítol en què l'adquireix.
+
+#### F5.4 · Estat inicial generat per codi
+
+`construirBlocEstatInicialCapitol()` munta del NKG —no d'un resum d'LLM— la ubicació,
+l'estat físic, l'inventari, la indumentària i **què sap ja** cada personatge present,
+més el rellotge del capítol i la llista de morts. S'injecta al prompt abans del
+material dramàtic. És prevenció, no detecció: la contradicció es fa difícil d'escriure.
+
+#### F5.5 · Verificació contra el text complet
+
+Una sola passada, al final, que llegeix la novel·la sencera. No se li demana "troba
+tot el que estigui malament" —això és el que un LLM fa pitjor— sinó que contrasti una
+**llista concreta** de fets canònics i d'incidències de l'auditoria i digui, per
+cadascun, si el text els confirma, els desmenteix o no en diu prou.
+
+#### Criteri de fet F5
+
+- Cada validador detecta el seu cas i **no n'inventa cap** sobre una novel·la
+  coherent (els falsos positius farien inservible la capa). Verificat: 24/24 a
+  `proves/f5_verificacio.mjs`, amb casos negatius explícits per a cada validador.
+- Pendent amb API real: mesurar quantes incidències reals detecta l'auditoria sobre
+  una novel·la generada de punta a punta, i quantes se li escapen.
+
+#### El sostre, dit clarament
+
+Amb F5 l'objectiu realista **no és "cap error"**. És *"prou pocs errors perquè una
+sola lectura els caci tots"* — i això segueix sent una lectura humana. La capa
+determinista cobreix la continuïtat factual; la deriva de veu, si el final està
+guanyat o si el llibre val la pena segueixen sent judicis que cap gate pot substituir.
+
+---
+
 ## 6. Ordre recomanat i dependències
 
 ```
-F0 (desbloqueig) ──┬──> F2 (jutge)  ──┐
-                   │                   ├──> F4 (higiene i docs)
-F1 (ordre visual) ─┴──> F3 (estil) ───┘
+F0 (desbloqueig) ──┬──> F2 (jutge) ──> F5 (verificació determinista) ──┐
+                   │                                                    ├──> F4 (higiene i docs)
+F1 (ordre visual) ─┴──> F3 (estil) ────────────────────────────────────┘
 ```
+
+F5 depèn de F2: l'auditoria determinista s'executa dins del tancament de bloc i obre
+fils amb el mecanisme de reconciliació que F2 va reactivar.
 
 F0 i F1 són independents entre elles i es poden fer en paral·lel; totes dues són prèvies a
 qualsevol prova end-to-end seriosa. F3 és la que respon directament a l'encàrrec d'excel·lència,

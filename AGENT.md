@@ -133,6 +133,22 @@ Cada capítol té un objecte `llibreRegistre.capitols[idx].ksn` amb:
 - El perfil del projecte (`ESTAT._autorPerfilId`) mana sobre qualsevol detecció per
   text. Usa `resoldrePerfilAutor(text)`, mai `obtenirPerfilAutorId(text) || ...`.
 
+## Capa de verificació determinista (F5)
+
+- **`nkg.registre_estat` és append-only i no es trunca MAI.** Les timelines
+  (`timeline_objectes`, `timeline_personatges`, `timeline_accions`) sí que es
+  trunquen, perquè van als prompts. Si algú posa un `slice()` al registre, l'auditoria
+  deixa de veure la primera meitat de la novel·la i no ho dirà: fallarà en silenci.
+- **Tot canvi d'estat auditable s'ha de registrar amb `registrarEsdevenimentEstat()`**
+  al mateix punt on ja s'escriu la timeline. Tipus vigents: `ubicacio`, `objecte`,
+  `mort`, `coneixement`, `fet`, `aparicio`.
+- **Els validadors de `nkg_core.js` són purs i no poden fer falsos positius.** Un
+  validador que es queixa d'una novel·la coherent és pitjor que no tenir-lo: la gent
+  aprèn a ignorar l'avís. Cada validador nou necessita una prova del cas que detecta
+  **i** una del cas legítim que s'hi assembla.
+- El que es pot comprovar per codi no s'ha de preguntar a un LLM. L'auditoria
+  s'executa abans del jutge i els seus resultats entren al seu context com a fets.
+
 ## Models i defaults (F4)
 
 - **Cap ID de model escrit a mà fora de `MODEL_REGISTRY` i `MODELS_PER_PROVEIDOR`.**

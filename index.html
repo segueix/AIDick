@@ -1613,7 +1613,13 @@
       <button class="btn btn-primary hidden" id="btn-epileg" onclick="escriureEpileg()">✨ Escriure Epíleg Resolutiu <span class="badge-model badge-sonnet">Sonnet</span></button>
       <!-- Etapa E.4: avaluació informativa per perfil d'autor, mai reescriu -->
       <button class="btn btn-secondary" id="btn-informe-excellencia" onclick="generarInformeExcellencia()">🏅 Informe d'excel·lència</button>
+      <!-- F5.2: auditoria per codi, sense cap crida a l'LLM ni cost -->
+      <button class="btn btn-secondary" id="btn-auditoria-determinista" onclick="mostrarAuditoriaDeterminista()">🔎 Auditoria de continuïtat</button>
+      <!-- F5.5: única passada que llegeix la novel·la sencera -->
+      <button class="btn btn-secondary" id="btn-verificacio-text" onclick="verificarNovellaTextComplet()">📚 Verificar contra el text complet</button>
     </div>
+    <div id="auditoria-determinista-cos" class="hidden" style="margin-top:14px;"></div>
+    <div id="verificacio-text-cos" class="hidden" style="margin-top:14px;"></div>
     <div id="informe-excellencia-cos" class="hidden" style="margin-top:14px;"></div>
   </div>
   <div id="epileg-loader-wrap" class="hidden" style="padding:20px 0;border-top:1px solid var(--border);margin-top:20px;">
@@ -2845,7 +2851,21 @@ function checklistSortidaNovella() {
       nom: 'Validacions LLM netes',
       ok: errorsVal.length === 0,
       detall: errorsVal.length === 0 ? 'cap error registrat' : `${errorsVal.length} errors de validació (consola)`
-    }
+    },
+    // F5.2: aquesta fila és la que no depèn de cap model. Si és vermella, hi ha
+    // una contradicció demostrable a les dades, no una sospita d'un LLM.
+    (() => {
+      const aud = (typeof auditarCoherenciaNKG === 'function')
+        ? auditarCoherenciaNKG(ESTAT._nkg || {}, { totalCapitols: total, novellaAcabada: total > 0 && escrits >= total })
+        : { ok: true, total: 0, altes: 0, esdevenimentsAuditats: 0 };
+      return {
+        nom: 'Auditoria determinista de continuïtat',
+        ok: aud.altes === 0,
+        detall: aud.altes === 0
+          ? `sense contradiccions demostrables (${aud.esdevenimentsAuditats} esdeveniments comprovats${aud.total > 0 ? `, ${aud.total} avisos menors` : ''})`
+          : `${aud.altes} contradiccions d'alta gravetat — obre el diagnòstic per veure-les`
+      };
+    })()
   ];
 }
 
@@ -2886,6 +2906,144 @@ function renderInformeExcellenciaHtml(resultats) {
       ${files}
     </div>`;
   }).join('');
+}
+
+// F5.2 — Vista de l'auditoria determinista. Zero crides a l'LLM.
+function mostrarAuditoriaDeterminista() {
+  const wrap = document.getElementById('auditoria-determinista-cos');
+  if (!wrap) return;
+  const total = (ESTAT._estructuraCapitols || []).length;
+  const escrits = (ESTAT._capitols_generats || []).filter(Boolean).length;
+  const res = executarAuditoriaDeterminista({
+    totalCapitols: total,
+    novellaAcabada: total > 0 && escrits >= total,
+    obrirFils: false
+  });
+  wrap.classList.remove('hidden');
+
+  if (res.ok) {
+    wrap.innerHTML = `<div class="veu-card"><div class="veu-card-nom">✅ Cap contradicció demostrable</div>
+      <div class="veu-camp-val">S'han comprovat ${res.esdevenimentsAuditats} esdeveniments d'estat (ubicacions, objectes, morts, cronologia i coneixement) sense trobar cap incoherència.
+      Això no vol dir que la novel·la sigui perfecta: només que no hi ha cap contradicció detectable a les dades.</div></div>`;
+    return;
+  }
+
+  const color = { alta: 'var(--error, #ef4444)', mitjana: 'var(--warning, #f59e0b)', baixa: 'var(--text2)' };
+  const items = res.incidencies.map(i => `
+    <li style="margin-bottom:8px;">
+      <span style="color:${color[i.gravetat] || 'var(--text2)'};font-weight:600;text-transform:uppercase;font-size:.72rem;">${escHtml(i.gravetat)}</span>
+      <span style="color:var(--text2);font-size:.75rem;"> · cap. ${i.capitol} · ${escHtml(i.tipus)}</span><br>
+      ${escHtml(i.missatge)}
+    </li>`).join('');
+
+  wrap.innerHTML = `<div class="veu-card">
+    <div class="veu-card-nom">🔎 Auditoria de continuïtat — ${res.total} incidència/es (${res.altes} d'alta gravetat)</div>
+    <div class="veu-camp-val" style="margin-bottom:8px;">Detectades per codi sobre ${res.esdevenimentsAuditats} esdeveniments d'estat. No són opinions d'un model: són contradiccions a les dades.</div>
+    <ul style="padding-left:18px;margin-top:8px;">${items}</ul>
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;" onclick="obrirFilsDesDAuditoria(this)">🧵 Obrir fils de reconciliació</button>
+    </div>
+  </div>`;
+}
+
+function obrirFilsDesDAuditoria(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Obrint…'; }
+  const total = (ESTAT._estructuraCapitols || []).length;
+  const res = executarAuditoriaDeterminista({ totalCapitols: total, novellaAcabada: true, obrirFils: true });
+  toast(`${res.altes} incidència/es d'alta gravetat registrades per reconciliar.`);
+  if (btn) { btn.disabled = false; btn.textContent = '🧵 Obrir fils de reconciliació'; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  F5.5 — Verificació contra el text complet
+//  Tota la resta del control de coherència treballa sobre resums, per estalvi de
+//  tokens. Aquesta passada, una sola vegada i al final, llegeix la novel·la
+//  sencera. No li demanem "troba tot el que estigui malament" (això ja ho fa
+//  malament qualsevol LLM): li donem una llista concreta de fets i incidències i
+//  li demanem que digui, per cadascun, si el text el confirma o el desmenteix.
+// ═══════════════════════════════════════════════════════════
+async function verificarNovellaTextComplet() {
+  const caps = (ESTAT._capitols_generats || []).filter(Boolean);
+  if (caps.length === 0) { toast('Encara no hi ha capítols escrits.'); return; }
+
+  const wrap = document.getElementById('verificacio-text-cos');
+  const btn = document.getElementById('btn-verificacio-text');
+  if (btn) { btn.disabled = true; btn.textContent = 'Verificant…'; }
+  if (wrap) { wrap.classList.remove('hidden'); wrap.innerHTML = '<p style="color:var(--text2);font-size:.86rem;">📚 Llegint la novel·la sencera…</p>'; }
+
+  const nkg = ESTAT._nkg || {};
+  const total = (ESTAT._estructuraCapitols || []).length;
+  const auditoria = executarAuditoriaDeterminista({ totalCapitols: total, novellaAcabada: true, obrirFils: false });
+
+  const afirmacions = [
+    ...(nkg.fets_canonics || []).slice(0, 25).map(f => ({
+      id: 'fet_' + Math.random().toString(36).slice(2, 7),
+      afirmacio: typeof f === 'string' ? f : (f.descripcio || JSON.stringify(f)),
+      origen: 'fet canònic'
+    })),
+    ...auditoria.incidencies.slice(0, 15).map((i, n) => ({
+      id: 'inc_' + n,
+      afirmacio: i.missatge,
+      origen: 'auditoria determinista'
+    }))
+  ];
+  if (afirmacions.length === 0) {
+    if (wrap) wrap.innerHTML = '<div class="veu-card"><div class="veu-card-nom">ℹ️ Res a verificar</div><div class="veu-camp-val">No hi ha fets canònics ni incidències per contrastar amb el text.</div></div>';
+    if (btn) { btn.disabled = false; btn.textContent = '📚 Verificar contra el text complet'; }
+    return;
+  }
+
+  const models = getModelConfig(USER_CONFIG);
+  const contextModel = (MODEL_REGISTRY[models.modelArquitecte] || {}).context_max || 200000;
+  const pressupostChars = Math.floor(contextModel * 0.6 * 3.5);
+  let novella = caps.map((t, i) => `\n\n═══ CAPÍTOL ${i + 1} ═══\n${t}`).join('');
+  const retallada = novella.length > pressupostChars;
+  if (retallada) novella = novella.slice(0, pressupostChars);
+
+  const prompt = `Ets un verificador de continuïtat. Tens la novel·la SENCERA i una llista d'afirmacions.
+Per a cada afirmacio, digues si el text la CONFIRMA, la DESMENTEIX o si no hi ha prou informació.
+No busquis res més: limita't a la llista. Cita el passatge concret que et fa decidir.
+
+AFIRMACIONS:
+${afirmacions.map((a, n) => `${n + 1}. [${a.id}] (${a.origen}) ${a.afirmacio}`).join('\n')}
+
+NOVEL·LA${retallada ? ' (retallada al que cap al context)' : ' COMPLETA'}:
+${novella}
+
+Retorna EXCLUSIVAMENT JSON vàlid:
+{"verificacions":[{"id":"...","veredicte":"confirma|desmenteix|insuficient","evidencia":"cita curta o descripció del passatge","capitol":3}]}`;
+
+  try {
+    const raw = await callLLMMulti(
+      [{ role: 'user', content: prompt }],
+      'Ets un verificador rigorós de continuïtat narrativa. Respon EXCLUSIVAMENT JSON vàlid.',
+      Object.assign({}, USER_CONFIG, { maxTokens: 3000, model: models.modelArquitecte }),
+      'arquitectura'
+    );
+    const dades = parseJsonRobust(raw);
+    const verificacions = (dades && Array.isArray(dades.verificacions)) ? dades.verificacions : [];
+    ESTAT._verificacioTextComplet = { quanISO: new Date().toISOString(), verificacions, retallada };
+
+    const perId = new Map(afirmacions.map(a => [a.id, a]));
+    const desmentides = verificacions.filter(v => v.veredicte === 'desmenteix');
+    const files = verificacions.map(v => {
+      const a = perId.get(v.id) || {};
+      const ico = v.veredicte === 'confirma' ? '✅' : v.veredicte === 'desmenteix' ? '❌' : '➖';
+      return `<li style="margin-bottom:8px;">${ico} <strong>${escHtml(a.afirmacio || v.id)}</strong>
+        <div style="color:var(--text2);font-size:.8rem;">${escHtml(v.evidencia || '')}${v.capitol ? ` — cap. ${v.capitol}` : ''}</div></li>`;
+    }).join('');
+
+    if (wrap) wrap.innerHTML = `<div class="veu-card">
+      <div class="veu-card-nom">📚 Verificació contra el text complet${retallada ? ' (parcial)' : ''}</div>
+      <div class="veu-camp-val">${verificacions.length} afirmacions contrastades · ${desmentides.length} desmentides pel text.</div>
+      <ul style="padding-left:18px;margin-top:8px;">${files}</ul>
+    </div>`;
+    toast(desmentides.length === 0 ? '✅ El text no desmenteix cap afirmació.' : `⚠️ ${desmentides.length} afirmacions desmentides pel text.`);
+  } catch (err) {
+    if (wrap) wrap.innerHTML = `<div class="veu-card"><div class="veu-card-nom">⚠️ Error de verificació</div><div class="veu-camp-val">${escHtml(err.message)}</div></div>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📚 Verificar contra el text complet'; }
+  }
 }
 
 async function generarInformeExcellencia() {
@@ -8209,6 +8367,67 @@ function contextHumanitzacioCapitol(capitolNum) {
   };
 }
 
+// ═══════════════════════════════════════════════════════════
+//  F5.4 — ESTAT INICIAL DEL CAPÍTOL, GENERAT PER CODI
+//  El mecanisme de coherència més fort no és detectar la contradicció després,
+//  sinó fer-la difícil d'escriure. Aquest bloc no el redacta cap LLM: es munta
+//  del NKG, així que no pot resumir malament ni oblidar-se de res.
+// ═══════════════════════════════════════════════════════════
+function construirBlocEstatInicialCapitol(capitolNum) {
+  const nkg = ESTAT._nkg || {};
+  const idx = Math.max(0, Number(capitolNum) - 1);
+  const cap = (ESTAT._estructuraCapitols || [])[idx] || {};
+  const presents = Array.isArray(cap.personatges) && cap.personatges.length > 0
+    ? cap.personatges
+    : Object.values(nkg.personatges || {}).filter(p => p && p.viu !== false).map(p => p.nom);
+  if (presents.length === 0) return '';
+
+  const sapPersonatge = (nom) => {
+    if (typeof esdevenimentsPerTipus !== 'function') return [];
+    return esdevenimentsPerTipus(nkg, 'coneixement')
+      .filter(e => e.valor !== 'usa' && e.capitol < Number(capitolNum) &&
+                   nkgNormalitzarNom(e.subjecte) === nkgNormalitzarNom(nom))
+      .map(e => e.detall);
+  };
+
+  const fitxes = presents.map(nom => {
+    const clau = nkgNormalitzarNom(nom);
+    const p = (nkg.personatges || {})[clau];
+    if (!p) return `- ${nom}: (sense estat registrat encara)`;
+    const inv = Array.isArray(p.objectes_inventari) && p.objectes_inventari.length > 0
+      ? p.objectes_inventari.join(', ') : 'res rellevant';
+    const sap = [...new Set(sapPersonatge(nom))];
+    const linies = [
+      `- ${p.nom}${p.viu === false ? ' [MORT — no pot aparèixer viu]' : ''}`,
+      `  · On és: ${p.ubicacio || '(no registrat)'}`,
+      `  · Estat físic: ${p.estat_fisic || '(no registrat)'} · Emocional: ${p.estat_emocional || '(no registrat)'}`,
+      `  · Porta a sobre: ${inv}`
+    ];
+    if (p.indumentaria_actual) linies.push(`  · Va vestit/da: ${p.indumentaria_actual}`);
+    if (sap.length > 0) linies.push(`  · JA SAP: ${sap.slice(0, 8).join('; ')}`);
+    return linies.join('\n');
+  }).join('\n');
+
+  const crono = ((nkg.context_creacio || {}).cronologia || {}).per_capitol || [];
+  const moment = (Array.isArray(crono) ? crono : []).find(c => Number(c.capitol) === Number(capitolNum));
+  const rellotge = moment
+    ? `${moment.data || ''} ${moment.moment || ''}`.trim()
+    : '';
+
+  const morts = Object.values(nkg.personatges || {}).filter(p => p && p.viu === false).map(p => p.nom);
+
+  return `
+=== ESTAT AL COMENÇAMENT D'AQUEST CAPÍTOL (dades del graf, no negociables) ===
+${rellotge ? `Moment: ${rellotge}\n` : ''}${fitxes}
+${morts.length > 0 ? `\nPersonatges morts (no poden actuar ni parlar): ${morts.join(', ')}` : ''}
+
+Aquest és l'estat real en què comença el capítol. Si el que vols escriure hi entra
+en contradicció, no ho escriguis: fes que el canvi passi DINS del capítol, de manera
+visible per al lector. Un personatge no pot saber res que no consti a "JA SAP" tret
+que ho descobreixi en aquest capítol i es vegi com ho descobreix.
+================================================================`;
+}
+
 function construirBlocHumanitzacio(capitolNum) {
   const c = contextHumanitzacioCapitol(capitolNum);
   if (!c.pov) return '';
@@ -10208,6 +10427,33 @@ async function processarDerivatsBlocAbansJutge(fromIdx, toIdx, userConfig) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+//  F5.2 — Auditoria determinista, embolcall d'aplicació
+//  Els validadors purs viuen a nkg_core.js. Aquí es fan dues coses més: desar el
+//  resultat a ESTAT perquè el checklist de sortida i la UI el puguin llegir, i
+//  obrir un fil de reconciliació per cada incidència d'alta gravetat que encara
+//  no en tingui, reutilitzant el mecanisme E.2 de F2.
+// ═══════════════════════════════════════════════════════════
+function executarAuditoriaDeterminista(opcions = {}) {
+  if (typeof auditarCoherenciaNKG !== 'function') {
+    return { ok: true, incidencies: [], total: 0, altes: 0, esdevenimentsAuditats: 0 };
+  }
+  const res = auditarCoherenciaNKG(ESTAT._nkg || {}, opcions);
+  ESTAT._auditoriaDeterminista = Object.assign({ quanISO: new Date().toISOString() }, res);
+
+  if (opcions.obrirFils !== false) {
+    const jaObertes = new Set((ESTAT._contradiccionsTardanes || []).map(c => String(c.descripcio)));
+    res.incidencies.filter(i => i.gravetat === 'alta').forEach(i => {
+      if (jaObertes.has(i.missatge)) return;
+      if (typeof registrarContradiccioTardana === 'function') {
+        registrarContradiccioTardana(i.missatge, i.capitol, opcions.totalCapitols || i.capitol);
+      }
+    });
+  }
+  if (typeof renderPanellEtapes === 'function') renderPanellEtapes();
+  return res;
+}
+
 // F2.2 — restaurada. Orquestra el tancament d'un bloc de 4 capítols:
 // derivats → resums → jutge → resum consolidat → congelació.
 // Cap pas pot tombar el flux d'escriptura: tots van dins de try/catch.
@@ -10224,6 +10470,17 @@ async function tancamentBlocComplet(idx, bloc, userConfig) {
 
     estat(`📝 Generant resums del bloc (caps. ${fromIdx + 1}–${toIdx + 1})…`);
     try { await generarResumsBloc(fromIdx, toIdx, cfg); } catch (e) { console.warn('Resums bloc:', e.message); }
+
+    // F5.2: l'auditoria determinista va PRIMER i no costa res: el que troba per
+    // codi no cal que el jutge ho endevini, i entra al seu context com a fets.
+    estat('🔎 Auditoria determinista de continuïtat…');
+    const auditoria = executarAuditoriaDeterminista({ totalCapitols: (ESTAT._estructuraCapitols || []).length });
+    if (!auditoria.ok) {
+      jutgePanelLog(`🔎 Auditoria determinista: ${auditoria.total} incidència/es (${auditoria.altes} d'alta gravetat).`);
+      auditoria.incidencies.slice(0, 12).forEach(i => jutgePanelLog(`  · [${i.gravetat}] ${i.missatge}`));
+    } else {
+      jutgePanelLog(`🔎 Auditoria determinista neta (${auditoria.esdevenimentsAuditats} esdeveniments comprovats).`);
+    }
 
     estat(`⚖️ Jutge avaluant el bloc (caps. ${fromIdx + 1}–${toIdx + 1})…`);
     await executarJutgeInterval(fromIdx, toIdx, cfg);
@@ -15031,6 +15288,11 @@ Si un element del capítol contradiu la macronarrativa, no l'escriguis.
     }
     parts.push("\nREGLA DE CONTINUITAT OBLIGATÒRIA: Llevat que se t'indiqui explícitament que és el final del capítol, NO tanquis artificialment l'energia narrativa. Mantén continuïtat orgànica segons el to de l'obra: suspens d'acció, ressonància lírica, o desplaçament perceptiu; la següent generació ha de poder recollir el testimoni de forma natural.");
 
+    // F5.4: estat inicial determinista. Va abans de tot el material dramàtic
+    // perquè és la restricció dura: el que la prosa no pot contradir.
+    const blocEstat = construirBlocEstatInicialCapitol(Number(ESTAT._capitolActual || 0) + 1);
+    if (blocEstat) parts.push('\n' + blocEstat);
+
     // F3.6: bloc d'humanització (humanitzacio_capitol_bloc.md). Estava escrit al
     // repositori i documentat com a "palanca de qualitat existent", però no
     // s'havia implementat mai: cap de les seves cadenes apareixia al codi.
@@ -18392,6 +18654,14 @@ function nkgRegistrarMovimentObjecte(nkg, objecteNom, fromState, toState, capito
 
   if (!Array.isArray(nkg.timeline_objectes)) nkg.timeline_objectes = [];
   const linia = `C${capitol}E${escena}: [${obj.nom}] ${fromPos || (fromUbi || '(desconegut)')} -> ${toPos || (toUbi || '(desconegut)')}${causa ? ` (${causa})` : ''}`;
+  // F5.1: la timeline es trunca a 40 entrades perquè va als prompts; el llibre
+  // major no es trunca mai i és el que audita la capa determinista.
+  if (typeof registrarEsdevenimentEstat === 'function') {
+    registrarEsdevenimentEstat(nkg, {
+      capitol, escena, tipus: 'objecte', subjecte: obj.nom,
+      valor: toPos || toUbi || '', detall: fromPos || fromUbi || ''
+    });
+  }
   nkg.timeline_objectes.push(linia);
   if (nkg.timeline_objectes.length > 40) nkg.timeline_objectes = nkg.timeline_objectes.slice(-40);
 
@@ -18463,6 +18733,13 @@ function nkgRegistrarCanvisPersonatge(nkg, abans, despres, capitol, escena) {
   if (canvis.length === 0) return;
 
   const linia = `C${capitol}E${escena}: [${despres.nom}] ${canvis.join(' | ')}`;
+  // F5.1: només la ubicació entra al llibre major; l'emoció no és auditable.
+  if (typeof registrarEsdevenimentEstat === 'function' && despresUbi && (abansUbi || '') !== despresUbi) {
+    registrarEsdevenimentEstat(nkg, {
+      capitol, escena, tipus: 'ubicacio', subjecte: despres.nom,
+      valor: despresUbi, detall: abansUbi || ''
+    });
+  }
   nkg.timeline_personatges.push(linia);
   if (nkg.timeline_personatges.length > 40) nkg.timeline_personatges = nkg.timeline_personatges.slice(-40);
 
@@ -18988,7 +19265,16 @@ function nkgAplicarActualitzacions(dades, capitol, escena) {
           if (ex.objectes_descartats.length > 20) ex.objectes_descartats = ex.objectes_descartats.slice(-20);
         }
         if (p.ubicacio) ex.ubicacio = p.ubicacio;
-        if (p.viu !== undefined) ex.viu = p.viu;
+        if (p.viu !== undefined) {
+          // F5.1: la mort és un fet irreversible; entra al llibre major el primer
+          // cop que es registra, perquè auditarMorts() pugui detectar activitat posterior.
+          if (ex.viu !== false && p.viu === false && typeof registrarEsdevenimentEstat === 'function') {
+            registrarEsdevenimentEstat(nkg, {
+              capitol, escena, tipus: 'mort', subjecte: ex.nom || p.nom, valor: 'mort'
+            });
+          }
+          ex.viu = p.viu;
+        }
         if (p.nous_objectius) {
           const existIds = new Set((ex.objectius || []).map((o, i) => normalitzarObjectiu(o, i, capitol, clau).id));
           p.nous_objectius.forEach((o, i) => {
@@ -19152,6 +19438,25 @@ function nkgAplicarActualitzacions(dades, capitol, escena) {
     }
   }
 
+  // F5.3: model de coneixement — qui sap què i des de quin capítol. És l'única
+  // manera de detectar l'error de continuïtat més freqüent en novel·la: un
+  // personatge que actua sobre informació que encara no ha rebut.
+  if (Array.isArray(dades.coneixement) && typeof registrarEsdevenimentEstat === 'function') {
+    dades.coneixement.forEach(k => {
+      const persona = String((k && k.personatge) || '').trim();
+      const info    = String((k && k.informacio) || '').trim().toLowerCase();
+      const op      = String((k && k.operacio) || 'apren').trim().toLowerCase();
+      if (!persona || !info) return;
+      registrarEsdevenimentEstat(nkg, {
+        capitol, escena, tipus: 'coneixement',
+        subjecte: persona,
+        valor: op === 'usa' ? 'usa' : 'apren',
+        detall: info,
+        via: String((k && k.via) || '')
+      });
+    });
+  }
+
   nkg.ultima_actualitzacio = { capitol, escena };
 }
 
@@ -19262,11 +19567,20 @@ El camp "accions_consumades" ha de contenir 3-5 accions físiques IRREVERSIBLES 
 
 El camp "moviments_objectes" és opcional però recomanat: inclou els trasllats clars d'objectes (canvi de posseïdor o de lloc) detectats al text. Si no n'hi ha, retorna [].
 
-Afegeix també obligatòriament aquests tres camps al JSON:
+Afegeix també obligatòriament aquests camps al JSON:
 "resum_esdeveniment": "Una frase que resumeix el canvi de situació principal d'aquesta escena.",
 "nous_fets_canonics": ["Fet irreversible succeït en aquesta escena (3a persona passada, verificable)"],
-"canvis_relacions": [{"personatge_a": "Nom A", "personatge_b": "Nom B", "tipus": "aliat|enemic|complice|sospitos", "confianca": 7, "tensio": 3, "nota": "motiu del canvi"}]
-Si no hi ha fets nous ni canvis de relació, retorna els arrays buits [].`
+"canvis_relacions": [{"personatge_a": "Nom A", "personatge_b": "Nom B", "tipus": "aliat|enemic|complice|sospitos", "confianca": 7, "tensio": 3, "nota": "motiu del canvi"}],
+"coneixement": [
+  {"personatge": "Nom", "informacio": "etiqueta curta i estable del fet, sempre igual quan es refereix al mateix (ex: 'identitat del pare biològic')", "operacio": "apren|usa", "via": "com ho descobreix o com ho fa servir"}
+]
+Si no hi ha fets nous ni canvis de relació, retorna els arrays buits [].
+
+Sobre "coneixement" (IMPORTANT per a la continuïtat):
+- "apren": el personatge descobreix o li revelen una informació que abans no tenia.
+- "usa": el personatge actua, parla o decideix basant-se en aquesta informació.
+- L'etiqueta d'"informacio" ha de ser CURTA i IDÈNTICA cada cop que es parli del mateix fet, perquè es pugui encreuar entre capítols. No hi posis la frase sencera.
+- Registra només informació que tingui pes de trama. No hi posis coneixement trivial ni evident.`
   }];
 
   const models = getModelConfig(userConfig);
