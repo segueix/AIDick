@@ -37,6 +37,13 @@ comprova('Els models es registren abans de la inicialització de la pàgina',
   extensio.includes("document.addEventListener('DOMContentLoaded', installar"));
 comprova('La configuració continua persistint els tres rols',
   index.includes('draft: modelDraft') && index.includes('generacio: modelGeneracio') && index.includes('arquitecte: modelArquitectura'));
+comprova('La capçalera crea un camp visible per al Draft',
+  extensio.includes("inputDraft.id = 'config-model-draft'"));
+comprova('El camp Draft se sincronitza amb ESTAT._modelDraft',
+  extensio.includes('ESTAT._modelDraft = modelId') && extensio.includes('sincronitzarCampDraft'));
+comprova('Desar i actualitzar apliquen abans el Draft visible',
+  extensio.includes("embolcallarFuncioGlobal('guardarIComencar', aplicarDraftDesDelCamp") &&
+  extensio.includes("embolcallarFuncioGlobal('actualitzarConfiguracioActiva', aplicarDraftDesDelCamp"));
 
 console.log(`\n${passades}/${totals} comprovacions passades`);
 process.exit(passades === totals ? 0 : 1);
