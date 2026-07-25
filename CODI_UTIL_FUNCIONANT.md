@@ -95,6 +95,193 @@ Una peça entra aquí si compleix **tots** aquests punts:
 > Pendent (pas 3 del pla original): `prompts.js` — les funcions de prompt criden
 > `nouFluxCall`/`callLLMMulti` i toquen ESTAT; extreure-les requereix més cura.
 
+## Peces consolidades a F0 i F1 (REVISIO_I_PLA_EXCELLENCIA.md)
+
+### `completarMotorsDramaticsNKG(userConfig, onProgress)`
+- **Responsabilitat**: omplir els blocants de `detectarFaltantsDramaNKG` (trames,
+  objectius/secrets per personatge, contractes d'escena incomplets).
+- **Dependències**: `generarIDesarTrames`, `generarObjectiusSecrets`,
+  `generarCompletarSceneContracts`, i els predicats purs de `nkg_core.js`.
+- **Contracte**: idempotent — cada pas només s'executa si el seu faltant hi és.
+  Cap pas que falla atura els altres (es registra a consola).
+- **Checks mínims**: després d'executar-la sobre un NKG del flux b1–b6,
+  `validarNKGPreparatPerCapitol1(...).ok === true`.
+- **Ubicació**: `index.html`, just després de `iniciarEscaletaSeqNou`.
+
+### `generarIDesarTrames(userConfig, onProgress)`
+- **Responsabilitat**: generar trama principal, subtrames i mapa entrellaçat i
+  desar-los a `ESTAT.trames`, sense tocar la UI de la fase 18.
+- **Contracte**: retorna `{ dades, textOriginal }`. `iniciarFaseTrames()` l'embolcalla
+  per a la card; el flux b1–b6 i la compleció automàtica la criden directament.
+
+### `efecteEscripturaHTML(elementId, htmlContent, msPerChar)` (reescrita)
+- **Responsabilitat**: pintar HTML amb efecte de màquina d'escriure, cancel·lable.
+- **Contracte**: un sol efecte viu per `elementId` (`_TOKENS_ESCRIPTURA`); una crida
+  nova invalida l'anterior. Durada acotada a `PRESSUPOST_MS_ESCRIPTURA` (8 s)
+  escrivint per lots. Respecta `USER_CONFIG.efecteEscriptura === false`.
+- **Checks mínims**: dues crides encavalcades sobre el mateix element deixen
+  només el contingut de la segona; 19k caràcters en menys de 12 s.
+
+### `mostrarIAnarA(id, { ancora, retardMs })`
+- **Responsabilitat**: `showCard` + scroll al destí, per no deixar transicions cegues.
+- **Contracte**: tolera ids inexistents (avís per consola, sense excepció).
+
+## Peces consolidades a F3 (estil dels 4 autors)
+
+### `blocReglesEstilAutor(idPerfil)` — `perfils_autor.js`
+- **Responsabilitat**: muntar el bloc «REGLES D'ESTIL» del prompt de novel·la a
+  partir dels camps `regles_dures`, `prosa`, `exposicio` i `emocio` del perfil.
+- **Contracte**: per a un perfil desconegut o buit retorna les regles genèriques
+  (`REGLES_ESTIL_GENERIQUES`), idèntiques a les que hi havia abans de F3.
+- **Checks mínims**: Tolkien no rep «Màxim 1 adjectiu»; Larsson sí; Castaneda no
+  rep la prohibició global d'exposició.
+
+### `blocCriterisExcellenciaGeneracio(idPerfil)` — `perfils_autor.js`
+- **Responsabilitat**: convertir `criteris_excellencia` en condicions d'acceptació
+  del capítol, injectades al prompt (abans només s'usaven a l'informe posterior).
+- **Contracte**: retorna `''` si el perfil no té criteris.
+
+### `resoldrePerfilAutor(text)` — `perfils_autor.js`
+- **Responsabilitat**: punt únic de resolució del perfil. El perfil del projecte
+  mana; la detecció per text és el pla B.
+- **Nota**: `obtenirPerfilAutorId` distingeix ara identificadors forts (nom de
+  l'autor) de pistes de gènere (`DETECCIONS_DEBILS`).
+
+### `construirBlocHumanitzacio(capitolNum)` — `index.html`
+- **Responsabilitat**: implementació de `humanitzacio_capitol_bloc.md`
+  parametritzada pel perfil (gest inútil, objecte emocional, temps mort).
+- **Dependències**: POV i `necessitat_interna` del NKG, `arc.waypoints`,
+  `cap.temperatura_emocional`, `cap.ratio_dialeg`, `cap.cost_emocional`.
+- **Contracte**: retorna `''` si no hi ha POV resoluble; mai llança.
+
+### `escenesDesDeContractes(dades, capInfo, capitolNum)` — `index.html`
+- **Responsabilitat**: convertir els `scene_contracts` d'un capítol en la seva
+  llista d'escenes, amb POV, lloc, beat i objectiu de paraules per escena.
+- **Contracte**: sense contractes, retorna una escena amb fallback vàlid.
+
+> ⚠️ **Errata corregida a F3**: `ESTAT._estruturaCapitols` (sense la `c`) apareixia
+> en 7 punts i no s'assigna enlloc. Deixava morta tota la capa d'arquitectura
+> emocional: temperatura per capítol, ratio de diàleg i cost emocional no
+> s'aplicaven mai. Si torna a aparèixer, la capa torna a quedar silenciosament morta.
+
+## Peces consolidades a F2 (jutge d'interval)
+
+### `tancamentBlocComplet(idx, bloc, userConfig)` — `index.html`
+- **Responsabilitat**: orquestrar el tancament d'un bloc de 4 capítols —
+  derivats → resums → jutge → resum consolidat.
+- **Cridador**: `generarCapitol`, quan `esTancamentBloc(idx, totalCaps)`.
+- **Contracte**: cap pas pot tombar el flux d'escriptura; tot va dins de
+  try/catch i el loader es tanca sempre al `finally`.
+
+### `executarJutgeInterval(fromIdx, toIdx, userConfig)` — `index.html`
+- **Responsabilitat**: single-pass (`MAX_ITER = 1`) de detecció i, si escau,
+  correcció d'un bloc.
+- **Contracte**: si l'interval ja té lock, surt sense fer cap crida. En acabar
+  sempre escriu `_intervalLocks[fromIdx-toIdx]`. Els locks de capítol només
+  s'apliquen si `jutgePotReescriure()`.
+- **Checks mínims**: dues execucions seguides sobre el mateix interval fan una
+  sola crida a l'LLM.
+
+### `jutgePotReescriure()` — `index.html`
+- **Responsabilitat**: punt únic de decisió del mode del jutge
+  (`USER_CONFIG.jutgeReescriu`, per defecte fals).
+- **Governa**: si es reescriu el text, si es congelen els capítols i si es
+  congela el BlockCanon 5-8.
+
+### `jutgePanelIniciar / jutgePanelLog / jutgePanelFinalitzar` — `index.html`
+- **Responsabilitat**: registre visible del jutge a `#jutge-panel` (el marcatge
+  ja existia a la fase 23 i quedava sempre buit).
+
+### `selfCheckLockingInvariants()` — `index.html`
+- **Responsabilitat**: verificar invariants de **comportament** (cap stub, cap
+  interval jutjat dues vegades, tancament de bloc connectat).
+- **Nota**: s'executa a `load`, no amb `setTimeout(…, 0)`: el jutge viu al segon
+  bloc `<script>` i el parser pot disparar un timer de 0 ms entremig.
+
+## Peces consolidades a F4 (higiene)
+
+### `MODELS_PER_PROVEIDOR` + `validarDefaultsModels()` — `index.html`
+- **Responsabilitat**: font única dels models per defecte, per proveïdor i rol.
+  Substitueix cinc taules d'IDs escampades que ja no coincidien entre elles.
+- **Contracte**: tot ID ha d'existir a `MODEL_REGISTRY`; `validarDefaultsModels()`
+  ho comprova a l'arrencada i avisa per consola si no.
+- **Consumidors**: `getModelConfig` (fallbacks), `aplicarPreset`, el canvi de
+  proveïdor i `PROVIDER_DEFAULTS` (segon bloc), que ara només aporta les URLs.
+
+> **Regla**: si afegeixes un model, entra primer a `MODEL_REGISTRY` (amb preu,
+> context i qualitat) i només després pot aparèixer a `MODELS_PER_PROVEIDOR`.
+> Cap ID de model pot viure escrit a mà enlloc més.
+
+### Codi eliminat a F4
+- `renderitzarResumDramaticBiblia()` duplicada al segon bloc (idèntica; la
+  segona sobreescrivia la primera).
+- `validarIReomplirEscaleta()` — sense cridadors i perjudicial: regenerava
+  escenes sense `scene_contract`.
+- `revisioArquitectaAmbContinuitat()` — no-op que retornava `'APROVAT'`.
+- `nkg_biblia.html` — app paral·lela congelada a la fase 0+1, sense referències.
+
+> `applyPatch()` es manté tot i no tenir cridadors: és el mecanisme sancionat per
+> a patches sota canon congelat i esborrar-lo deixaria òrfena la modalitat
+> `'patch'` de `canRewrite`.
+
+## Peces consolidades a F5 (verificació determinista)
+
+### `registre_estat` + `registrarEsdevenimentEstat()` — `nkg_core.js`
+- **Responsabilitat**: llibre major append-only de tots els canvis d'estat.
+- **Contracte**: **no es trunca mai** (a diferència de les timelines, que van als
+  prompts i es tallen a 40/20 entrades). És la font de l'auditoria.
+- **Alimentat per**: `nkgRegistrarMovimentObjecte`, `nkgRegistrarCanvisPersonatge`,
+  el canvi de `viu` i el camp `coneixement` de l'extracció post-capítol.
+
+### `auditarCoherenciaNKG(nkg, opcions)` — `nkg_core.js`
+- **Responsabilitat**: agregar els sis validaors deterministes (objectes,
+  ubicacions, morts, cronologia, coneixement, fils) i ordenar per gravetat.
+- **Contracte**: funció pura, sense LLM ni DOM. `{ ok, incidencies, altes,
+  esdevenimentsAuditats }`. Els fils només es comproven si `novellaAcabada`.
+- **Checks mínims**: cap incidència sobre un registre coherent; una incidència
+  d'alta gravetat per cada contradicció plantada.
+
+### `executarAuditoriaDeterminista(opcions)` — `index.html`
+- **Responsabilitat**: embolcall d'aplicació — desa el resultat a
+  `ESTAT._auditoriaDeterminista` i obre un fil `error-continuïtat` per cada
+  incidència alta (idempotent: no duplica fils).
+- **Cridada des de**: `tancamentBlocComplet` (abans del jutge), el botó de la
+  fase 24 i `checklistSortidaNovella`.
+
+### `construirBlocEstatInicialCapitol(capitolNum)` — `index.html`
+- **Responsabilitat**: muntar del NKG l'estat real amb què comença el capítol
+  (ubicació, estat físic, inventari, indumentària, què sap ja cada personatge,
+  rellotge i morts) i injectar-lo al prompt.
+- **Contracte**: cap crida a LLM. El coneixement es filtra per capítol: no pot
+  llistar el que el personatge aprèn més endavant.
+
+### `verificarNovellaTextComplet()` — `index.html`
+- **Responsabilitat**: única passada que llegeix la novel·la sencera. Contrasta
+  una llista tancada de fets canònics i incidències, no busca lliurement.
+- **Contracte**: retalla al 60% del context del model si cal, i ho diu a la UI.
+
+## Proves de regressió
+
+`proves/` conté cinc suites de Playwright + Chromium que s'executen sobre
+l'`index.html` real (**103 comprovacions**):
+
+| Suite | Cobreix |
+|---|---|
+| `f0_f1.mjs` | desbloqueig del gate NKG i ordre visual |
+| `f2_jutge.mjs` | jutge de bloc, locks i reconciliació cap endavant |
+| `f3_estil_autors.mjs` | perfils d'autor, humanització i escenes per capítol |
+| `f4_higiene.mjs` | duplicats, models per defecte i codi mort |
+| `f5_verificacio.mjs` | validadors deterministes, llibre major i bloc d'estat |
+
+```
+npx http-server -p 8099 -c-1 .     # en una terminal
+node proves/executa-totes.mjs      # en una altra
+```
+
+La suite de F2 simula l'LLM i **bloqueja `fetch`**, de manera que qualsevol crida
+real que se li escapi falla de seguida en lloc de quedar-se penjada als reintents
+amb backoff. És un patró a repetir en suites futures.
+
 ## Full de ruta de reducció de mida (pràctic)
 
 1. **Consolidar** aquí una peça cada cop que es toqui i quedi estable.
@@ -108,11 +295,12 @@ Una peça entra aquí si compleix **tots** aquests punts:
 
 ## Planning de migració `index.html` → `nkg_biblia.html` (fase a fase)
 
-> ⚠️ **CONGELAT (Etapa A — ESTRATEGIA_REORGANITZACIO.md).** La migració paral·lela a
-> `nkg_biblia.html` queda aturada: la reorganització es fa in situ a `index.html`
-> (un sol flux, 6 macro-etapes, perfils d'autor) i la reducció de mida es farà
-> extraient mòduls purs (Etapa D), no duplicant l'app. Aquest planning es conserva
-> només com a referència històrica.
+> ❌ **CANCEL·LAT (F4).** `nkg_biblia.html` s'ha eliminat del projecte: estava
+> congelat a la fase 0+1 des de l'Etapa A, no el referenciava cap fitxer i portava
+> una llista d'autors que contradiu els quatre perfils. La reorganització es fa in
+> situ a `index.html` i la reducció de mida, extraient mòduls purs (Etapa D).
+> Aquest planning es conserva només com a referència històrica; el fitxer és
+> recuperable de l'històric de git.
 
 > Objectiu: migrar només codi útil i estable, marcant cada fase com a feta.
 

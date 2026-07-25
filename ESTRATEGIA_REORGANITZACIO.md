@@ -61,7 +61,8 @@ dels dos fluxos: dues apps a mig fer en lloc d'una de sencera.
    pel panell de 6 macro-etapes.
 3. ✅ `nkg_biblia.html` congelat amb avís al fitxer i al planning de
    CODI_UTIL_FUNCIONANT.md. (Decisió explícita: reorganitzar **in situ**,
-   no reescriure en paral·lel.)
+   no reescriure en paral·lel.) — **Eliminat definitivament a F4**
+   (REVISIO_I_PLA_EXCELLENCIA.md); recuperable de l'històric de git.
 
 ### Etapa B — De 25 passos a 6 etapes amb gating per dades ✅ FETA
 
@@ -277,7 +278,7 @@ perfil d'autor de manera consistent:
 
 1. Omplir el README (ara és buit): què és Booki, quin és el flux oficial, com s'arrenca.
 2. Amagar el flux clàssic 1–6 i la steps-bar de 25 píndoles (Etapa A.2).
-3. Unificar la llista d'autors de `nkg_biblia.html` amb la d'`index.html` (o congelar el fitxer).
+3. ~~Unificar la llista d'autors de `nkg_biblia.html` amb la d'`index.html` (o congelar el fitxer).~~ → fitxer eliminat a F4.
 4. Substituir l'input de text lliure `config-autor` per un select amb els 4 perfils + "Veu original".
 5. Un panell d'estat únic i persistent ("On sóc? Què em falta?") alimentat per `detectarFaltantsNKG`.
 

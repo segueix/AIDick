@@ -19,9 +19,26 @@ Booki és una aplicació web (single-file `index.html` amb JS incrustat) que tra
 ## Regles del jutge d'interval
 
 - El jutge s'executa **exactament 1 vegada** per interval (single-pass). `MAX_ITER = 1`.
-- Si cal reescriure capítols dins l'interval, es fa **en ordre descendent** (índex més alt primer: cap.4 → cap.3 → cap.2 → cap.1).
-- Després de cada reescriptura individual, es resincronitzen registre i NKG abans de passar al capítol següent.
-- Un cop el jutge acaba, l'interval queda bloquejat (`_intervalLocks`).
+- S'invoca des de `tancamentBlocComplet`, que `generarCapitol` crida cada 4 capítols
+  i al darrer (`esTancamentBloc`).
+- **La detecció sempre s'executa; la reescriptura de capítols és opcional.**
+  `USER_CONFIG.jutgeReescriu` (casella de configuració, desactivada per defecte)
+  decideix quin dels dos modes s'aplica:
+  - **desactivada (per defecte)**: el jutge no toca cap text. Cada instrucció de
+    correcció es registra amb `registrarContradiccioTardana()` com a fil
+    `error-continuïtat` d'alta prioritat, i el capítol següent l'ha de reconciliar.
+    Els capítols queden editables.
+  - **activada**: el jutge reescriu **en ordre descendent** (índex més alt primer:
+    cap.4 → cap.3 → cap.2 → cap.1) i, en acabar, congela els capítols del bloc
+    (`setFinalLock`), que passen a ser immutables.
+- Després de cada reescriptura individual, es resincronitzen registre i NKG abans de
+  passar al capítol següent.
+- Un cop el jutge acaba, l'interval queda bloquejat (`_intervalLocks`) en tots dos
+  modes: és el que garanteix el single-pass.
+- Les correccions de perfils i fets canònics (`aplicarCorreccionsPerfilsJutge`) són
+  "gratuïtes" i s'apliquen sempre: no toquen el text de cap capítol.
+- `selfCheckLockingInvariants()` verifica **comportament**, no text del `toString()`.
+  Si afegeixes una peça al jutge, afegeix-la també a la seva llista.
 
 ## Context als prompts (estalvi de tokens)
 
@@ -81,6 +98,74 @@ Cada capítol té un objecte `llibreRegistre.capitols[idx].ksn` amb:
 - `ESTAT._capitolsLocked`: `{ [idx]: { locked, lockedAtISO, intervalId, hash } }`
 - `ESTAT._intervalLocks`: `{ [intervalId]: { fromIdx, toIdx, lockedAtISO, net } }`
 - Les snapshots d'ESTAT es guarden a localStorage. No trencar l'estructura existent; afegir camps nous és acceptable.
+
+## Regles de flux i validació (F0/F1)
+
+- **Cap validador pot bloquejar un botó sense oferir l'acció que resol el bloqueig.**
+  Si s'afegeix un error nou a `detectarFaltantsNKG` o `detectarFaltantsDramaNKG`, cal
+  afegir-hi també el mapatge a `obtenirAccioGeneracioPerFaltant` i el pas corresponent
+  a `autocompletarNKGSilent`.
+- **Cap fallback pot generar un estat invàlid.** Si una funció de fallback construeix
+  una estructura que després es valida (p. ex. `crearSceneContractFallbackLocal` contra
+  `detectarFaltantsSceneContract`), ha d'omplir tots els camps obligatoris.
+- **Tota transició de flux ha de deixar la vista al destí**: usa `mostrarIAnarA(id)` en
+  lloc de `showCard(id)` a soles.
+- **Cap efecte visual de llarga durada sense cancel·lació.** `efecteEscripturaHTML`
+  manté un token viu per contenidor; qualsevol animació incremental futura sobre un
+  element compartit ha de seguir el mateix patró.
+- `ESTAT.fase` ha de reflectir el pas real (`'b1'`…`'b6'` als fonaments, número a la
+  resta): el panell d'etapes hi confia per tornar on eres.
+
+## Regles d'estil per perfil d'autor (F3)
+
+- **El prompt base no imposa cap autor de referència.** La identitat literària surt
+  sempre de `PERFILS_AUTOR[id]`. No hi tornis a posar noms d'autors que no siguin un
+  dels quatre perfils.
+- **Cap regla d'estil discutible és global.** Prosa, exposició i emoció viuen als
+  camps `prosa`, `exposicio` i `emocio` de cada perfil, perquè el que és correcte per
+  a Larsson (frase curta, zero exposició) és fals per a Tolkien i Castaneda. Al prompt
+  base només hi queden les regles realment invariables: llengua, format de diàleg,
+  metadades i continuïtat d'escena.
+- **Un camp nou al perfil s'ha d'omplir per als quatre**, o tenir un valor genèric de
+  fallback a `REGLES_ESTIL_GENERIQUES` / `HUMANITZACIO_GENERICA`.
+- `criteris_excellencia` són alhora condicions de generació i criteris d'avaluació:
+  si en canvies un, canvia el que es demana i el que es mesura.
+- El perfil del projecte (`ESTAT._autorPerfilId`) mana sobre qualsevol detecció per
+  text. Usa `resoldrePerfilAutor(text)`, mai `obtenirPerfilAutorId(text) || ...`.
+
+## Capa de verificació determinista (F5)
+
+- **`nkg.registre_estat` és append-only i no es trunca MAI.** Les timelines
+  (`timeline_objectes`, `timeline_personatges`, `timeline_accions`) sí que es
+  trunquen, perquè van als prompts. Si algú posa un `slice()` al registre, l'auditoria
+  deixa de veure la primera meitat de la novel·la i no ho dirà: fallarà en silenci.
+- **Tot canvi d'estat auditable s'ha de registrar amb `registrarEsdevenimentEstat()`**
+  al mateix punt on ja s'escriu la timeline. Tipus vigents: `ubicacio`, `objecte`,
+  `mort`, `coneixement`, `fet`, `aparicio`.
+- **Els validadors de `nkg_core.js` són purs i no poden fer falsos positius.** Un
+  validador que es queixa d'una novel·la coherent és pitjor que no tenir-lo: la gent
+  aprèn a ignorar l'avís. Cada validador nou necessita una prova del cas que detecta
+  **i** una del cas legítim que s'hi assembla.
+- El que es pot comprovar per codi no s'ha de preguntar a un LLM. L'auditoria
+  s'executa abans del jutge i els seus resultats entren al seu context com a fets.
+
+## Models i defaults (F4)
+
+- **Cap ID de model escrit a mà fora de `MODEL_REGISTRY` i `MODELS_PER_PROVEIDOR`.**
+  Per afegir un model: primer entra al registre (preu, context, qualitat) i només
+  després pot ser un default. `validarDefaultsModels()` avisa a l'arrencada si un
+  default no és al registre.
+- `PROVIDER_DEFAULTS` només aporta URLs d'API; els models en deriva.
+
+## Proves
+
+- Les suites de `proves/` s'executen sobre l'`index.html` real amb Playwright:
+  `npx http-server -p 8099 -c-1 .` i després `node proves/executa-totes.mjs`.
+- Qualsevol canvi al gate NKG, al flux visual, al jutge o als perfils d'autor ha de
+  deixar les 79 comprovacions en verd, o actualitzar la suite corresponent explicant
+  per què canvia el comportament esperat.
+- Les suites que toquen crides LLM les simulen i **bloquegen `fetch`**: una crida
+  real no simulada ha de fallar de seguida, no penjar-se als reintents.
 
 ## Restriccions generals per a qualsevol canvi
 

@@ -26,6 +26,36 @@ El Narrative Knowledge Graph conserva macronarrativa, personatges, llocs, object
 
 Cada escena pot tenir un `scene_contract`: POV, personatges presents, objectius incompatibles, obstacle, asimetria de poder, objecte o informació en disputa, decisió irreversible, cost immediat i conseqüència narrativa. Aquesta capa evita capítols només temàtics o resumits.
 
+## Jutge d'interval
+
+Cada 4 capítols (i al final), Booki tanca el bloc: consolida derivats i resums i passa
+un jutge de coherència que compara KSN, fets canònics i timelines. El jutge s'executa
+**un sol cop per bloc**.
+
+Per defecte **no reescriu res**: quan detecta una incoherència, obre un fil
+`error-continuïtat` perquè el capítol següent la reconciliï cap endavant, com faria un
+autor humà. Si actives «El jutge pot reescriure capítols» a la configuració, corregeix
+el text directament i congela els capítols del bloc, que passen a ser immutables.
+
+El progrés i les incidències es veuen al panell «⚖️ Jutge d'interval» de la fase
+d'escriptura.
+
+## Verificació determinista de continuïtat
+
+Booki manté un llibre major complet de tots els canvis d'estat (qui és on, on és cada
+objecte, qui és viu, qui sap què) i el comprova **per codi**, sense demanar-ho a cap
+model. Detecta objectes que canvien de lloc sense moure's, personatges a dos llocs
+alhora, morts que segueixen actuant, salts temporals no declarats i —el més freqüent
+en novel·la— personatges que actuen sobre informació que encara no han rebut.
+
+L'auditoria s'executa a cada tancament de bloc, té botó propi a la fase de revisió i és
+una fila del checklist de sortida. El que troba no és una sospita d'un model: és una
+contradicció demostrable a les dades.
+
+Aquesta capa cobreix la continuïtat factual. La deriva de veu, si el final està guanyat
+o si el llibre val la pena continuen sent judicis humans: Booki no pretén substituir
+una lectura, sinó fer que amb una n'hi hagi prou.
+
 ## Quality Gate 9
 
 El diagnòstic literari 9/10 analitza heurísticament abstractesa, repetició de motius, acció concreta, diàleg, contractes incomplets, tensió massa uniforme i personatges funcionals. No reescriu automàticament: diagnostica i proposa prioritats.
