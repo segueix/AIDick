@@ -13302,6 +13302,12 @@ Retorna EXCLUSIVAMENT JSON vàlid:
 
   registrarMotiusSimbolics(dades.motius_simbolics, idx + 1);
 
+  try {
+    comprovarPersonatgesCapitol(textCapitol, idx + 1);
+  } catch (e) {
+    console.warn('Comprovació de personatges:', e.message);
+  }
+
   // Actualitzar accions irreversibles
   if (!Array.isArray(ESTAT._accionsIrreversibles)) ESTAT._accionsIrreversibles = [];
   (dades.accions_irreversibles || []).forEach(a => {
@@ -16085,6 +16091,133 @@ function registrarMotiusSimbolics(motius, capitolNum) {
   return registre;
 }
 
+// ═══════════════════════════════════════════════════════════
+//  REGISTRE CANÒNIC DE PERSONATGES
+//  ESTAT._nkg.personatges és el cens de la novel·la, però cap pas del pipeline
+//  impedia que el model n'inventés de nous a mitja obra ni que reutilitzés un
+//  nom per a una persona diferent: a la novel·la generada, un mateix nom
+//  designava una periodista, una adolescent i una responsable de logística, i
+//  un personatge central desapareixia sense explicació a partir del capítol 2.
+// ═══════════════════════════════════════════════════════════
+
+// Paraules que comencen amb majúscula sense ser noms propis de personatge.
+const PARAULES_MAJUSCULA_NO_PERSONATGE = new Set([
+  'el', 'la', 'els', 'les', 'un', 'una', 'i', 'o', 'però', 'que', 'qui', 'quan', 'com', 'on',
+  'si', 'no', 'ja', 'tot', 'tots', 'res', 'molt', 'més', 'menys', 'després', 'abans', 'ara',
+  'llavors', 'aleshores', 'potser', 'també', 'encara', 'sempre', 'mai', 'aquell', 'aquella',
+  'aquest', 'aquesta', 'seva', 'seu', 'meva', 'meu', 'va', 'ha', 'era', 'és', 'hi', 'del',
+  'dels', 'al', 'als', 'per', 'amb', 'sense', 'sobre', 'sota', 'entre', 'fins', 'des',
+  'dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte', 'diumenge',
+  'gener', 'febrer', 'març', 'abril', 'maig', 'juny', 'juliol', 'agost', 'setembre',
+  'octubre', 'novembre', 'desembre', 'capítol', 'escena'
+]);
+
+function extreureNomsPropisText(text = '') {
+  const candidats = new Map();
+  // Nom propi = paraula capitalitzada que NO obre frase. Exigir que no vagi
+  // precedida de final de frase evita capturar la primera paraula de cada
+  // oració, que és la font principal de falsos positius.
+  const re = /(?<![.!?…]\s|^|\n)\b([A-ZÀ-ÿ][a-zà-ÿ''-]{2,})\b/gu;
+  let m;
+  while ((m = re.exec(String(text))) !== null) {
+    const cru = m[1];
+    if (PARAULES_MAJUSCULA_NO_PERSONATGE.has(cru.toLowerCase())) continue;
+    const clau = nkgNormalitzarNom(cru);
+    if (!clau) continue;
+    candidats.set(clau, (candidats.get(clau) || 0) + 1);
+  }
+  return candidats;
+}
+
+function clausPersonatgesCanonics() {
+  const nkg = ESTAT._nkg || {};
+  const claus = new Set();
+  Object.entries(nkg.personatges || {}).forEach(([clau, p]) => {
+    if (clau) claus.add(nkgNormalitzarNom(clau));
+    const nom = (p && p.nom) || '';
+    if (nom) {
+      claus.add(nkgNormalitzarNom(nom));
+      // Un personatge citat pel nom de pila o pel cognom continua sent ell.
+      String(nom).split(/\s+/).filter(t => t.length > 2).forEach(t => claus.add(nkgNormalitzarNom(t)));
+    }
+  });
+  return claus;
+}
+
+// Els topònims del mapa no són personatges: no els comptem com a noms nous.
+function clausLlocsCanonics() {
+  const nkg = ESTAT._nkg || {};
+  const claus = new Set();
+  Object.entries(nkg.llocs || {}).forEach(([clau, l]) => {
+    if (clau) claus.add(nkgNormalitzarNom(clau));
+    const nom = (l && (l.nom || l.nom_visible)) || '';
+    if (nom) {
+      claus.add(nkgNormalitzarNom(nom));
+      String(nom).split(/\s+/).filter(t => t.length > 2).forEach(t => claus.add(nkgNormalitzarNom(t)));
+    }
+  });
+  return claus;
+}
+
+// Un nom que surt un sol cop sol ser una menció de pas (un carrer, una marca);
+// a partir de dues aparicions ja actua com a personatge.
+const MIN_APARICIONS_NOM_NOU = 2;
+
+function detectarNomsNousCapitol(textCapitol, capitolNum) {
+  const canonics = clausPersonatgesCanonics();
+  const llocs = clausLlocsCanonics();
+  const trobats = extreureNomsPropisText(textCapitol);
+  const nous = [];
+
+  trobats.forEach((aparicions, clau) => {
+    if (aparicions < MIN_APARICIONS_NOM_NOU) return;
+    if (canonics.has(clau) || llocs.has(clau)) return;
+    nous.push({ clau, aparicions, capitol: Number(capitolNum) || 0 });
+  });
+
+  return nous.sort((a, b) => b.aparicions - a.aparicions);
+}
+
+function comprovarPersonatgesCapitol(textCapitol, capitolNum, opcions = {}) {
+  const txt = String(textCapitol || '').trim();
+  if (!txt || !ESTAT._nkg) return { nous: [], registrats: 0 };
+
+  const nous = detectarNomsNousCapitol(txt, capitolNum);
+  if (nous.length === 0) return { nous: [], registrats: 0 };
+
+  console.warn(`[Personatges] Capítol ${capitolNum}: noms que no consten al NKG — ${nous.map(n => `${n.clau} (×${n.aparicions})`).join(', ')}`);
+
+  // Es registra com a fil d'error-continuïtat perquè el capítol següent l'hagi
+  // de reconciliar, igual que qualsevol altra contradicció tardana.
+  if (opcions.registrar !== false && typeof registrarContradiccioTardana === 'function') {
+    nous.forEach(n => {
+      registrarContradiccioTardana(
+        `Personatge no canònic "${n.clau}" apareix ${n.aparicions} vegades al capítol ${capitolNum} i no consta al registre. Decideix si s'incorpora al NKG com a secundari o si és un error d'identitat (un nom ja usat per a una altra persona).`,
+        capitolNum,
+        capitolNum
+      );
+    });
+  }
+
+  return { nous, registrats: opcions.registrar === false ? 0 : nous.length };
+}
+
+function buildBlocCensPersonatges() {
+  const nkg = ESTAT._nkg || {};
+  const fitxes = Object.values(nkg.personatges || {})
+    .filter(p => p && p.nom)
+    .map(p => `- ${p.nom}${p.viu === false ? ' [MORT]' : ''}`);
+  if (fitxes.length === 0) return '';
+
+  return `CENS DE PERSONATGES (registre canònic de l'obra):
+${fitxes.join('\n')}
+
+REGLES D'IDENTITAT:
+- No introdueixis personatges nous amb nom propi si l'escaleta no ho demana. Si necessites una figura de pas, deixa-la sense nom ("el conserge", "una dona amb abric").
+- Un nom ja utilitzat designa SEMPRE la mateixa persona. No reutilitzis un nom per a algú altre.
+- Un personatge ja presentat no pot desaparèixer de la novel·la sense que el text ho justifiqui.`;
+}
+
 function buildBlocMotiusSimbolics() {
   const registre = (ESTAT._nkg && Array.isArray(ESTAT._nkg.motius_simbolics)) ? ESTAT._nkg.motius_simbolics : [];
   if (registre.length === 0) return '';
@@ -16376,6 +16509,8 @@ Si un element del capítol contradiu la macronarrativa, no l'escriguis.
     if (blocBeatsProhibits) parts.push('\n' + blocBeatsProhibits);
     const blocMotius = buildBlocMotiusSimbolics();
     if (blocMotius) parts.push('\n' + blocMotius);
+    const blocCens = buildBlocCensPersonatges();
+    if (blocCens) parts.push('\n' + blocCens);
     const blocAlertesEstil = buildBlocAlertesEstil();
     if (blocAlertesEstil) parts.push('\n' + blocAlertesEstil);
     const blocLongitud = buildBlocAlertaLongitud();
