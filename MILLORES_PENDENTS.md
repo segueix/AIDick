@@ -1,5 +1,12 @@
 # Millores pendents — encàrrecs llestos per aplicar
 
+> **Estat:** els encàrrecs **1, 2, 3, 4, 5, 6 i 8 estan aplicats** a la branca
+> `claude/millores-pipeline-narratiu`. Queda pendent només el **7** (salt a
+> Sonnet 5 / Opus 5), que s'ha deixat expressament per més endavant.
+>
+> Proves afegides: `f12_bastida_persona.mjs` (26), `f13_maquinaria_motius_truncacio.mjs` (23),
+> `f14_cens_personatges.mjs` (18), `f15_lint_catala.mjs` (3). Suite completa: 281/281.
+
 Cada secció és un encàrrec autònom: es pot enganxar tal qual a una sessió nova
 sense context previ. Estan ordenats per valor sobre la propera generació.
 

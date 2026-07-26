@@ -3366,11 +3366,89 @@ function compteParaules(text) {
   return text.trim().split(/\s+/).filter(w => w.length > 0).length;
 }
 
+// \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+//  NETEJA DE BASTIDA \u2014 el lector no ha de veure mai la maquin\u00E0ria
+//  El model emet cap\u00E7aleres t\u00E8cniques ("Escena 1 \u2014 Nom", "CAP\u00CDTOL 2"),
+//  anotacions de punt de vista ("(POV: Olof)") i separadors "/" solts.
+//  obtenirTextEnllac() ja les filtrava, per\u00F2 nom\u00E9s al fragment d'enlla\u00E7
+//  entre escenes: el text que es desa, es mostra i s'exporta no hi passava.
+// \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+function liniaEsBastidaCapitol(linia = '') {
+  // Traiem \u00E8mfasi i cap\u00E7aleres Markdown abans de decidir; el gui\u00F3 llarg del
+  // di\u00E0leg NO s'hi inclou, perqu\u00E8 una r\u00E8plica mai \u00E9s bastida.
+  const nu = String(linia).trim().replace(/^[#>*_\s]+/, '').replace(/[*_\s]+$/, '').trim();
+  if (!nu) return false;
+
+  // "Escena 3 \u2014 La carpeta", "ESCENA 3", "CAP\u00CDTOL 2", "/ Escena 1 \u2014 \u2026"
+  if (/^\/*\s*(?:ESCENA|CAP[I\u00CD]TOL)\s+\d+\b/i.test(nu)) return true;
+
+  // Anotaci\u00F3 de POV en l\u00EDnia pr\u00F2pia: "(POV: Olof)", "POV: Karin, tercera persona"
+  if (/^\(?\s*POV\s*:/i.test(nu)) return true;
+
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PERSONA NARRATIVA — regla, no etiqueta
+//  El tipus de narrador arribava al prompt com un slug ("tercera_limitada")
+//  enterrat entre desenes de línies de context. El resultat era una novel·la
+//  que barreja "vaig sentir" i "va sentir" entre capítols, i pronoms de primera
+//  persona dins d'escenes marcades com a tercera. Aquí es converteix en una
+//  restricció explícita i inequívoca.
+// ═══════════════════════════════════════════════════════════
+function reglaPersonaNarrativa(tipus, personatgePov) {
+  const qui = String(personatgePov || '').trim() || 'el personatge POV del capítol';
+
+  switch (String(tipus || '').trim()) {
+    case 'primera_persona':
+      return `- PERSONA NARRATIVA (obligatòria): PRIMERA PERSONA. El narrador és ${qui} i explica els fets dient "jo". `
+        + `No canviïs mai a tercera persona per referir-te a ${qui}. Només pots explicar el que ${qui} veu, sent, pensa o dedueix: `
+        + `res del que passa fora de la seva presència, ni els pensaments de ningú altre.`;
+
+    case 'tercera_omniscient':
+      return `- PERSONA NARRATIVA (obligatòria): TERCERA PERSONA OMNISCIENT. Escriu sempre en tercera persona ("va sentir", "va pensar"). `
+        + `No facis servir mai la primera persona per al narrador —ni "jo" ni "nosaltres"— fora del diàleg entre cometes o guions. `
+        + `El narrador pot accedir als pensaments de més d'un personatge, però els canvis de focus han de ser clars i no poden passar a mitja escena sense marca.`;
+
+    case 'alternada':
+      return `- PERSONA NARRATIVA (obligatòria): PERSPECTIVA ALTERNADA. En aquest capítol el focus és ${qui} i no pot canviar dins del capítol. `
+        + `Mantén una sola persona gramatical de principi a fi del capítol; no barregis "jo" i "ell/ella" per al mateix personatge. `
+        + `Fora del diàleg entre cometes o guions, no pots fer servir la primera persona per a cap personatge que no sigui el focus.`;
+
+    case 'tercera_limitada':
+    default:
+      return `- PERSONA NARRATIVA (obligatòria): TERCERA PERSONA LIMITADA. Escriu SEMPRE en tercera persona ("va sentir", "va mirar"). `
+        + `Tens PROHIBIT fer servir la primera persona per al narrador ("jo", "em", "meu", "nosaltres") fora del diàleg entre cometes o guions. `
+        + `El narrador només pot accedir als pensaments i les sensacions de ${qui}: dels altres personatges només pots descriure el que es veu i se sent des de fora.`;
+  }
+}
+
+function netejarBastidaCapitol(text = '') {
+  if (!text) return '';
+
+  const liniesNetes = String(text)
+    .replace(/\[\[ESCENA_\d+\]\]/g, '')
+    .split('\n')
+    // Separador "/" o "//" sol en una l\u00EDnia. Nom\u00E9s barres: no toquem "***",
+    // "\u2014" ni cap altre trencament d'escena leg\u00EDtim.
+    .filter(l => !/^\s*\/+\s*$/.test(l))
+    .filter(l => !liniaEsBastidaCapitol(l));
+
+  return liniesNetes
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+// Punt \u00FAnic de neteja del text de cap\u00EDtol: s'aplica en desar, en mostrar i en
+// exportar, de manera que els cap\u00EDtols ja generats tamb\u00E9 en surten nets.
 function netejarTabulacionsInicials(text = '') {
   if (!text) return '';
-  return String(text)
-    .replace(/\r\n/g, '\n')
-    .replace(/^[\t \u00A0]+/gm, '');
+  return netejarBastidaCapitol(
+    String(text)
+      .replace(/\r\n/g, '\n')
+      .replace(/^[\t \u00A0]+/gm, '')
+  );
 }
 
 
@@ -12422,6 +12500,7 @@ async function generarFitxerContexte(nkg, biblia, capitolActual) {
     timeline_objectes: (nkg.timeline_objectes || []).slice(-20),
     timeline_personatges: (nkg.timeline_personatges || []).slice(-20),
     beats_gastats: nkg.beats_gastats || [],
+    motius_simbolics: nkg.motius_simbolics || [],
     scene_contracts: nkg.scene_contracts || [],
     nkg_versio: nkg.versio || 6,
     diagnostic_literari_9: (() => { try { return calcularEstudiDebilitatsLocal(ESTAT).qualitatLiteraria9; } catch (e) { return null; } })(),
@@ -13170,7 +13249,8 @@ Retorna EXCLUSIVAMENT JSON vàlid:
   "nous_fils_oberts": ["nou fil o pregunta oberta introduïda en aquest capítol"],
   "fils_tancats_en_aquest_capitol": ["fil de la llista anterior que s'ha resolt explícitament"],
   "nous_beats_gastats": ["beat narratiu consumit en aquest capítol que NO es pot repetir"],
-  "accions_irreversibles": ["acció o canvi d'estat permanent que no té marxa enrere"]
+  "accions_irreversibles": ["acció o canvi d'estat permanent que no té marxa enrere"],
+  "motius_simbolics": [{"motiu": "objecte o element amb càrrega simbòlica que apareix al capítol (p. ex. 'la tassa trencada')", "funcio": "quina funció dramàtica NOVA hi fa en aquest capítol"}]
 }`
   }];
 
@@ -13219,6 +13299,14 @@ Retorna EXCLUSIVAMENT JSON vàlid:
     if (b && b.trim() && !ESTAT._nkg.beats_gastats.includes(b.trim()))
       ESTAT._nkg.beats_gastats.push(b.trim());
   });
+
+  registrarMotiusSimbolics(dades.motius_simbolics, idx + 1);
+
+  try {
+    comprovarPersonatgesCapitol(textCapitol, idx + 1);
+  } catch (e) {
+    console.warn('Comprovació de personatges:', e.message);
+  }
 
   // Actualitzar accions irreversibles
   if (!Array.isArray(ESTAT._accionsIrreversibles)) ESTAT._accionsIrreversibles = [];
@@ -14398,7 +14486,31 @@ function getProviderAndModelPerRol(config, tag) {
   return { modelId, proveidor };
 }
 
-async function callLLMMulti(messages, systemPrompt, config, tag) {
+// ═══════════════════════════════════════════════════════════
+//  TRUNCACIÓ VISIBLE
+//  analitzarRespostaGenerica retorna { text, textIncomplet }, però callLLMMulti
+//  només retornava el text i llençava el senyal. Qualsevol resposta tallada per
+//  límit de tokens la "reparaven" les heurístiques de parseJsonRobust i el
+//  pipeline continuava amb capítols o personatges que faltaven, sense cap avís.
+//  callLLMMultiDetallat exposa el senyal; callLLMMulti es manté com a embolcall
+//  compatible que retorna el text i, com a mínim, deixa constància a la consola.
+// ═══════════════════════════════════════════════════════════
+ESTAT._respostesTallades = [];
+
+function registrarRespostaTallada(tag, modelId, text) {
+  const entrada = {
+    tag: tag || 'generacio',
+    model: modelId,
+    tokensAprox: Math.round(String(text || '').length / 4),
+    quan: new Date().toISOString()
+  };
+  if (!Array.isArray(ESTAT._respostesTallades)) ESTAT._respostesTallades = [];
+  ESTAT._respostesTallades.push(entrada);
+  console.warn(`[LLM] Resposta TALLADA per límit de tokens · rol=${entrada.tag} · model=${modelId} · ~${entrada.tokensAprox} tokens rebuts. Les dades poden estar incompletes.`);
+  return entrada;
+}
+
+async function callLLMMultiDetallat(messages, systemPrompt, config, tag) {
   const safeConfig = config || {};
 
   // Assignem el model segons si la tasca és d'arquitectura o de generació
@@ -14415,11 +14527,19 @@ async function callLLMMulti(messages, systemPrompt, config, tag) {
   const maxTokens = getMaxTokens(safeConfig, modelId);
 
   // Enrutem directament al proveïdor triat amb el text lliure del model
-  if (proveidor === 'anthropic') return await callAnthropic(messages, systemPrompt, apiKey, modelId, maxTokens);
-  if (proveidor === 'google' || proveidor === 'gemini') return await callGemini(messages, systemPrompt, apiKey, modelId, maxTokens, safeConfig);
-  if (proveidor === 'openai') return await callOpenAI(messages, systemPrompt, apiKey, modelId, maxTokens);
+  let resultat;
+  if (proveidor === 'anthropic') resultat = await callAnthropicWithFinishReason(messages, systemPrompt, apiKey, modelId, maxTokens);
+  else if (proveidor === 'google' || proveidor === 'gemini') resultat = await callGeminiWithFinishReason(messages, systemPrompt, apiKey, modelId, maxTokens, safeConfig);
+  else if (proveidor === 'openai') resultat = await callOpenAIWithFinishReason(messages, systemPrompt, apiKey, modelId, maxTokens);
+  else throw new Error(`Proveïdor desconegut: ${proveidor}`);
 
-  throw new Error(`Proveïdor desconegut: ${proveidor}`);
+  if (resultat && resultat.textIncomplet) registrarRespostaTallada(tag, modelId, resultat.text);
+
+  return { text: resultat.text, textIncomplet: !!(resultat && resultat.textIncomplet), model: modelId, proveidor };
+}
+
+async function callLLMMulti(messages, systemPrompt, config, tag) {
+  return (await callLLMMultiDetallat(messages, systemPrompt, config, tag)).text;
 }
 
 async function callLLMWithContinuation(messages, systemPrompt, config, tag, maxCont = 3) {
@@ -14916,15 +15036,18 @@ async function callGemini(messages, systemPrompt, apiKey, model, maxTokens, extr
   return analitzarRespostaGenerica(result, 'google').text;
 }
 
-async function callGeminiWithFinishReason(messages, systemPrompt, apiKey, model, maxTokens) {
+async function callGeminiWithFinishReason(messages, systemPrompt, apiKey, model, maxTokens, extraConfig) {
   await GeminiRL.esperar(); // respectar el rate limit de Gemini
   const finalModel = model || PROVIDER_DEFAULTS.gemini.model;
   const endpoint   = PROVIDER_DEFAULTS.gemini.apiUrlBase + '/' +
     encodeURIComponent(finalModel) + ':generateContent?key=' + encodeURIComponent(apiKey);
 
   const genConfig = { maxOutputTokens: maxTokens };
-  // Forçar JSON output si el system prompt ho demana
-  if (systemPrompt && /respon\s+(exclusivament|només|únicament)\s+(amb\s+)?json|retorna\s+(només|exclusivament)\s+json/i.test(systemPrompt)) {
+  // Forçar JSON output si s'ha especificat explícitament o si el system prompt
+  // ho demana. L'override explícit el fa servir el jutge d'interval.
+  if (extraConfig && extraConfig.responseMimeType) {
+    genConfig.responseMimeType = extraConfig.responseMimeType;
+  } else if (systemPrompt && /respon\s+(exclusivament|només|únicament)\s+(amb\s+)?json|retorna\s+(només|exclusivament)\s+json/i.test(systemPrompt)) {
     genConfig.responseMimeType = 'application/json';
   }
 
@@ -15923,6 +16046,206 @@ function esBeatNarratiuTrivial(beat) {
     || /(^|[_\s-])(caminar|parlar|mirar)([_\s-]|$)/.test(b);
 }
 
+// ═══════════════════════════════════════════════════════════
+//  MOTIUS SIMBÒLICS — AGENT.md: "No repetir motius simbòlics sense una nova
+//  funció dramàtica". La regla existia escrita i no estava implementada enlloc:
+//  a la novel·la generada, la tassa trencada sortia a gairebé totes les escenes
+//  i el text n'explicava el significat cada vegada, fins a diluir-la del tot.
+//  Mateix mecanisme que beats_gastats, però comptant aparicions: un motiu no
+//  queda prohibit després del primer ús — queda condicionat.
+// ═══════════════════════════════════════════════════════════
+const MAX_APARICIONS_MOTIU = 3;
+
+function normalitzarClauMotiu(motiu = '') {
+  return String(motiu)
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/^(el|la|els|les|un|una|uns|unes|l')\s*/, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function registrarMotiusSimbolics(motius, capitolNum) {
+  if (!ESTAT._nkg) return [];
+  if (!Array.isArray(ESTAT._nkg.motius_simbolics)) ESTAT._nkg.motius_simbolics = [];
+  const registre = ESTAT._nkg.motius_simbolics;
+  const cap = Math.max(1, Number(capitolNum) || 1);
+
+  (Array.isArray(motius) ? motius : []).forEach(entrada => {
+    const nom = String((entrada && (entrada.motiu || entrada.nom)) || entrada || '').trim();
+    if (!nom) return;
+    const clau = normalitzarClauMotiu(nom);
+    if (!clau) return;
+    const funcio = String((entrada && entrada.funcio) || '').trim();
+
+    let existent = registre.find(m => m.clau === clau);
+    if (!existent) {
+      existent = { clau, motiu: nom, aparicions: [], ultima_funcio: '' };
+      registre.push(existent);
+    }
+    if (!existent.aparicions.includes(cap)) existent.aparicions.push(cap);
+    if (funcio) existent.ultima_funcio = funcio;
+  });
+
+  return registre;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  REGISTRE CANÒNIC DE PERSONATGES
+//  ESTAT._nkg.personatges és el cens de la novel·la, però cap pas del pipeline
+//  impedia que el model n'inventés de nous a mitja obra ni que reutilitzés un
+//  nom per a una persona diferent: a la novel·la generada, un mateix nom
+//  designava una periodista, una adolescent i una responsable de logística, i
+//  un personatge central desapareixia sense explicació a partir del capítol 2.
+// ═══════════════════════════════════════════════════════════
+
+// Paraules que comencen amb majúscula sense ser noms propis de personatge.
+const PARAULES_MAJUSCULA_NO_PERSONATGE = new Set([
+  'el', 'la', 'els', 'les', 'un', 'una', 'i', 'o', 'però', 'que', 'qui', 'quan', 'com', 'on',
+  'si', 'no', 'ja', 'tot', 'tots', 'res', 'molt', 'més', 'menys', 'després', 'abans', 'ara',
+  'llavors', 'aleshores', 'potser', 'també', 'encara', 'sempre', 'mai', 'aquell', 'aquella',
+  'aquest', 'aquesta', 'seva', 'seu', 'meva', 'meu', 'va', 'ha', 'era', 'és', 'hi', 'del',
+  'dels', 'al', 'als', 'per', 'amb', 'sense', 'sobre', 'sota', 'entre', 'fins', 'des',
+  'dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte', 'diumenge',
+  'gener', 'febrer', 'març', 'abril', 'maig', 'juny', 'juliol', 'agost', 'setembre',
+  'octubre', 'novembre', 'desembre', 'capítol', 'escena'
+]);
+
+function extreureNomsPropisText(text = '') {
+  const candidats = new Map();
+  // Nom propi = paraula capitalitzada que NO obre frase. Exigir que no vagi
+  // precedida de final de frase evita capturar la primera paraula de cada
+  // oració, que és la font principal de falsos positius.
+  const re = /(?<![.!?…]\s|^|\n)\b([A-ZÀ-ÿ][a-zà-ÿ''-]{2,})\b/gu;
+  let m;
+  while ((m = re.exec(String(text))) !== null) {
+    const cru = m[1];
+    if (PARAULES_MAJUSCULA_NO_PERSONATGE.has(cru.toLowerCase())) continue;
+    const clau = nkgNormalitzarNom(cru);
+    if (!clau) continue;
+    candidats.set(clau, (candidats.get(clau) || 0) + 1);
+  }
+  return candidats;
+}
+
+function clausPersonatgesCanonics() {
+  const nkg = ESTAT._nkg || {};
+  const claus = new Set();
+  Object.entries(nkg.personatges || {}).forEach(([clau, p]) => {
+    if (clau) claus.add(nkgNormalitzarNom(clau));
+    const nom = (p && p.nom) || '';
+    if (nom) {
+      claus.add(nkgNormalitzarNom(nom));
+      // Un personatge citat pel nom de pila o pel cognom continua sent ell.
+      String(nom).split(/\s+/).filter(t => t.length > 2).forEach(t => claus.add(nkgNormalitzarNom(t)));
+    }
+  });
+  return claus;
+}
+
+// Els topònims del mapa no són personatges: no els comptem com a noms nous.
+function clausLlocsCanonics() {
+  const nkg = ESTAT._nkg || {};
+  const claus = new Set();
+  Object.entries(nkg.llocs || {}).forEach(([clau, l]) => {
+    if (clau) claus.add(nkgNormalitzarNom(clau));
+    const nom = (l && (l.nom || l.nom_visible)) || '';
+    if (nom) {
+      claus.add(nkgNormalitzarNom(nom));
+      String(nom).split(/\s+/).filter(t => t.length > 2).forEach(t => claus.add(nkgNormalitzarNom(t)));
+    }
+  });
+  return claus;
+}
+
+// Un nom que surt un sol cop sol ser una menció de pas (un carrer, una marca);
+// a partir de dues aparicions ja actua com a personatge.
+const MIN_APARICIONS_NOM_NOU = 2;
+
+function detectarNomsNousCapitol(textCapitol, capitolNum) {
+  const canonics = clausPersonatgesCanonics();
+  const llocs = clausLlocsCanonics();
+  const trobats = extreureNomsPropisText(textCapitol);
+  const nous = [];
+
+  trobats.forEach((aparicions, clau) => {
+    if (aparicions < MIN_APARICIONS_NOM_NOU) return;
+    if (canonics.has(clau) || llocs.has(clau)) return;
+    nous.push({ clau, aparicions, capitol: Number(capitolNum) || 0 });
+  });
+
+  return nous.sort((a, b) => b.aparicions - a.aparicions);
+}
+
+function comprovarPersonatgesCapitol(textCapitol, capitolNum, opcions = {}) {
+  const txt = String(textCapitol || '').trim();
+  if (!txt || !ESTAT._nkg) return { nous: [], registrats: 0 };
+
+  const nous = detectarNomsNousCapitol(txt, capitolNum);
+  if (nous.length === 0) return { nous: [], registrats: 0 };
+
+  console.warn(`[Personatges] Capítol ${capitolNum}: noms que no consten al NKG — ${nous.map(n => `${n.clau} (×${n.aparicions})`).join(', ')}`);
+
+  // Es registra com a fil d'error-continuïtat perquè el capítol següent l'hagi
+  // de reconciliar, igual que qualsevol altra contradicció tardana.
+  if (opcions.registrar !== false && typeof registrarContradiccioTardana === 'function') {
+    nous.forEach(n => {
+      registrarContradiccioTardana(
+        `Personatge no canònic "${n.clau}" apareix ${n.aparicions} vegades al capítol ${capitolNum} i no consta al registre. Decideix si s'incorpora al NKG com a secundari o si és un error d'identitat (un nom ja usat per a una altra persona).`,
+        capitolNum,
+        capitolNum
+      );
+    });
+  }
+
+  return { nous, registrats: opcions.registrar === false ? 0 : nous.length };
+}
+
+function buildBlocCensPersonatges() {
+  const nkg = ESTAT._nkg || {};
+  const fitxes = Object.values(nkg.personatges || {})
+    .filter(p => p && p.nom)
+    .map(p => `- ${p.nom}${p.viu === false ? ' [MORT]' : ''}`);
+  if (fitxes.length === 0) return '';
+
+  return `CENS DE PERSONATGES (registre canònic de l'obra):
+${fitxes.join('\n')}
+
+REGLES D'IDENTITAT:
+- No introdueixis personatges nous amb nom propi si l'escaleta no ho demana. Si necessites una figura de pas, deixa-la sense nom ("el conserge", "una dona amb abric").
+- Un nom ja utilitzat designa SEMPRE la mateixa persona. No reutilitzis un nom per a algú altre.
+- Un personatge ja presentat no pot desaparèixer de la novel·la sense que el text ho justifiqui.`;
+}
+
+function buildBlocMotiusSimbolics() {
+  const registre = (ESTAT._nkg && Array.isArray(ESTAT._nkg.motius_simbolics)) ? ESTAT._nkg.motius_simbolics : [];
+  if (registre.length === 0) return '';
+
+  const usats = registre
+    .filter(m => (m.aparicions || []).length > 0)
+    .sort((a, b) => (b.aparicions || []).length - (a.aparicions || []).length)
+    .slice(0, 12);
+  if (usats.length === 0) return '';
+
+  const linies = usats.map(m => {
+    const n = (m.aparicions || []).length;
+    const caps = (m.aparicions || []).slice(-6).join(', ');
+    const saturat = n >= MAX_APARICIONS_MOTIU ? ' — SATURAT' : '';
+    return `- "${m.motiu}": ${n} aparicion${n === 1 ? '' : 's'} (capítols ${caps})${saturat}`
+      + (m.ultima_funcio ? `\n    darrera funció: ${m.ultima_funcio}` : '');
+  });
+
+  return `MOTIUS SIMBÒLICS JA UTILITZATS — Aquests elements ja porten càrrega simbòlica a la novel·la:
+${linies.join('\n')}
+
+REGLES:
+- Si un motiu torna a aparèixer, ha de fer una funció dramàtica NOVA. Repetir-lo per recordar al lector que existeix el desgasta.
+- No expliquis mai què significa un motiu. Si has d'explicar-lo, no funciona: fes que la seva presència canviï el que passa.
+- Els marcats com a SATURAT ja han aparegut ${MAX_APARICIONS_MOTIU} vegades o més. No els tornis a fer servir tret que el capítol els doni un gir que els transformi (es destrueixen, canvien de mans, es revela que el lector els llegia malament).
+- Prefereix introduir un element nou abans que insistir en un de gastat.`;
+}
+
 function buildBlocBeatsNarratiusProhibits() {
   const beats = (ESTAT._nkg && Array.isArray(ESTAT._nkg.beats_gastats)) ? ESTAT._nkg.beats_gastats : [];
   if (beats.length === 0) return '';
@@ -16165,6 +16488,13 @@ Si un element del capítol contradiu la macronarrativa, no l'escriguis.
     }
     parts.push("\nREGLA DE CONTINUITAT OBLIGATÒRIA: Llevat que se t'indiqui explícitament que és el final del capítol, NO tanquis artificialment l'energia narrativa. Mantén continuïtat orgànica segons el to de l'obra: suspens d'acció, ressonància lírica, o desplaçament perceptiu; la següent generació ha de poder recollir el testimoni de forma natural.");
 
+    parts.push("\nNOMÉS PROSA: la teva resposta ha de ser el text narratiu i res més. No escriguis capçaleres (\"Escena 3\", \"CAPÍTOL 2\"), ni títols de secció, ni anotacions de punt de vista (\"(POV: …)\"), ni separadors com \"/\", ni cap comentari sobre el que estàs fent. Comença directament amb la primera frase de la narració.");
+
+    parts.push("\nLA MECÀNICA NO S'ANOMENA, ES VEU: les indicacions que reps sobre cost, decisió irreversible, conseqüència, objectiu i obstacle són el que ha de PASSAR a l'escena, no el que has d'escriure. Tens prohibit fer-les servir com a vocabulari: res de \"la decisió era irreversible\", \"el cost es va fer present\", \"un punt de no retorn\", \"va creuar una línia sense tornar enrere\", \"conseqüència narrativa\", \"cost emocional\".\n"
+      + "  · NO: \"Va prendre una decisió irreversible i en va sentir el cost immediat.\"\n"
+      + "  · SÍ: \"Va signar. Quan va aixecar la vista, l'Anna ja no el mirava, i el cafè que li havia posat davant es va quedar allà, fred, fins que algú se'l va endur.\"\n"
+      + "El lector ha d'entendre què s'ha perdut sense que tu li ho diguis: es veu en el que el personatge fa, en el que deixa de fer, en com el tracten els altres i en què passa amb els objectes.");
+
     // F5.4: estat inicial determinista. Va abans de tot el material dramàtic
     // perquè és la restricció dura: el que la prosa no pot contradir.
     const blocEstat = construirBlocEstatInicialCapitol(Number(ESTAT._capitolActual || 0) + 1);
@@ -16177,6 +16507,10 @@ Si un element del capítol contradiu la macronarrativa, no l'escriguis.
     if (blocHuma) parts.push('\n' + blocHuma);
         const blocBeatsProhibits = buildBlocBeatsNarratiusProhibits();
     if (blocBeatsProhibits) parts.push('\n' + blocBeatsProhibits);
+    const blocMotius = buildBlocMotiusSimbolics();
+    if (blocMotius) parts.push('\n' + blocMotius);
+    const blocCens = buildBlocCensPersonatges();
+    if (blocCens) parts.push('\n' + blocCens);
     const blocAlertesEstil = buildBlocAlertesEstil();
     if (blocAlertesEstil) parts.push('\n' + blocAlertesEstil);
     const blocLongitud = buildBlocAlertaLongitud();
@@ -18643,6 +18977,13 @@ async function avaluarQualitatLiteraria(textEscena, userConfig) {
     problemesProgramatics.push(`S'ha detectat massa 'telling' emocional directe: ${instanciesTelling.slice(0, 3).join(', ')}... Cal MOSTRAR l'emoció amb accions o diàleg, no etiquetar-la.`);
   }
 
+  // Rebuig per vocabulari de maquinària: el contracte d'escena s'ha de veure en
+  // acció, no anomenar-se. Un sol cas ja és massa, perquè trenca la ficció.
+  const instanciesMaquinaria = detectarVocabulariDeMaquinaria(textNet);
+  if (instanciesMaquinaria.length > 0) {
+    problemesProgramatics.push(`El text anomena la mecànica narrativa en comptes de dramatitzar-la: ${[...new Set(instanciesMaquinaria)].slice(0, 3).join(', ')}. El cost, la decisió i la conseqüència s'han de veure en acció, gest, objecte o diàleg — mai enunciar-los amb aquestes paraules.`);
+  }
+
   // Rebuig per mecàniques de veu pobres
   if (metriquesVeu) {
     if (metriquesVeu.ratioConsecutives > 0.65) {
@@ -19950,7 +20291,7 @@ function nkgGenerarContextMinim(escenaSpec) {
   const timelineCap = (ESTAT._nkg?.timeline_accions || []).filter(a => Number((a && a.capitol) || 0) === cap).slice(0, 12);
   if (pov || cronCap || timelineCap.length > 0) {
     parts.push('BLOQ POV/CRONOLOGIA INTERNA:');
-    if (perspectiva.tipus) parts.push(`- Tipus narrador: ${perspectiva.tipus}`);
+    if (perspectiva.tipus) parts.push(reglaPersonaNarrativa(perspectiva.tipus, pov && pov.personatge_pov));
     if (pov) parts.push(`- POV capítol ${cap}: ${pov.personatge_pov}${pov.justificacio ? ` (${pov.justificacio})` : ''}`);
     if (cronCap) parts.push(`- Cronologia capítol ${cap}: ${cronCap.data_ficticia || '?'} · ${cronCap.moment_del_dia || '?'} · ${cronCap.ubicacio_principal || '?'}`);
     if (timelineCap.length > 0) parts.push('- Timeline accions capítol:\n' + timelineCap.map(a => `  • ${formatTimelineAccio(a)}`).join('\n'));
@@ -21535,6 +21876,36 @@ function detectarTellingEmocional(text) {
     while ((m = p.exec(text)) !== null) {
       matches.push(m[0]);
     }
+  });
+  return matches;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  VOCABULARI DE MAQUINÀRIA
+//  El pipeline exigeix cost immediat, decisió irreversible i conseqüència
+//  narrativa a cada escena, i el model ho resol DIENT-HO: "La decisió era
+//  irreversible", "el cost es va fer present", "va creuar una línia sense
+//  tornar enrere". Això és telling de la mecànica, no dramatització; les
+//  "Regles de dramatització 9/10" d'AGENT.md ho prohibeixen expressament.
+// ═══════════════════════════════════════════════════════════
+function detectarVocabulariDeMaquinaria(text) {
+  if (!text) return [];
+  const patrons = [
+    /\b(la |una )?(decisió|elecció)\s+(ja\s+)?(era|va ser|es va fer|resultava)\s+irreversible\b/gi,
+    /\b(el |un )?cost\s+(es va fer|va ser|era|se li va fer)\s+(present|palpable|visible|tangible)\b/gi,
+    /\bcost\s+(emocional|immediat|narratiu)\b/gi,
+    /\bconseqüència\s+narrativa\b/gi,
+    /\bpunt de no retorn\b/gi,
+    /\b(va creuar|creuar|travessar|va travessar)\s+(una|la)\s+línia\s+(sense (tornar enrere|retorn)|que no es pot desfer)/gi,
+    /\b(una acció|un gest|un acte|una cosa)\s+irreversible\b/gi,
+    /\bno (hi havia|hi ha) marxa enrere\b/gi,
+    /\b(objectiu|obstacle)\s+(visible|concret)\s+de[l]?\s+(POV|protagonista)\b/gi,
+    /\basimetria de poder\b/gi
+  ];
+  const matches = [];
+  patrons.forEach(p => {
+    let m;
+    while ((m = p.exec(text)) !== null) matches.push(m[0]);
   });
   return matches;
 }

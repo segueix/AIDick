@@ -345,6 +345,7 @@ function crearNKG() {
     },
     transicions_capitols: [], // Regles de pas capítol->capítol per evitar salts i pèrdua de continuïtat
     beats_gastats: [], // Registre de beats narratius consumits (anti-repetició dramàtica)
+    motius_simbolics: [], // { clau, motiu, aparicions: [capitol], ultima_funcio } — anti-desgast del símbol
     scene_contracts: [], // Capa estructural per evitar capítols massa resumits, abstractes o sense conflicte dramàtic.
     ultima_actualitzacio: { capitol: 0, escena: 0 },
     versio: 6
