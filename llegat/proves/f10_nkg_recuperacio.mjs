@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const recuperacio = readFileSync(new URL('../nkg_recovery.js', import.meta.url), 'utf8');
-const models = readFileSync(new URL('../models_openai.js', import.meta.url), 'utf8');
+const models = readFileSync(new URL('../../models_openai.js', import.meta.url), 'utf8');
 
 const resultats = [];
 function comprova(nom, condicio, detall = '') {

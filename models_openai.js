@@ -60,7 +60,16 @@
     }
   };
 
+  // La recuperació del NKG només existeix al mode novel·la (llegat/novella.html):
+  // el generador de contes no té NKG i injectar-hi el mòdul només produiria un
+  // 404. El marcador és una fase pròpia del flux de novel·la; la ruta és
+  // relativa al document, i nkg_recovery.js viu al costat de novella.html.
+  function esModeNovella() {
+    return !!document.getElementById('fase-b1');
+  }
+
   function carregarRecuperacioNKG() {
+    if (!esModeNovella()) return;
     if (document.getElementById('booki-nkg-recovery-script')) return;
     const script = document.createElement('script');
     script.id = 'booki-nkg-recovery-script';
