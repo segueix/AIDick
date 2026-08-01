@@ -139,7 +139,63 @@ Empatia com a única brúixola moral: en un món on res és real, la capacitat d
       "El sistema (estat, corporació, tecnologia) menteix de manera verificable dins la trama",
       "La paranoia és funcional i quotidiana, mai histriònica",
       "L'empatia funciona com a criteri moral en alguna decisió del capítol"
-    ]
+    ],
+    // ═══════════════════════════════════════════════════════
+    //  Paràmetres de la FORMA BREU (generador de contes)
+    //  S'afegeixen sobre el perfil existent sense tocar-ne cap camp: el mode
+    //  novel·la congelat a llegat/ no llegeix res d'aquí.
+    //
+    //  REGLA CRÍTICA: criteris_excellencia_conte GENEREN i van al prompt del
+    //  redactor. criteris_avaluacio_conte AVALUEN i només poden entrar al
+    //  prompt de la lectura hostil. Si un criteri d'avaluació arriba al prompt
+    //  del generador, l'examen mesura el seu propi enunciat i el veredicte
+    //  deixa de valdre.
+    // ═══════════════════════════════════════════════════════
+    conte: {
+      forma: `── FORMA DEL CONTE PKD ──
+Un conte de Philip K. Dick no comença amb un món: comença amb una anomalia. Una dada administrativa que no quadra, un objecte domèstic que fa una cosa que no li toca, un imprès duplicat. Petita, comprovable, avorrida.
+El protagonista és de rang baix —un venedor, un funcionari de finestreta, un tècnic de manteniment, un comptable— i té accés a l'anomalia perquè la seva feina consisteix a mirar precisament allò que ningú més mira.
+Investiga amb mètode. Comprova, torna a comprovar, descarta explicacions senzilles una per una. Les seves conclusions són raonables encara que siguin falses; el lector les segueix perquè estan ben construïdes.
+L'esquerda s'obre i NO es tanca. Quan el marc del que semblava real es trenca, no es recompon: el que ve després passa dins del marc trencat.
+El final no explica res. Reencuadra. L'última frase fa que tot el que s'ha llegit vulgui dir una altra cosa, i el lector no pot desfer-ho.
+El món és el present deteriorat: la tecnologia falla, la publicitat interromp, la burocràcia respon amb formularis, els objectes de consum porten la marca mal impresa. Mai el futur lluent.`,
+
+      obertura: `── PRIMERS 600 CARÀCTERS ──
+Cap exposició. Ni món, ni any, ni context, ni antecedents del personatge.
+L'anomalia ha de ser present ABANS de la tercera frase, i ha de semblar administrativa o domèstica: un duplicat, un rebut, una xifra que no quadra, un aparell que respon tard. Res còsmic.
+Comença amb el protagonista fent la seva feina. El lector ha d'entendre què fa aquesta persona per la manera com toca els objectes, no perquè se li digui.
+Cap frase del tipus "en aquell món" o "des de la guerra". El món arriba de gairell, dins d'una acció concreta.
+La primera frase no pot ser una sentència general ni una imatge poètica: ha de ser un fet.`,
+
+      desenllac: `── ÚLTIMS 800 CARÀCTERS ──
+El final NO explica l'esquerda: la fa irreversible. Res de personatges que resumeixen el que ha passat ni de revelacions per confessió.
+Prohibit restaurar l'estat inicial. El protagonista no torna a la feina com si res: alguna cosa concreta ha canviat i no es pot desfer.
+L'última frase ha de REENCUADRAR, no resumir. Ha de donar una dada, un gest o un objecte que obligui el lector a rellegir el que ja sap d'una altra manera.
+Prohibit tancar amb una reflexió del narrador sobre el sentit de tot plegat.
+Prohibit el gir final que resulti que era un somni, una simulació revelada per un tercer o una prova de laboratori.`,
+
+      // Condicions de GENERACIÓ. Van al prompt del redactor.
+      criteris_excellencia_conte: [
+        "L'anomalia inicial és concreta, quotidiana i comprovable: una xifra, un duplicat, una data, un objecte que falla",
+        "El protagonista raona amb mètode i descarta explicacions senzilles una per una abans d'arribar a la seva",
+        "El món es mostra per objectes deteriorats i procediments, mai per exposició del narrador",
+        "El sistema menteix amb una dada que el lector pot contrastar amb una altra dada del mateix text",
+        "Hi ha una decisió en què ser empàtic li costa alguna cosa concreta al personatge",
+        "L'esquerda de realitat s'obre i el text continua dins del marc trencat, sense recompondre'l"
+      ],
+
+      // Condicions d'AVALUACIÓ. NOMÉS al prompt de la lectura hostil.
+      criteris_avaluacio_conte: [
+        "Després de l'esquerda, el lector pot tornar a confiar en el que llegeix? Si pot, l'esquerda era decorativa.",
+        "La paranoia del protagonista té base verificable dins del text, o només és to i vocabulari?",
+        "El sistema menteix d'una manera que el lector pugui comprovar sol, o només se'ns diu que menteix?",
+        "L'empatia li costa alguna cosa concreta, o és una declaració de bones intencions sense preu?",
+        "El final reencuadra el que s'ha llegit, o només tanca la trama?",
+        "Si es canviés el nom del protagonista per un altre, es notaria? La veu és seva o és la veu per defecte del model?",
+        "Hi ha alguna frase que expliqui al lector què ha de sentir? Quantes?",
+        "El futur descrit és el present deteriorat o és una decoració de ciència-ficció genèrica?"
+      ]
+    }
   },
   castaneda: {
     nom: 'Carlos Castaneda',
@@ -186,6 +242,52 @@ El desert, la nit, els somnis lúcids i les plantes de poder com a espais on les
     ]
   }
 };
+
+// ═══════════════════════════════════════════════════════════
+//  Perfil per defecte del projecte.
+//  El generador de contes és un generador de contes de Philip K. Dick: 'dick'
+//  és el perfil per defecte. Els altres tres es conserven sencers —les proves
+//  f3 del mode novel·la hi depenen i mantenir-los no costa res— i queden
+//  disponibles en un desplegable secundari.
+// ═══════════════════════════════════════════════════════════
+const PERFIL_AUTOR_PER_DEFECTE = 'dick';
+const PERFILS_AUTOR_SECUNDARIS = ['larsson', 'tolkien', 'castaneda'];
+
+// Accessors del subobjecte 'conte'. Retornen cadena buida si el perfil no té
+// paràmetres de forma breu, perquè el muntatge de prompts no hagi de comprovar
+// l'existència a cada lloc.
+function perfilConte(idPerfil) {
+  const p = (idPerfil && PERFILS_AUTOR[idPerfil]) || null;
+  return (p && p.conte) || null;
+}
+
+function blocFormaConte(idPerfil) {
+  const c = perfilConte(idPerfil);
+  return (c && c.forma) || '';
+}
+
+function blocOberturaConte(idPerfil) {
+  const c = perfilConte(idPerfil);
+  return (c && c.obertura) || '';
+}
+
+function blocDesenllacConte(idPerfil) {
+  const c = perfilConte(idPerfil);
+  return (c && c.desenllac) || '';
+}
+
+// Condicions de GENERACIÓ: van al prompt del redactor.
+function criterisExcellenciaConte(idPerfil) {
+  const c = perfilConte(idPerfil);
+  return (c && Array.isArray(c.criteris_excellencia_conte)) ? c.criteris_excellencia_conte : [];
+}
+
+// Condicions d'AVALUACIÓ: NOMÉS al prompt de la lectura hostil. Cap funció que
+// construeixi un prompt de generació pot cridar aquesta funció.
+function criterisAvaluacioConte(idPerfil) {
+  const c = perfilConte(idPerfil);
+  return (c && Array.isArray(c.criteris_avaluacio_conte)) ? c.criteris_avaluacio_conte : [];
+}
 
 // ═══════════════════════════════════════════════════════════
 //  F3.5 — Detecció de perfil blindada

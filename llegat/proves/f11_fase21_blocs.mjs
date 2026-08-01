@@ -24,7 +24,7 @@ function carregarPlaywright() {
 }
 const { chromium } = carregarPlaywright();
 
-const URL_BOOKI = process.env.BOOKI_URL || 'http://127.0.0.1:8099/index.html';
+const URL_BOOKI = process.env.BOOKI_URL || 'http://127.0.0.1:8099/llegat/novella.html';
 
 let passades = 0;
 let totals = 0;

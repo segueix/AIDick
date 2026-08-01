@@ -40,27 +40,63 @@
       velocitat: 'molt_rapida',
       notes: 'Per a extracció, classificació, resums, esquelets i tasques auxiliars d’alt volum.'
     },
+    // ─── Família GPT-5.6 (Luna / Terra / Sol) ───────────────────────────────
+    // Preus de tarifa estàndard posteriors a la rebaixa del 30 de juliol de
+    // 2026, en què OpenAI va abaixar Luna un 80% i Terra un 20% i va deixar Sol
+    // igual. Els valors anteriors (Luna 1,00/6,00 i Terra 2,50/15,00) encara
+    // circulen per articles no actualitzats i eren els que hi havia aquí.
+    //
+    // Els tres comparteixen finestra de 1.050.000 tokens i 128.000 de sortida.
+    //
+    // NOTA SOBRE EL RECÀRREC DE CONTEXT LLARG: per damunt de 272.000 tokens
+    // d'entrada, OpenAI cobra l'entrada al doble i la sortida a 1,5×. Aquest
+    // pipeline no s'hi acosta —la crida amb més entrada és la costura, amb unes
+    // 6.000 fitxes—, així que el registre porta la tarifa estàndard i
+    // l'estimació de cost és vàlida. Si algun dia una crida superés aquest
+    // llindar, l'estimació es quedaria curta i caldria modelar els dos trams.
     'gpt-5.6-luna': {
       nom: 'GPT-5.6 Luna', nomCurt: 'GPT-5.6 Luna',
       proveidor: 'openai',
-      input_per_m: 1.00, output_per_m: 6.00,
+      input_per_m: 0.20, output_per_m: 1.20,
       context_max: 1050000, max_output: 128000,
       qualitat: { draft: 88, prosa: 88, arquitectura: 88, extraccio: 91 },
       velocitat: 'rapida',
-      notes: 'Model eficient per a la redacció creativa, l’expansió i la reescriptura de capítols.'
+      notes: 'Molt barat per a la qualitat que dona: el model de prosa més econòmic del registre.'
     },
     'gpt-5.6-terra': {
       nom: 'GPT-5.6 Terra', nomCurt: 'GPT-5.6 Terra',
       proveidor: 'openai',
-      input_per_m: 2.50, output_per_m: 15.00,
+      input_per_m: 2.00, output_per_m: 12.00,
       context_max: 1050000, max_output: 128000,
       qualitat: { draft: 91, prosa: 92, arquitectura: 95, extraccio: 94 },
       velocitat: 'moderada',
       notes: 'Per a arquitectura, coherència global, diagnòstic literari i revisió editorial.'
+    },
+    'gpt-5.6-sol': {
+      nom: 'GPT-5.6 Sol', nomCurt: 'GPT-5.6 Sol',
+      proveidor: 'openai',
+      input_per_m: 5.00, output_per_m: 30.00,
+      context_max: 1050000, max_output: 128000,
+      // Les puntuacions de `qualitat` són la valoració d'aquest projecte per a
+      // les seves tasques, no dades del proveïdor: situen Sol per sobre de
+      // Terra en judici literari i arquitectura, que és on es paga la
+      // diferència. Ajusta-les si l'ús real diu una altra cosa.
+      qualitat: { draft: 93, prosa: 95, arquitectura: 97, extraccio: 96 },
+      velocitat: 'moderada',
+      notes: 'El model més capaç de la família. Per a la lectura hostil i els judicis literaris subtils; per a escriure escenes, Terra ja hi arriba a menys de la meitat de preu.'
     }
   };
 
+  // La recuperació del NKG només existeix al mode novel·la (llegat/novella.html):
+  // el generador de contes no té NKG i injectar-hi el mòdul només produiria un
+  // 404. El marcador és una fase pròpia del flux de novel·la; la ruta és
+  // relativa al document, i nkg_recovery.js viu al costat de novella.html.
+  function esModeNovella() {
+    return !!document.getElementById('fase-b1');
+  }
+
   function carregarRecuperacioNKG() {
+    if (!esModeNovella()) return;
     if (document.getElementById('booki-nkg-recovery-script')) return;
     const script = document.createElement('script');
     script.id = 'booki-nkg-recovery-script';

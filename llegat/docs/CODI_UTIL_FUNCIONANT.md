@@ -1,3 +1,9 @@
+> **Document del mode novel·la, congelat el 2026-08-01.**
+> Descriu funcionalitat que ja no existeix al generador de contes.
+> Es conserva com a arxiu del que hi havia i per què.
+
+---
+
 # Codi útil i funcionant (llibre de consolidació)
 
 Aquest document és un **punt de consolidació** per anar separant del `index.html` gegant només les peces que:

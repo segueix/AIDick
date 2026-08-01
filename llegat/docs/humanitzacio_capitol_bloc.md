@@ -1,3 +1,9 @@
+> **Document del mode novel·la, congelat el 2026-08-01.**
+> Descriu funcionalitat que ja no existeix al generador de contes.
+> Es conserva com a arxiu del que hi havia i per què.
+
+---
+
 === HUMANITZACIÓ — CAPÍTOL [N] ===
 1. MICRORUPTURA: A la primera escena compartida entre [personatge] i [personatges presents], [personatge] ha de fer un gest inútil però revelador: ordenar tres vegades seguides un objecte menor de l'espai (p. ex. una cadira torta, un tovalló, una carpeta) i deixar-lo finalment igual que al principi; aquesta acció no resol cap conflicte, només evidencia la motxilla emocional heretada amb què entra al capítol.
 

@@ -6,7 +6,7 @@
 //   node proves/f0_f1.mjs                 # en una altra terminal
 //
 // Variables opcionals:
-//   BOOKI_URL         URL de l'index.html (per defecte http://127.0.0.1:8099/index.html)
+//   BOOKI_URL         URL de l'index.html (per defecte http://127.0.0.1:8099/llegat/novella.html)
 //   CHROMIUM_PATH     ruta a l'executable de Chromium
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
@@ -19,7 +19,7 @@ function carregarPlaywright() {
 }
 const { chromium } = carregarPlaywright();
 
-const URL_BOOKI = process.env.BOOKI_URL || 'http://127.0.0.1:8099/index.html';
+const URL_BOOKI = process.env.BOOKI_URL || 'http://127.0.0.1:8099/llegat/novella.html';
 
 const results = [];
 function check(name, ok, detail = '') {

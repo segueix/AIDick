@@ -1,3 +1,9 @@
+> **Document del mode novel·la, congelat el 2026-08-01.**
+> Descriu funcionalitat que ja no existeix al generador de contes.
+> Es conserva com a arxiu del que hi havia i per què.
+
+---
+
 # Millores pendents — encàrrecs llestos per aplicar
 
 > **Estat:** els encàrrecs **1, 2, 3, 4, 5, 6 i 8 estan aplicats** a la branca

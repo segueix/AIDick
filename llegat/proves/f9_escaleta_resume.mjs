@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-const ui = readFileSync(new URL('../ui_fixes.js', import.meta.url), 'utf8');
+const ui = readFileSync(new URL('../../ui_fixes.js', import.meta.url), 'utf8');
 
 let passades = 0;
 let totals = 0;

@@ -1,3 +1,9 @@
+> **Document del mode novel·la, congelat el 2026-08-01.**
+> Descriu funcionalitat que ja no existeix al generador de contes.
+> Es conserva com a arxiu del que hi havia i per què.
+
+---
+
 # Revisió tècnica i pla de canvis — Booki
 
 > Objectiu de l'encàrrec: (1) trobar per què l'app **dona errades**, (2) per què **no es genera

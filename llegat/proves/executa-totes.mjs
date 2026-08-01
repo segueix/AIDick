@@ -1,13 +1,10 @@
-// Executa totes les suites de regressió del generador de contes en sèrie.
+// Executa totes les suites de regressió de Booki en sèrie.
 //
 // Ús:
 //   npx http-server -p 8099 -c-1 .     # des de l'arrel del projecte
 //   node proves/executa-totes.mjs
 //
-// Variables opcionals: AIDICK_URL, LLINDAR_PER_MIL, DICCIONARI_CA.
-//
-// Les suites del mode novel·la congelat viuen a llegat/proves/ i s'executen a
-// part amb `node llegat/proves/executa-totes.mjs`.
+// Variables opcionals: BOOKI_URL, CHROMIUM_PATH (les hereten les suites).
 import { spawn } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 

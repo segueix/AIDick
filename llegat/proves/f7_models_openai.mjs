@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 
-const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const perfils = readFileSync(new URL('../perfils_autor_base.js', import.meta.url), 'utf8');
-const extensio = readFileSync(new URL('../models_openai.js', import.meta.url), 'utf8');
+const index = readFileSync(new URL('../novella.html', import.meta.url), 'utf8');
+const perfils = readFileSync(new URL('../../perfils_autor_base.js', import.meta.url), 'utf8');
+const extensio = readFileSync(new URL('../../models_openai.js', import.meta.url), 'utf8');
 
 let passades = 0;
 let totals = 0;
@@ -18,8 +18,8 @@ function comprova(nom, condicio) {
 
 // El carregador document.write s'ha substituït per etiquetes directes a
 // index.html: el que importa és que els dos mòduls es carreguin, no com.
-comprova('index.html carrega els perfils originals', index.includes('<script src="perfils_autor_base.js">'));
-comprova('index.html carrega l’extensió OpenAI', index.includes('<script src="models_openai.js">'));
+comprova('index.html carrega els perfils originals', index.includes('<script src="../perfils_autor_base.js">'));
+comprova('index.html carrega l’extensió OpenAI', index.includes('<script src="../models_openai.js">'));
 comprova('El registre original de perfils es conserva', perfils.includes('const PERFILS_AUTOR = {'));
 comprova('Booki manté tres selectors de model',
   ['selectModelDraft', 'selectModelGen', 'selectModelArq'].every(id => index.includes(`id="${id}"`)));

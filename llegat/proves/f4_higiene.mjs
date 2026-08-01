@@ -15,7 +15,7 @@ function carregarPlaywright() {
   return createRequire(arrelGlobal + '/').call(null, 'playwright');
 }
 const { chromium } = carregarPlaywright();
-const URL_BOOKI = process.env.BOOKI_URL || 'http://127.0.0.1:8099/index.html';
+const URL_BOOKI = process.env.BOOKI_URL || 'http://127.0.0.1:8099/llegat/novella.html';
 const ARREL = new URL('..', import.meta.url).pathname;
 
 const results = [];
@@ -25,7 +25,7 @@ function check(name, ok, detail = '') {
 }
 
 // ── Comprovacions sobre el fitxer, sense navegador ─────────────────────────
-const html = readFileSync(ARREL + 'index.html', 'utf8');
+const html = readFileSync(ARREL + 'novella.html', 'utf8');
 // Els comentaris expliquen què s'ha tret i citen els valors antics; les
 // comprovacions han de mirar només codi.
 const senseComentaris = html.replace(/^\s*\/\/.*$/gm, '');
@@ -46,8 +46,10 @@ check('F4.4 · nkg_biblia.html ja no forma part del projecte',
 // connexió és lenta, i llavors l'app no arrenca sense donar cap error clar.
 check('Cap mòdul es carrega amb document.write',
   !/document\.write\s*\([^)]*<script/i.test(html), '');
+// El prefix ../ és el de la congelació: l'app viu a llegat/ i els mòduls purs
+// segueixen a l'arrel del repositori, compartits amb el generador de contes.
 const moduls = ['perfils_autor_base.js', 'models_openai.js', 'ui_fixes.js', 'nkg_core.js']
-  .filter(m => !new RegExp(`<script src="${m.replace('.', '\\.')}"`).test(html));
+  .filter(m => !new RegExp(`<script src="(?:\\.\\./)?${m.replace('.', '\\.')}"`).test(html));
 check('Tots els mòduls es carreguen amb <script src> directe',
   moduls.length === 0, moduls.join(', ') || '4 mòduls');
 
