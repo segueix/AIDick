@@ -67,10 +67,13 @@ Amb els preus de `MODEL_REGISTRY` i un conte de 5 escenes (11 crides):
 | Combinació de models | Cost per conte |
 |---|---|
 | GPT-5 Mini per tot + Gemini Flash de lector | **0,04 $** |
+| GPT-5.6 Luna per tot + Terra de lector | **0,05 $** |
 | Gemini Flash per tot + Sonnet de lector | **0,05 $** |
+| GPT-5.6 Terra arquitectura · Luna prosa · Sol lector | **0,16 $** |
 | Sonnet per tot + Gemini Pro de lector | **0,34 $** |
 | Opus arquitectura · Sonnet prosa · Gemini Pro lector *(recomanada)* | **0,41 $** |
 | Opus per tot + GPT-5.2 de lector | **0,54 $** |
+| GPT-5.6 Sol per tot | **0,65 $** |
 
 Desglossament de la combinació recomanada:
 
