@@ -1,3 +1,9 @@
+> **Document del mode novel·la, congelat el 2026-08-01.**
+> Descriu funcionalitat que ja no existeix al generador de contes.
+> Es conserva com a arxiu del que hi havia i per què.
+
+---
+
 # Estratègia de reorganització de Booki
 
 > Objectiu: que una persona pugui crear una novel·la completa i coherent ("el llibre perfecte")

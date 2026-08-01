@@ -96,3 +96,37 @@ Tres punts on l'encàrrec E0 xocava amb el repositori i com s'han resolt:
    tocar-los els hauria fet fallar. S'ha actualitzat només el prefix de la cadena
    (`../`): la comprovació segueix sent la mateixa —que el mòdul es carrega— sobre la
    ruta nova. Cap assert de comportament s'ha tocat.
+
+---
+
+## Estat final de la conversió
+
+| Element | Resultat |
+|---|---|
+| Suite del generador de contes | **234/234** comprovacions, codi de sortida 0 |
+| Suite del mode novel·la congelat | **281/281** (eren 278: les 3 de diferència són l'autoprova de `f15`, que abans se saltava per manca de hunspell) |
+| Crides per conte, camí típic | **11** (sostre dur 24) |
+| Cost per conte, combinació recomanada | **0,41 $** · combinació econòmica **0,04 $** |
+| Contes dins de [15.000, 20.000] sense intervenció | **5 de 5** perfils de desviació simulats |
+| Motius repetits en deu generacions seguides | **0** |
+| `llegat/` és esborrable sense trencar res | **Sí**, comprovat executant la suite sense el directori |
+
+### Discrepàncies amb el pla que val la pena registrar
+
+- **`nkg_recovery.js` no era codi orfe.** El pla demanava esborrar-lo perquè "no el
+  carrega ningú"; en realitat `models_openai.js` l'injectava a `DOMContentLoaded`.
+  S'ha mogut a `llegat/` amb la resta del mode novel·la i la injecció s'ha
+  condicionat a la presència del flux de novel·la al DOM. Esborrar-lo hauria trencat
+  el llegat congelat i la prova `f10`.
+- **`nkg_core.js` no té el patró de doble entorn** que el pla donava per fet.
+  És un script clàssic sense `module.exports`. `conte_core.js` i `llm_client.js` sí
+  que el tenen; per carregar `nkg_core.js` des de node, les proves fan servir
+  `runInThisContext`, que reprodueix el comportament del navegador.
+- **El dossier ple ocupa ~3,5 kB, no menys de 3 kB.** Amb els mínims de l'esquema
+  (4 fets canònics, 3 fites de cronologia, 1 secundari) baixa a 2,8 kB. El prompt
+  limita cada camp de text a 160 caràcters i la interfície mostra la mida real amb el
+  cost en tokens que suposa, perquè el dossier viatja sencer dins de cada crida
+  d'escena. A la pràctica són ~1.000 tokens d'entrada per escena.
+- **L'estimació inicial de 9 crides del pla era baixa.** El pipeline complet amb 5
+  escenes en fa 11: 1 llavor + 1 dossier + 1 escaleta + 5 escenes + 1 costura +
+  1 lectura + 1 pedaç dirigit. Segueix dins del marge declarat de 9–15.
