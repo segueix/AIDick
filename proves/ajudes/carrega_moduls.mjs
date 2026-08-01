@@ -16,6 +16,14 @@ export function carregarGlobal(nomFitxer) {
   runInThisContext(codi, { filename: nomFitxer });
 }
 
+// Un `const` de nivell superior d'un script clàssic crea un lligam lèxic global
+// accessible pel seu nom, però NO una propietat de globalThis. Al navegador
+// passa exactament igual: els altres <script> hi arriben pel nom. Des d'un
+// mòdul ESM cal avaluar el nom dins del mateix context.
+export function llegirGlobal(nom) {
+  return runInThisContext(nom);
+}
+
 // Ordre idèntic al d'index.html.
 export function carregarNucliConte() {
   carregarGlobal('perfils_autor_base.js');
@@ -25,7 +33,7 @@ export function carregarNucliConte() {
   return {
     CONTE_CORE: globalThis.CONTE_CORE,
     LLM_CLIENT: globalThis.LLM_CLIENT,
-    PERFILS_AUTOR: globalThis.PERFILS_AUTOR
+    PERFILS_AUTOR: llegirGlobal('PERFILS_AUTOR')
   };
 }
 
