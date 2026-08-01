@@ -5,31 +5,2012 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AIDick — Generador de contes de Philip K. Dick</title>
 <style>
-  :root { color-scheme: dark; }
-  body {
-    margin: 0; min-height: 100vh;
-    display: flex; align-items: center; justify-content: center;
-    background: #0e1014; color: #e6e6e6;
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  }
-  main { max-width: 34rem; padding: 2rem; line-height: 1.7; }
-  h1 { font-size: 1.6rem; margin: 0 0 .4rem; letter-spacing: -.01em; }
-  p.subtitol { margin: 0 0 2rem; color: #8b93a1; }
-  p.estat { font-size: 1.1rem; margin: 0 0 2rem; }
-  .llegat { border-top: 1px solid #262b33; padding-top: 1.2rem; }
-  .llegat span { display: block; font-size: .82rem; color: #8b93a1; margin-bottom: .3rem; }
-  a { color: #7aa2f7; }
+:root {
+  color-scheme: dark;
+  --fons: #0e1014;
+  --fons2: #14171d;
+  --fons3: #1b1f27;
+  --vora: #262b33;
+  --text: #e4e6ea;
+  --text2: #8b93a1;
+  --text3: #5f6874;
+  --accent: #7aa2f7;
+  --verd: #7bc47f;
+  --groc: #d8b25a;
+  --vermell: #d8735a;
+  --radi: 10px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--fons);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+}
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+button {
+  font: inherit; cursor: pointer; border-radius: 7px; border: 1px solid var(--vora);
+  background: var(--fons3); color: var(--text); padding: .5rem .9rem;
+}
+button:hover:not(:disabled) { background: #232936; border-color: #39414f; }
+button:disabled { opacity: .4; cursor: not-allowed; }
+button.primari { background: var(--accent); border-color: var(--accent); color: #0b0e13; font-weight: 600; }
+button.primari:hover:not(:disabled) { background: #8fb2f8; border-color: #8fb2f8; }
+button.resolucio { background: #2a2418; border-color: #4a3d1f; color: #e8cf94; }
+button.resolucio:hover:not(:disabled) { background: #362d1c; }
+button.petit { padding: .28rem .6rem; font-size: .82rem; }
+input, select, textarea {
+  font: inherit; background: var(--fons); color: var(--text);
+  border: 1px solid var(--vora); border-radius: 7px; padding: .45rem .6rem; width: 100%;
+}
+textarea { resize: vertical; line-height: 1.5; }
+label { display: block; font-size: .82rem; color: var(--text2); margin: .7rem 0 .25rem; }
+a { color: var(--accent); }
+code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .88em; }
+
+/* ── Capçalera i panell de progrés ────────────────────────── */
+header {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(14,16,20,.94); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--vora);
+}
+.capcalera-int { max-width: 1080px; margin: 0 auto; padding: .8rem 1.2rem; }
+.titol-fila { display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; }
+.titol-fila h1 { font-size: 1.05rem; }
+.titol-fila .subtitol { font-size: .8rem; color: var(--text3); }
+.progres { display: flex; gap: 1.4rem; flex-wrap: wrap; margin-top: .55rem; font-size: .8rem; }
+.progres > div { display: flex; flex-direction: column; gap: 1px; }
+.progres .etiqueta { color: var(--text3); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+.progres .valor { color: var(--text); font-variant-numeric: tabular-nums; }
+.progres .valor.alerta { color: var(--groc); }
+.progres .valor.perill { color: var(--vermell); }
+.barra { height: 3px; background: var(--fons3); border-radius: 2px; overflow: hidden; margin-top: .5rem; }
+.barra > span { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+
+/* ── Targetes de pas ──────────────────────────────────────── */
+main { max-width: 1080px; margin: 0 auto; padding: 1.2rem; }
+.targeta {
+  background: var(--fons2); border: 1px solid var(--vora);
+  border-radius: var(--radi); margin-bottom: 1rem; overflow: hidden;
+}
+.targeta.actiu { border-color: #33405c; }
+.targeta-cap {
+  display: flex; align-items: center; gap: .7rem;
+  padding: .85rem 1.1rem; cursor: pointer; user-select: none;
+}
+.targeta-cap:hover { background: #171b22; }
+.pas-num {
+  flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--fons3); border: 1px solid var(--vora);
+  display: grid; place-items: center; font-size: .74rem; color: var(--text2);
+  font-variant-numeric: tabular-nums;
+}
+.targeta.fet .pas-num { background: #1d2e21; border-color: #2f5136; color: var(--verd); }
+.targeta.actiu .pas-num { border-color: var(--accent); color: var(--accent); }
+.targeta-cap h2 { font-size: .95rem; flex: 1; }
+.estat-pas { font-size: .78rem; color: var(--text3); }
+.estat-pas.ok { color: var(--verd); }
+.estat-pas.avis { color: var(--groc); }
+.estat-pas.error { color: var(--vermell); }
+.targeta-cos { padding: 0 1.1rem 1.1rem; border-top: 1px solid var(--vora); padding-top: 1rem; }
+.targeta.plegat .targeta-cos { display: none; }
+.accions { display: flex; gap: .55rem; flex-wrap: wrap; margin-top: 1rem; align-items: center; }
+.ajuda { font-size: .82rem; color: var(--text2); margin: .3rem 0 0; }
+.reixa2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 1rem; }
+
+/* ── Indicador de càrrega ─────────────────────────────────── */
+.carregant { display: none; align-items: center; gap: .5rem; font-size: .82rem; color: var(--text2); }
+.carregant.visible { display: flex; }
+.filador {
+  width: 13px; height: 13px; border: 2px solid var(--vora);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: gir .7s linear infinite;
+}
+@keyframes gir { to { transform: rotate(360deg); } }
+
+/* ── Blocatges, avisos i problemes ────────────────────────── */
+.blocatge {
+  background: #221c12; border: 1px solid #4a3d1f; border-radius: 8px;
+  padding: .7rem .85rem; margin-top: .7rem; font-size: .86rem;
+}
+.blocatge .motiu { color: #e8cf94; }
+.blocatge .camp { color: var(--text3); font-size: .78rem; }
+.blocatge .accions { margin-top: .6rem; }
+.avis {
+  background: #1e1614; border: 1px solid #4d2f26; border-radius: 8px;
+  padding: .7rem .85rem; margin-top: .7rem; font-size: .86rem; color: #eab6a4;
+}
+.nota {
+  background: var(--fons3); border: 1px solid var(--vora); border-radius: 8px;
+  padding: .55rem .8rem; margin-top: .7rem; font-size: .8rem; color: var(--text2);
+}
+.problema {
+  border-left: 3px solid var(--vora); padding: .45rem .7rem;
+  margin: .45rem 0; background: var(--fons3); border-radius: 0 6px 6px 0; font-size: .85rem;
+}
+.problema.alta { border-left-color: var(--vermell); }
+.problema.mitjana { border-left-color: var(--groc); }
+.problema.baixa { border-left-color: var(--text3); }
+.problema .cita { color: var(--text2); font-style: italic; margin-top: .2rem; font-size: .82rem; }
+.problema .marca {
+  display: inline-block; font-size: .68rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text3); border: 1px solid var(--vora); border-radius: 4px;
+  padding: 0 .3rem; margin-left: .4rem; vertical-align: 1px;
+}
+
+/* ── Llavors i escenes ────────────────────────────────────── */
+.llavor {
+  border: 1px solid var(--vora); border-radius: 8px; padding: .8rem .95rem;
+  margin-bottom: .6rem; cursor: pointer; background: var(--fons3);
+}
+.llavor:hover { border-color: #39414f; }
+.llavor.triada { border-color: var(--accent); background: #1a2130; }
+.llavor h3 { font-size: .9rem; margin-bottom: .4rem; }
+.llavor dl { margin: 0; font-size: .82rem; }
+.llavor dt { color: var(--text3); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; margin-top: .4rem; }
+.llavor dd { margin: 0; color: var(--text2); }
+
+.escena-fitxa { border: 1px solid var(--vora); border-radius: 8px; padding: .75rem .9rem; margin-bottom: .6rem; background: var(--fons3); }
+.escena-fitxa .cap { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-bottom: .5rem; }
+.escena-fitxa .cap strong { font-size: .88rem; }
+.marca-pkd {
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .05em;
+  border: 1px solid var(--vora); border-radius: 4px; padding: .05rem .4rem; color: var(--text2);
+}
+.marca-pkd.esquerda { border-color: #4a3a5c; color: #b79fd4; }
+.marca-pkd.mentida  { border-color: #4a3d1f; color: #d8b25a; }
+.marca-pkd.paranoia { border-color: #1f3f4a; color: #7fc0d4; }
+.marca-pkd.empatia  { border-color: #2f5136; color: var(--verd); }
+.escena-fitxa .camps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .4rem .9rem; font-size: .8rem; }
+.escena-fitxa .camps b { color: var(--text3); font-weight: 500; display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; }
+.escena-fitxa textarea { font-size: .82rem; }
+
+/* ── El text del conte: ha de ser llegible de debò ────────── */
+.lectura {
+  max-width: 62ch; margin: 1rem 0; font-size: 1.02rem; line-height: 1.85;
+  white-space: pre-wrap; color: #dfe2e7;
+}
+.lectura .separador { color: var(--text3); text-align: center; margin: 1.6rem 0; letter-spacing: .5em; }
+
+table.metrica { width: 100%; border-collapse: collapse; font-size: .83rem; margin-top: .6rem; }
+table.metrica th, table.metrica td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--vora); }
+table.metrica th { color: var(--text3); font-weight: 500; font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; }
+table.metrica td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.semafor { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .4rem; }
+.semafor.verd { background: var(--verd); }
+.semafor.groc { background: var(--groc); }
+.semafor.vermell { background: var(--vermell); }
+
+.pastilla {
+  display: inline-block; font-size: .72rem; padding: .1rem .45rem; border-radius: 4px;
+  border: 1px solid var(--vora); color: var(--text2); margin-right: .35rem;
+}
+.pastilla.demo { border-color: #4a3d1f; color: var(--groc); }
 </style>
 </head>
 <body>
-<main>
-  <h1>AIDick</h1>
-  <p class="subtitol">Generador de contes en estil Philip K. Dick, en català.</p>
-  <p class="estat">En construcció.</p>
-  <div class="llegat">
-    <span>Mode novel·la (llegat, congelat)</span>
-    <a href="llegat/novella.html">Obre l'aplicació de novel·la</a>
+
+<header>
+  <div class="capcalera-int">
+    <div class="titol-fila">
+      <h1>AIDick</h1>
+      <span class="subtitol">Contes de 15.000–20.000 caràcters en estil Philip K. Dick, en català</span>
+      <span id="pastilla-demo" class="pastilla demo" hidden>Mode demostració</span>
+    </div>
+    <div class="progres">
+      <div><span class="etiqueta">Pas</span><span class="valor" id="pr-pas">P0 · Configuració</span></div>
+      <div><span class="etiqueta">Caràcters</span><span class="valor" id="pr-caracters">0 / 17.500</span></div>
+      <div><span class="etiqueta">Crides</span><span class="valor" id="pr-crides">0 / 24</span></div>
+      <div><span class="etiqueta">Cost estimat</span><span class="valor" id="pr-estimat">—</span></div>
+      <div><span class="etiqueta">Cost real</span><span class="valor" id="pr-real">0,000 $</span></div>
+    </div>
+    <div class="barra"><span id="pr-barra"></span></div>
   </div>
-</main>
+</header>
+
+<main id="passos"></main>
+
+<script src="perfils_autor_base.js"></script>
+<script src="models_openai.js"></script>
+<script src="nkg_core.js"></script>
+<script src="conte_core.js"></script>
+<script src="llm_client.js"></script>
+<script src="demo_conte.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════
+//  AIDick — generador de contes PKD
+//  Pipeline de 8 passos amb pressupost dur de crides.
+//  La lògica pura viu a conte_core.js; el transport, a llm_client.js.
+// ═══════════════════════════════════════════════════════════
+
+const NUCLI = globalThis.CONTE_CORE;
+const CLIENT = globalThis.LLM_CLIENT;
+
+const CLAU_PROJECTE = 'aidick_conte_projecte';
+const CLAU_MOTIUS = 'aidick_motius_usats';
+const CLAU_CLAUS_API = 'aidick_claus_api';
+const VERSIO_ESQUEMA = 1;
+
+// Sostres per pas, independents del sostre global de 24 crides. Existeixen
+// perquè un pas concret no pugui entrar en bucle de correcció, que és
+// exactament el patró que encaria el mode novel·la.
+const LIMITS_DURS_PAS = {
+  costura: 2,   // crida A (estil) + crida B (longitud), i prou
+  lectura: 1,   // una sola lectura hostil per conte
+  pedac: 2      // dues rondes de pedaç dirigit com a màxim
+};
+
+const NOMS_PAS = [
+  'P0 · Configuració', 'P1 · Llavor', 'P2 · Dossier', 'P3 · Escaleta',
+  'P4 · Redacció', 'P5 · Costura', 'P6 · Auditoria', 'P7 · Lectura hostil', 'P8 · Exportació'
+];
+
+// ═══════════════════════════════════════════════════════════
+//  ESTAT
+// ═══════════════════════════════════════════════════════════
+
+function estatBuit() {
+  return {
+    versio_esquema: VERSIO_ESQUEMA,
+    pas_actual: 0,
+    pas_obert: 0,
+    config: {
+      perfil: (typeof PERFIL_AUTOR_PER_DEFECTE !== 'undefined') ? PERFIL_AUTOR_PER_DEFECTE : 'dick',
+      models: { arquitecte: '', prosa: '', lectura: '' },
+      claus: { anthropic: '', openai: '', gemini: '' },
+      demo: false
+    },
+    tema: '',
+    titol: '',
+    titol_al_cos: false,
+    motius_conte: [],
+    llavors: [],
+    llavor_triada: null,
+    dossier: NUCLI.crearDossierBuit(),
+    dossier_generat: false,
+    dossier_complecions: 0,
+    escaleta: { escenes: [], justificacio_nombre: '' },
+    escenes_text: [],
+    text_conte: '',
+    pedacos_rebutjats: [],
+    costura_feta: 0,
+    auditoria: null,
+    lectura: null,
+    lectura_avis_model: '',
+    rondes_pedac: 0,
+    estimacio: null,
+    avisos: []
+  };
+}
+
+let ESTAT_CONTE = estatBuit();
+
+// Migració tolerant: un projecte desat amb una versió anterior s'ha de poder
+// obrir. Es parteix d'un estat buit i s'hi copia el que existeixi i quadri de
+// tipus. Mai es llança: un projecte que no es pot llegir és un projecte perdut.
+function migrarEstat(desat) {
+  const base = estatBuit();
+  if (!desat || typeof desat !== 'object') return base;
+
+  const versio = Number(desat.versio_esquema) || 0;
+  const resultat = base;
+
+  Object.keys(base).forEach(clau => {
+    if (desat[clau] === undefined || desat[clau] === null) return;
+    const esperat = base[clau];
+    const rebut = desat[clau];
+    if (Array.isArray(esperat)) { if (Array.isArray(rebut)) resultat[clau] = rebut; return; }
+    if (esperat && typeof esperat === 'object') {
+      if (rebut && typeof rebut === 'object' && !Array.isArray(rebut)) {
+        resultat[clau] = Object.assign({}, esperat, rebut);
+        Object.keys(esperat).forEach(sub => {
+          if (esperat[sub] && typeof esperat[sub] === 'object' && !Array.isArray(esperat[sub])) {
+            resultat[clau][sub] = Object.assign({}, esperat[sub], (rebut[sub] && typeof rebut[sub] === 'object') ? rebut[sub] : {});
+          }
+        });
+      }
+      return;
+    }
+    if (typeof rebut === typeof esperat) resultat[clau] = rebut;
+  });
+
+  resultat.versio_esquema = VERSIO_ESQUEMA;
+  if (versio !== VERSIO_ESQUEMA) {
+    resultat.avisos = (resultat.avisos || []).concat([
+      `El projecte estava desat amb la versió d'esquema ${versio || 'desconeguda'} i s'ha migrat a la ${VERSIO_ESQUEMA}. Revisa que no hi falti res abans de continuar.`
+    ]);
+  }
+  return resultat;
+}
+
+function desarEstat() {
+  try {
+    const copia = JSON.parse(JSON.stringify(ESTAT_CONTE));
+    copia.comptador = JSON.parse(JSON.stringify(CLIENT.comptador));
+    delete copia.config.claus; // les claus van a part i no s'exporten mai amb el projecte
+    localStorage.setItem(CLAU_PROJECTE, JSON.stringify(copia));
+    localStorage.setItem(CLAU_CLAUS_API, JSON.stringify(ESTAT_CONTE.config.claus || {}));
+  } catch (e) {
+    console.warn('No s\'ha pogut desar el projecte:', e && e.message);
+  }
+}
+
+function carregarEstat() {
+  let desat = null;
+  try { desat = JSON.parse(localStorage.getItem(CLAU_PROJECTE) || 'null'); }
+  catch (e) { console.warn('El projecte desat no es pot llegir; se n\'obre un de nou.'); }
+
+  ESTAT_CONTE = migrarEstat(desat);
+
+  try {
+    const claus = JSON.parse(localStorage.getItem(CLAU_CLAUS_API) || '{}');
+    ESTAT_CONTE.config.claus = Object.assign({ anthropic: '', openai: '', gemini: '' }, claus);
+  } catch (e) { /* claus il·legibles: es queden buides */ }
+
+  if (desat && desat.comptador) CLIENT.restaurarComptador(desat.comptador);
+  if (ESTAT_CONTE.config.demo) DEMO_CONTE.DemoConte.instalar();
+}
+
+function motiusUsats() {
+  try { return JSON.parse(localStorage.getItem(CLAU_MOTIUS) || '[]'); } catch (e) { return []; }
+}
+
+function registrarMotiusUsats(ids) {
+  const previs = motiusUsats();
+  const nous = previs.concat(ids.filter(id => previs.indexOf(id) < 0));
+  try { localStorage.setItem(CLAU_MOTIUS, JSON.stringify(nous)); } catch (e) { /* quota plena */ }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UTILITATS
+// ═══════════════════════════════════════════════════════════
+
+function esc(text) {
+  return String(text == null ? '' : text)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function num(n) { return Number(n || 0).toLocaleString('ca-ES'); }
+function usd(n) { return Number(n || 0).toFixed(3).replace('.', ',') + ' $'; }
+
+function textConteComplet() {
+  const trossos = (ESTAT_CONTE.escenes_text || []).filter(t => String(t || '').trim());
+  return trossos.join(NUCLI.SEPARADOR_ESCENA);
+}
+
+// El text viu de treball: després de P5 és el text apedaçat; abans, la
+// concatenació de les escenes.
+function textActual() {
+  return ESTAT_CONTE.text_conte || textConteComplet();
+}
+
+function perfilActual() { return ESTAT_CONTE.config.perfil || 'dick'; }
+
+// ═══════════════════════════════════════════════════════════
+//  MUNTATGE DE PROMPTS
+//
+//  Dues funcions de sistema i cap més. blocSistemaGeneracio és l'ÚNICA que
+//  poden fer servir els passos que escriuen (llavor, dossier, escaleta, escena,
+//  costura, pedaç) i NO llegeix mai criterisAvaluacioConte.
+//  blocSistemaLectura és l'única que sí que els llegeix, i només la fa servir
+//  la lectura hostil. Si els criteris d'avaluació arribessin al generador,
+//  l'examen mesuraria el seu propi enunciat i el veredicte deixaria de valdre.
+// ═══════════════════════════════════════════════════════════
+
+const DIRECTIVA_LLENGUA =
+  "Escrius EXCLUSIVAMENT en català. Cap paraula, frase ni comentari en anglès o en castellà. " +
+  "Conserva l'onomàstica i els topònims nord-americans del món de Dick: la llengua de redacció és el català, " +
+  "però el món narrat no es catalanitza (no converteixis John en Joan ni Sacramento en cap topònim català).";
+
+function blocSistemaGeneracio(opcions) {
+  const o = opcions || {};
+  const id = perfilActual();
+  const p = PERFILS_AUTOR[id] || {};
+  const parts = [];
+
+  parts.push(p.estil || '');
+  if (o.reglesDures !== false) parts.push(p.regles_dures || '');
+  if (o.prosa) parts.push([p.prosa, p.exposicio, p.emocio, p.intensitat].filter(Boolean).join('\n'));
+  if (o.forma !== false) parts.push(blocFormaConte(id));
+  if (o.obertura) parts.push(blocOberturaConte(id));
+  if (o.desenllac) parts.push(blocDesenllacConte(id));
+
+  if (o.excellencia) {
+    const criteris = criterisExcellenciaConte(id);
+    if (criteris.length) {
+      parts.push('CONDICIONS D\'ACCEPTACIÓ D\'AQUEST TEXT:\n' +
+        criteris.map((c, i) => `${i + 1}. ${c}`).join('\n') +
+        '\nNo les enunciïs ni les comentis dins de la ficció: encarna-les en acció, objecte, gest o decisió.');
+    }
+  }
+
+  if (o.corrector) {
+    parts.push('Ara actues com a corrector d\'estil d\'aquest mateix autor: no reescrius, assenyales i proposes canvis mínims.');
+  }
+
+  parts.push(DIRECTIVA_LLENGUA);
+  return parts.filter(x => String(x || '').trim()).join('\n\n');
+}
+
+function blocSistemaLectura() {
+  const id = perfilActual();
+  const p = PERFILS_AUTOR[id] || {};
+  const criteris = criterisAvaluacioConte(id);
+  return [
+    'Ets un lector hostil. La teva feina és trobar el pitjor d\'aquest conte, no valorar-lo.',
+    p.estil || '',
+    criteris.length
+      ? 'CRITERIS AMB ELS QUALS HAS DE JUTJAR:\n' + criteris.map((c, i) => `${i + 1}. ${c}`).join('\n')
+      : '',
+    'PROHIBIT: posar cap nota o puntuació, resumir l\'argument, elogiar res, suggerir com millorar-ho amb generalitats.',
+    DIRECTIVA_LLENGUA
+  ].filter(x => String(x || '').trim()).join('\n\n');
+}
+
+function blocTopicsProhibits() {
+  return 'PROHIBIT fer servir literalment cap d\'aquests noms, marques o termes, que són de l\'obra de Dick i de les seves adaptacions:\n' +
+    NUCLI.TOPICS_PROHIBITS.join(' · ') +
+    '\nL\'objectiu és escriure com Dick, no fer un pastitx de les seves pel·lícules.';
+}
+
+function blocMotius(motius) {
+  return 'MOTIUS QUE HAS DE COMBINAR EN AQUESTES PROPOSTES:\n' +
+    motius.map((m, i) => `${i + 1}. ${m.motiu}\n   Tensió que obre: ${m.tensio}\n   Clixé que has d'esquivar: ${m.evita}`).join('\n');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CRIDES
+// ═══════════════════════════════════════════════════════════
+
+function cridesFetesAlPas(pas) {
+  const p = CLIENT.comptador.per_pas[pas];
+  return p ? p.crides : 0;
+}
+
+function comprovarLimitPas(pas) {
+  const limit = LIMITS_DURS_PAS[pas];
+  if (limit === undefined) return;
+  if (cridesFetesAlPas(pas) >= limit) {
+    const e = new Error(`El pas «${pas}» ja ha gastat les ${limit} crides que té assignades. No en farà cap més: la correcció automàtica en bucle és exactament el que encaria el sistema. Continua a mà o accepta el resultat tal com és.`);
+    e.esLimitPas = true;
+    throw e;
+  }
+}
+
+function opcionsCrida(pas, sistema, usuari, maxTokens) {
+  const tria = CLIENT.triarModelPerPas(pas, ESTAT_CONTE.config);
+  if (!tria.model) throw new Error(`No hi ha cap model configurat per al pas «${pas}». Torna a P0 i tria els models.`);
+  const proveidor = CLIENT.proveidorDelModel(tria.model);
+  const apiKey = (ESTAT_CONTE.config.claus || {})[proveidor];
+  if (!apiKey) throw new Error(`Falta la clau API de ${proveidor}, que és el proveïdor del model triat per al pas «${pas}».`);
+  return {
+    opcions: { pas, model: tria.model, apiKey, maxTokens, sistema, missatges: [{ role: 'user', content: usuari }] },
+    tria
+  };
+}
+
+async function cridarText(pas, sistema, usuari, maxTokens) {
+  comprovarLimitPas(pas);
+  const { opcions } = opcionsCrida(pas, sistema, usuari, maxTokens);
+  const r = await CLIENT.cridarModel(opcions);
+  desarEstat();
+  return r;
+}
+
+async function cridarJSON(pas, sistema, usuari, maxTokens, claus) {
+  comprovarLimitPas(pas);
+  const { opcions } = opcionsCrida(pas, sistema, usuari, maxTokens);
+  const r = await CLIENT.cridarModelJSON(opcions, claus);
+  desarEstat();
+  return r;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  P1 — LLAVOR
+// ═══════════════════════════════════════════════════════════
+
+function promptLlavors(motius) {
+  return [
+    ESTAT_CONTE.tema ? `Tema o punt de partida que ha donat l'usuari: ${ESTAT_CONTE.tema}` : 'L\'usuari no ha donat cap tema: tria tu el terreny.',
+    blocMotius(motius),
+    blocTopicsProhibits(),
+    `Proposa SIS llavors de conte. Cadascuna és un objecte amb aquests camps exactes:
+- premissa: una frase. Una anomalia administrativa o domèstica, mai còsmica.
+- esquerda: en una frase, què és el que el lector descobrirà que no era real.
+- mentida_del_sistema: quina institució menteix i amb quina dada es pot comprovar dins del text.
+- final_obligatori: el desenllaç concret en una frase. Inevitable en retrospectiva i imprevist durant la lectura.
+- protagonista: nom, feina ordinària de rang baix i la ferida que el fa seguir quan hauria de parar.
+- cost_empatia: quina decisió empàtica li costarà alguna cosa concreta.`,
+    `PROHIBICIONS:
+- Cap protagonista escollit, predestinat ni excepcional.
+- Cap revelació per confessió d'un personatge.
+- Cap final que restauri l'estat inicial.
+- Cap paraula en anglès.
+- Les sis llavors han de ser diferents entre elles: sis variants de la mateixa idea no serveixen.`,
+    'Format: JSON estricte amb la clau "llavors", un array de 6 objectes. Res més: cap text abans ni després.'
+  ].join('\n\n');
+}
+
+async function generarLlavors() {
+  const motius = NUCLI.triarMotius(motiusUsats(), 3);
+  ESTAT_CONTE.motius_conte = motius.map(m => m.id);
+
+  const r = await cridarJSON('llavor',
+    blocSistemaGeneracio({ forma: true }),
+    promptLlavors(motius),
+    3000, ['llavors']);
+
+  const llavors = Array.isArray(r.dades.llavors) ? r.dades.llavors.filter(l => l && l.premissa) : [];
+  ESTAT_CONTE.llavors = llavors;
+  ESTAT_CONTE.llavor_triada = null;
+
+  // Menys de sis llavors NO es reclama amb una segona crida: s'ensenya el que
+  // hi ha i queda el botó de regenerar. Un pas que en gasta dues per cosmètica
+  // és exactament el que fa car el sistema.
+  if (llavors.length === 0) throw new Error('El model no ha retornat cap llavor utilitzable. Prova de regenerar.');
+  if (llavors.length < 6) {
+    ESTAT_CONTE.avisos.push(`El model n'ha retornat ${llavors.length} en lloc de 6. Es mostren les que han arribat; no es gasta una segona crida per completar-les.`);
+  }
+  registrarMotiusUsats(ESTAT_CONTE.motius_conte);
+}
+
+function triarLlavor(i) {
+  const l = ESTAT_CONTE.llavors[i];
+  if (!l) return;
+  ESTAT_CONTE.llavor_triada = i;
+
+  const d = ESTAT_CONTE.dossier;
+  d.premissa = l.premissa || '';
+  d.esquerda = l.esquerda || '';
+  d.mentida_del_sistema = l.mentida_del_sistema || '';
+  d.final_obligatori = l.final_obligatori || '';
+  d.cost_empatia = l.cost_empatia || '';
+  d.motius_triats = ESTAT_CONTE.motius_conte.slice();
+
+  // El camp 'protagonista' de la llavor és una frase; el dossier el desglossa a
+  // P2. Aquí només se'n guarda el nom si es pot deduir sense inventar res.
+  const prota = String(l.protagonista || '').trim();
+  if (prota && !NUCLI.esTextUtil(d.protagonista.nom)) {
+    const nom = prota.split(/[,;.]/)[0].trim();
+    if (nom && nom.split(/\s+/).length <= 4) d.protagonista.nom = nom;
+  }
+
+  ESTAT_CONTE.titol = ESTAT_CONTE.titol || proposarTitol(l.premissa);
+  avancarFins(2);
+}
+
+function proposarTitol(premissa) {
+  const t = String(premissa || '').trim().replace(/\.$/, '');
+  if (!t) return 'Conte sense títol';
+  const parts = t.split(/\s+/);
+  return parts.slice(0, 6).join(' ').replace(/[,;:]$/, '');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  P2 — DOSSIER
+// ═══════════════════════════════════════════════════════════
+
+const ESQUEMA_DOSSIER_TEXT = `{
+  "premissa": "...", "final_obligatori": "...", "esquerda": "...",
+  "mentida_del_sistema": "...", "cost_empatia": "...",
+  "protagonista": {
+    "nom": "...", "feina_ordinaria": "...", "ferida": "...",
+    "objectiu_extern": "...", "secret": "...",
+    "veu": { "registre": "...", "mai_diria": ["...", "...", "..."] }
+  },
+  "secundaris": [ { "nom": "...", "funcio": "...", "vol": "...", "amaga": "..." } ],
+  "mon": { "lloc": "...", "any": "...", "deteriorament": ["...","...","..."],
+           "objectes_consum_defectuosos": ["...","..."] },
+  "objectes_clau": [ { "nom": "...", "on_es": "...", "per_a_que": "..." } ],
+  "fets_canonics": ["...", "...", "...", "..."],
+  "cronologia": [ { "quan": "...", "que": "..." } ],
+  "motius_triats": []
+}`;
+
+function promptDossier() {
+  const l = ESTAT_CONTE.llavors[ESTAT_CONTE.llavor_triada] || {};
+  return [
+    'LLAVOR TRIADA:\n' + JSON.stringify(l, null, 2),
+    `Converteix aquesta llavor en el dossier del conte. Omple l'esquema exacte del dossier:\n${ESQUEMA_DOSSIER_TEXT}`,
+    `REGLES:
+- protagonista.veu.mai_diria: exactament 3 frases senceres que aquest personatge no diria mai. Serviran de control de veu.
+- mon.deteriorament: exactament 3 detalls que mostrin que el futur és el present deteriorat, no el present lluent.
+- mon.objectes_consum_defectuosos: exactament 2 objectes quotidians amb el defecte concret (marca mal impresa, logotip desalineat, botó que respon tard).
+- secundaris: entre 1 i 3, cadascun amb què vol i què amaga.
+- objectes_clau: entre 0 i 4.
+- fets_canonics: entre 4 i 8 fets inamovibles, cadascun comprovable dins del text: una xifra, una data, una ubicació o una relació.
+- cronologia: entre 3 i 6 fites en ordre.
+- PROHIBIT qualsevol camp buit i qualsevol "per determinar".
+- BREVETAT: cap camp de text no pot passar de 160 caràcters. El dossier viatja
+  sencer dins de cada crida d'escena; si s'infla, encareix totes les escenes.
+  Escriu-lo com una fitxa, no com una redacció.`,
+    'Format: JSON estricte amb aquest esquema. Res més.'
+  ].join('\n\n');
+}
+
+async function generarDossier() {
+  const r = await cridarJSON('dossier',
+    blocSistemaGeneracio({ forma: true }),
+    promptDossier(), 3000,
+    ['premissa', 'protagonista', 'mon', 'fets_canonics']);
+
+  // Fusió que no pot buidar res del que la llavor ja havia omplert.
+  ESTAT_CONTE.dossier = NUCLI.fusionarDossierSenseBuidar(ESTAT_CONTE.dossier, r.dades);
+  ESTAT_CONTE.dossier.motius_triats = ESTAT_CONTE.motius_conte.slice();
+  ESTAT_CONTE.dossier_generat = true;
+}
+
+// Intent LOCAL i determinista d'omplir els forats. No gasta cap token i és el
+// camí de resolució que ha de funcionar encara que la crida al model falli.
+function completarDossierLocalment() {
+  const d = ESTAT_CONTE.dossier;
+  const l = ESTAT_CONTE.llavors[ESTAT_CONTE.llavor_triada] || {};
+  const omplerts = [];
+  const posar = (obj, camp, valor, etiqueta) => {
+    if (!NUCLI.esTextUtil(obj[camp]) && NUCLI.esTextUtil(valor)) { obj[camp] = valor; omplerts.push(etiqueta); }
+  };
+
+  posar(d, 'premissa', l.premissa, 'premissa');
+  posar(d, 'esquerda', l.esquerda, 'esquerda');
+  posar(d, 'mentida_del_sistema', l.mentida_del_sistema, 'mentida_del_sistema');
+  posar(d, 'final_obligatori', l.final_obligatori, 'final_obligatori');
+  posar(d, 'cost_empatia', l.cost_empatia, 'cost_empatia');
+
+  const p = d.protagonista;
+  const fraseProta = String(l.protagonista || '');
+  posar(p, 'nom', fraseProta.split(/[,;.]/)[0], 'protagonista.nom');
+  posar(p, 'feina_ordinaria', fraseProta.split(/[,;]/)[1], 'protagonista.feina_ordinaria');
+  posar(p, 'ferida', fraseProta.split(/[,;]/).slice(2).join(', '), 'protagonista.ferida');
+  posar(p, 'objectiu_extern', d.premissa ? `Resoldre l'anomalia sense que ningú hi miri dues vegades: ${NUCLI.retallar(d.premissa, 90)}` : '', 'protagonista.objectiu_extern');
+  posar(p, 'secret', d.cost_empatia ? `El que ja ha decidit callar: ${NUCLI.retallar(d.cost_empatia, 90)}` : '', 'protagonista.secret');
+  posar(p.veu, 'registre', 'Sec i procedimental; frases curtes, precisió de qui treballa amb impresos', 'protagonista.veu.registre');
+
+  if (!Array.isArray(p.veu.mai_diria)) p.veu.mai_diria = [];
+  const maiDiriaBase = [
+    'El sistema sempre acaba tenint raó i jo no sóc ningú per discutir-ho',
+    'Prefereixo no saber res de tot això i seguir com si res',
+    'Això no és cosa meva i no penso perdre-hi ni un minut més'
+  ];
+  while (p.veu.mai_diria.filter(NUCLI.esTextUtil).length < 3) {
+    const seguent = maiDiriaBase[p.veu.mai_diria.length % maiDiriaBase.length];
+    p.veu.mai_diria.push(seguent);
+    omplerts.push('protagonista.veu.mai_diria');
+  }
+
+  if (!Array.isArray(d.secundaris)) d.secundaris = [];
+  if (d.secundaris.filter(s => s && NUCLI.esTextUtil(s.nom)).length === 0) {
+    d.secundaris.push({
+      nom: 'El funcionari de finestreta',
+      funcio: 'Aplica el procediment que bloqueja el protagonista',
+      vol: 'Acabar el torn sense cap incidència registrada',
+      amaga: 'Sap que el procediment té una excepció i té ordre de no esmentar-la'
+    });
+    omplerts.push('secundaris');
+  }
+
+  posar(d.mon, 'lloc', 'Una ciutat industrial nord-americana amb administració pròpia', 'mon.lloc');
+  posar(d.mon, 'any', 'Una dècada endavant, sense que res sembli nou', 'mon.any');
+
+  if (!Array.isArray(d.mon.deteriorament)) d.mon.deteriorament = [];
+  const deteriorBase = [
+    'Un aparell del sostre s\'atura i torna a engegar-se sol des de fa tres estius',
+    'Arreglar el que està espatllat requereix un imprès que es demana a una altra planta',
+    'Els fluorescents fan un brunzit constant que només se sent quan el pis queda buit'
+  ];
+  while (d.mon.deteriorament.filter(NUCLI.esTextUtil).length < 3) {
+    d.mon.deteriorament.push(deteriorBase[d.mon.deteriorament.length % deteriorBase.length]);
+    omplerts.push('mon.deteriorament');
+  }
+
+  if (!Array.isArray(d.mon.objectes_consum_defectuosos)) d.mon.objectes_consum_defectuosos = [];
+  const objectesBase = [
+    'Els segells de goma han perdut mitja lletra i deixen l\'empremta incompleta',
+    'Les carpetes noves porten el logotip desplaçat un mil·límetre cap avall'
+  ];
+  while (d.mon.objectes_consum_defectuosos.filter(NUCLI.esTextUtil).length < 2) {
+    d.mon.objectes_consum_defectuosos.push(objectesBase[d.mon.objectes_consum_defectuosos.length % objectesBase.length]);
+    omplerts.push('mon.objectes_consum_defectuosos');
+  }
+
+  if (!Array.isArray(d.fets_canonics)) d.fets_canonics = [];
+  if (d.fets_canonics.filter(NUCLI.esTextUtil).length < 1 && NUCLI.esTextUtil(d.premissa)) {
+    d.fets_canonics.push(`L'anomalia del conte és aquesta i cap altra: ${NUCLI.retallar(d.premissa, 120)}`);
+    omplerts.push('fets_canonics');
+  }
+  if (d.fets_canonics.length > 8) { d.fets_canonics = d.fets_canonics.slice(0, 8); omplerts.push('fets_canonics'); }
+
+  if (!Array.isArray(d.cronologia)) d.cronologia = [];
+  if (d.cronologia.filter(c => c && NUCLI.esTextUtil(c.quan) && NUCLI.esTextUtil(c.que)).length < 1) {
+    d.cronologia.push({ quan: 'El primer dia', que: NUCLI.retallar(d.premissa || 'Apareix l\'anomalia', 110) });
+    omplerts.push('cronologia');
+  }
+  if (d.cronologia.length > 6) { d.cronologia = d.cronologia.slice(0, 6); omplerts.push('cronologia'); }
+  if (Array.isArray(d.secundaris) && d.secundaris.length > 3) { d.secundaris = d.secundaris.slice(0, 3); omplerts.push('secundaris'); }
+  if (Array.isArray(d.objectes_clau) && d.objectes_clau.length > 4) { d.objectes_clau = d.objectes_clau.slice(0, 4); omplerts.push('objectes_clau'); }
+
+  return [...new Set(omplerts)];
+}
+
+// Una sola crida de compleció, i només per als camps que segueixin faltant
+// després de l'intent local.
+async function completarDossierAmbModel(faltants) {
+  const camps = faltants.map(f => f.camp);
+  const r = await cridarJSON('dossier',
+    blocSistemaGeneracio({ forma: true }),
+    [
+      'DOSSIER ACTUAL (no el reescriguis sencer):\n' + JSON.stringify(ESTAT_CONTE.dossier, null, 2),
+      'Falten NOMÉS aquests camps:\n' + faltants.map(f => `- ${f.camp}: ${f.motiu}`).join('\n'),
+      'Retorna un JSON amb NOMÉS aquests camps, amb la mateixa estructura anidada que tenen al dossier. No incloguis cap camp que ja tingui valor.',
+      'Format: JSON estricte. Res més.'
+    ].join('\n\n'),
+    2000, []);
+
+  // Fusió que no pot buidar cap camp que ja tenia valor.
+  ESTAT_CONTE.dossier = NUCLI.fusionarDossierSenseBuidar(ESTAT_CONTE.dossier, r.dades);
+  ESTAT_CONTE.dossier_complecions += 1;
+  return camps;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  P3 — ESCALETA
+// ═══════════════════════════════════════════════════════════
+
+function promptEscaleta() {
+  return [
+    'DOSSIER DEL CONTE:\n' + JSON.stringify(ESTAT_CONTE.dossier, null, 2),
+    `Escriu l'escaleta del conte. Entre ${NUCLI.CONTE_MIN_ESCENES} i ${NUCLI.CONTE_MAX_ESCENES} escenes: tria tu el nombre exacte i justifica'l.`,
+    `Cada escena porta aquests camps exactes:
+- pov: qui mira
+- lloc: on passa
+- present: array amb qui hi és
+- objectiu_pov: què vol el punt de vista en aquesta escena
+- obstacle: què concret l'hi impedeix
+- objecte_o_informacio_en_disputa: què es disputa materialment
+- decisio_irreversible: què decideix que ja no pot desfer
+- cost_immediat: què perd en aquesta mateixa escena
+- consequencia: què canvia a partir d'ara
+- funcio_pkd: un de "esquerda", "mentida", "paranoia", "empatia" o "cap"`,
+    `REGLES:
+- Almenys una escena amb funcio_pkd "esquerda", una amb "mentida" i una amb "empatia".
+- Cap escena pot ser un resum temàtic ni una formulació moral abstracta.
+- Cap escena sense objectiu visible, sense obstacle concret, sense cost immediat i sense conseqüència.
+- L'última escena ha d'executar exactament el final_obligatori del dossier: "${esc(ESTAT_CONTE.dossier.final_obligatori)}".`,
+    'Format: JSON estricte { "escenes": [...], "justificacio_nombre": "..." }. Res més.'
+  ].join('\n\n');
+}
+
+async function generarEscaleta() {
+  const r = await cridarJSON('escaleta',
+    blocSistemaGeneracio({ forma: true, obertura: true, desenllac: true }),
+    promptEscaleta(), 4000, ['escenes']);
+
+  let escenes = Array.isArray(r.dades.escenes) ? r.dades.escenes : [];
+  if (escenes.length < NUCLI.CONTE_MIN_ESCENES || escenes.length > NUCLI.CONTE_MAX_ESCENES) {
+    ESTAT_CONTE.avisos.push(`El model ha proposat ${escenes.length} escenes i el marge és ${NUCLI.CONTE_MIN_ESCENES}–${NUCLI.CONTE_MAX_ESCENES}. S'ha ajustat per codi.`);
+    escenes = escenes.slice(0, NUCLI.CONTE_MAX_ESCENES);
+    while (escenes.length < NUCLI.CONTE_MIN_ESCENES) escenes.push({});
+  }
+
+  aplicarEscaleta(escenes, r.dades.justificacio_nombre || '');
+}
+
+// Reparteix el pressupost, completa els contractes amb fallback LOCAL (mai amb
+// una segona crida) i deixa constància de quins camps s'han hagut de tapar.
+function aplicarEscaleta(escenesCrues, justificacio) {
+  const pesos = NUCLI.pesosPerEscenes(escenesCrues);
+  const pressupost = NUCLI.repartirCaracters(NUCLI.CONTE_OBJECTIU_CARACTERS, escenesCrues.length, pesos);
+
+  const contractes = escenesCrues.map((e, i) => {
+    const brut = Object.assign({}, e, { caracters_objectiu: pressupost[i] });
+    const { contracte, camps_omplerts } = NUCLI.completarContracteAmbFallback(
+      Object.assign({ index: i }, brut), ESTAT_CONTE.dossier, pressupost[i]);
+    if (camps_omplerts.length) {
+      ESTAT_CONTE.avisos.push(`Escena ${i + 1}: el model no ha donat ${camps_omplerts.join(', ')}. S'ha completat en local, sense cap crida.`);
+    }
+    return contracte;
+  });
+
+  ESTAT_CONTE.escaleta = { escenes: contractes, justificacio_nombre: justificacio };
+  ESTAT_CONTE.escenes_text = new Array(contractes.length).fill('');
+  ESTAT_CONTE.text_conte = '';
+}
+
+function reassignarFuncioPKD(i, funcio) {
+  const e = ESTAT_CONTE.escaleta.escenes[i];
+  if (!e) return;
+  e.funcio_pkd = funcio;
+  desarEstat();
+  renderitzar();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  P4 — REDACCIÓ
+// ═══════════════════════════════════════════════════════════
+
+function resumEscena(i) {
+  const c = ESTAT_CONTE.escaleta.escenes[i];
+  if (!c) return '';
+  return `Escena ${i + 1} (${c.lloc}): ${c.objectiu_pov} — obstacle: ${c.obstacle} — conseqüència: ${c.consequencia}`;
+}
+
+function promptEscena(i) {
+  const escenes = ESTAT_CONTE.escaleta.escenes;
+  const c = escenes[i];
+  const total = escenes.length;
+  const esPrimera = i === 0;
+  const esUltima = i === total - 1;
+
+  const escrit = ESTAT_CONTE.escenes_text.slice(0, i).filter(Boolean).join(NUCLI.SEPARADOR_ESCENA);
+  const cua = escrit ? escrit.slice(-400) : '';
+
+  const parts = [
+    `ESCENA ${i + 1} DE ${total}.`,
+    'DOSSIER DEL CONTE:\n' + JSON.stringify(ESTAT_CONTE.dossier, null, 2),
+    'CONTRACTE D\'AQUESTA ESCENA:\n' + JSON.stringify(c, null, 2)
+  ];
+
+  if (i > 0) {
+    parts.push('ESCENES JA ESCRITES (una línia cadascuna, per no repetir-les):\n' +
+      escenes.slice(0, i).map((_, k) => resumEscena(k)).join('\n'));
+  }
+  if (cua) {
+    parts.push('ÚLTIMS CARÀCTERS DEL TEXT JA ESCRIT (continua-hi des d\'aquí, sense repetir-los):\n«…' + cua + '»');
+  }
+
+  parts.push(`REGLES D'AQUESTA ESCENA:
+- Objectiu de longitud: ${c.caracters_objectiu} CARÀCTERS amb espais. No comptis paraules: compta caràcters.
+- Escriu NOMÉS aquesta escena. No resumeixis, no anticipis escenes futures${esUltima ? '' : ', i no tanquis el conte'}.
+- Diàleg amb guió llarg (—) a principi de paràgraf. Aquest format és únic a tot el conte: mai cometes per marcar qui parla.
+- Cap paraula en anglès ni en castellà.
+- Cap etiqueta d'emoció genèrica: l'estat intern es llegeix en el cos, l'objecte, la rutina i el que el personatge deixa de fer. El narrador sí que pot nomenar el que sent el protagonista, però el personatge ha de desconfiar de la pròpia emoció i preguntar-se si és seva o si l'hi han posat.
+- No escriguis el títol, ni el número d'escena, ni cap comentari fora de la ficció. Comença directament amb la primera frase de la narració.`);
+
+  if (esPrimera) parts.push(blocOberturaConte(perfilActual()));
+  if (esUltima) {
+    parts.push(blocDesenllacConte(perfilActual()));
+    parts.push(`Aquesta escena ha d'executar exactament el final obligatori: "${ESTAT_CONTE.dossier.final_obligatori}".`);
+  }
+
+  return parts.join('\n\n');
+}
+
+async function escriureEscena(i) {
+  const c = ESTAT_CONTE.escaleta.escenes[i];
+  if (!c) throw new Error(`No hi ha contracte per a l'escena ${i + 1}.`);
+
+  // maxTokens es deriva del pressupost de l'escena, NO de la longitud del
+  // conte: cap crida demana mai una sortida que creixi amb el text acumulat.
+  const maxTokens = Math.round(c.caracters_objectiu / 2.6) + 400;
+
+  const r = await cridarText('escena',
+    blocSistemaGeneracio({ prosa: true, forma: true, excellencia: true }),
+    promptEscena(i), maxTokens);
+
+  ESTAT_CONTE.escenes_text[i] = netejarTextEscena(r.text);
+  compensarPressupost(i);
+  ESTAT_CONTE.text_conte = '';
+}
+
+// El model de tant en tant hi posa el número d'escena o un títol malgrat la
+// prohibició. Es retalla per codi, sense gastar cap crida a demanar-ho.
+function netejarTextEscena(text) {
+  return String(text || '')
+    .replace(/^\s*(#+\s*)?(escena|capítol)\s*\d+\s*[:.\-—]?\s*$/gim, '')
+    .replace(/^\s*—{3,}\s*$/gm, '')
+    .trim();
+}
+
+// Compensació per codi: si una escena arriba curta o llarga, el dèficit o
+// l'excés es reparteix entre les escenes que queden. Zero crides addicionals i
+// cap regeneració.
+function compensarPressupost(iEscrita) {
+  const escenes = ESTAT_CONTE.escaleta.escenes;
+  const c = escenes[iEscrita];
+  if (!c) return;
+
+  const reals = NUCLI.comptaCaracters(ESTAT_CONTE.escenes_text[iEscrita]);
+  const desviacio = c.caracters_objectiu > 0 ? Math.abs(reals - c.caracters_objectiu) / c.caracters_objectiu : 0;
+  if (desviacio > NUCLI.TOLERANCIA_ESCENA) {
+    ESTAT_CONTE.avisos.push(`Escena ${iEscrita + 1}: ${num(reals)} caràcters sobre ${num(c.caracters_objectiu)} d'objectiu (${Math.round(desviacio * 100)}%). El desajust s'ha repartit entre les escenes que queden; no es regenera res.`);
+  }
+
+  const pendents = [];
+  for (let k = iEscrita + 1; k < escenes.length; k++) pendents.push(k);
+  if (pendents.length === 0) return;
+
+  const escritsFinsAra = escenes.slice(0, iEscrita + 1)
+    .reduce((a, _, k) => a + NUCLI.comptaCaracters(ESTAT_CONTE.escenes_text[k]), 0);
+  const restant = Math.max(pendents.length * 600, NUCLI.CONTE_OBJECTIU_CARACTERS - escritsFinsAra);
+
+  const pesos = NUCLI.pesosPerEscenes(pendents.map(k => escenes[k]));
+  const nou = NUCLI.repartirCaracters(restant, pendents.length, pesos);
+  pendents.forEach((k, j) => { escenes[k].caracters_objectiu = nou[j]; });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  P5 — COSTURA PER PEDAÇOS
+// ═══════════════════════════════════════════════════════════
+
+function promptCosturaEstil(text) {
+  return [
+    'CONTE SENCER:\n\n' + text,
+    `Troba fins a 12 punts concrets a millorar: repeticions literals, tics, adverbis en -ment acumulats, salts de registre, frases que expliquen una emoció en lloc de mostrar-la, informació repetida entre escenes.
+
+Per a cadascun retorna un objecte { "cerca", "substitueix", "motiu" }.
+
+REGLES ABSOLUTES SOBRE 'cerca':
+- Ha de ser un fragment LITERAL i ÚNIC del text de dalt, copiat caràcter a caràcter.
+- Entre 20 i 200 caràcters. Ha de ser una frase sencera acabada en punt sempre que es pugui.
+- Si dubtes que sigui únic, allarga'l fins que ho sigui.
+- Si no pots copiar-lo literalment, no proposis el pedaç.
+
+REGLES SOBRE 'substitueix':
+- No canviïs cap fet, cap nom, cap xifra ni cap data.
+- Ha de tenir una longitud semblant a 'cerca'.
+- No toquis l'última frase del conte.`,
+    'Format: JSON estricte { "pedacos": [...] }. Res més.'
+  ].join('\n\n');
+}
+
+function promptCosturaLongitud(text, diferencia) {
+  const curt = diferencia > 0;
+  const cites = citesPerAjustar(text, curt);
+  return [
+    'CONTE SENCER:\n\n' + text,
+    curt
+      ? `Al conte li falten exactament ${diferencia} caràcters per arribar al mínim de ${NUCLI.CONTE_MIN_CARACTERS}.
+Amplia 2 o 3 moments concrets amb pedaços de motiu "expansio". Amplia aquests punts i cap altre:
+${cites.map((c, i) => `${i + 1}. «${c}»`).join('\n')}`
+      : `Al conte li sobren exactament ${-diferencia} caràcters per sota del màxim de ${NUCLI.CONTE_MAX_CARACTERS}.
+Retalla els fragments més expansius amb pedaços de motiu "retall". Retalla aquests punts i cap altre:
+${cites.map((c, i) => `${i + 1}. «${c}»`).join('\n')}`,
+    `El camp 'cerca' de cada pedaç ha de ser un fragment LITERAL i ÚNIC del text, copiat caràcter a caràcter.
+No canviïs cap fet, cap nom, cap xifra ni cap data. No toquis l'última frase del conte.
+El motiu ha de ser exactament "${curt ? 'expansio' : 'retall'}".`,
+    'Format: JSON estricte { "pedacos": [...] }. Res més.'
+  ].join('\n\n');
+}
+
+// Tria per codi 3 paràgrafs candidats: els més llargs si cal retallar, els més
+// curts si cal ampliar. Es passen com a cita literal perquè el model no hagi
+// d'endevinar on tocar.
+function citesPerAjustar(text, ampliar) {
+  const paragrafs = String(text).split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 120);
+  const ordenats = paragrafs.slice().sort((a, b) => ampliar ? a.length - b.length : b.length - a.length);
+  return ordenats.slice(0, 3).map(p => NUCLI.retallarParaules(p, 14));
+}
+
+async function costuraEstil() {
+  const text = textActual();
+  const r = await cridarJSON('costura', blocSistemaGeneracio({ corrector: true, forma: false }),
+    promptCosturaEstil(text), 3500, ['pedacos']);
+  return aplicarLotDePedacos(text, r.dades.pedacos);
+}
+
+async function costuraLongitud() {
+  const text = textActual();
+  const caracters = NUCLI.comptaCaracters(text);
+  let diferencia = 0;
+  if (caracters < NUCLI.CONTE_MIN_CARACTERS) diferencia = NUCLI.CONTE_MIN_CARACTERS - caracters + 400;
+  else if (caracters > NUCLI.CONTE_MAX_CARACTERS) diferencia = NUCLI.CONTE_MAX_CARACTERS - caracters - 400;
+  if (diferencia === 0) return null;
+
+  const r = await cridarJSON('costura', blocSistemaGeneracio({ corrector: true, forma: false }),
+    promptCosturaLongitud(text, diferencia), 3500, ['pedacos']);
+  return aplicarLotDePedacos(text, r.dades.pedacos);
+}
+
+function aplicarLotDePedacos(text, pedacos) {
+  const resultat = NUCLI.aplicarPedacos(text, Array.isArray(pedacos) ? pedacos : []);
+  ESTAT_CONTE.text_conte = resultat.text;
+  ESTAT_CONTE.pedacos_rebutjats = ESTAT_CONTE.pedacos_rebutjats.concat(
+    resultat.rebutjats.map(r => ({ cerca: (r.pedac && r.pedac.cerca) || '', motiu_rebuig: r.motiu, motiu_pedac: (r.pedac && r.pedac.motiu) || '' })));
+  return resultat;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  P6 — AUDITORIA DETERMINISTA (zero crides)
+// ═══════════════════════════════════════════════════════════
+
+function executarAuditoria() {
+  const text = textActual();
+  ESTAT_CONTE.auditoria = NUCLI.auditoriaDeterministaConte(text, ESTAT_CONTE.escaleta.escenes, ESTAT_CONTE.dossier);
+  ESTAT_CONTE.auditoria.moment = new Date().toISOString();
+  desarEstat();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  P7 — LECTURA HOSTIL
+// ═══════════════════════════════════════════════════════════
+
+function promptLectura(text) {
+  return [
+    'CONTE SENCER:\n\n' + text,
+    `Troba els CINC defectes més greus d'aquest conte. Per a cadascun:
+- "cita": un fragment LITERAL del text, copiat caràcter a caràcter, que mostri el defecte.
+- "per_que": una sola frase que digui per què és un defecte.
+Un defecte sense cita literal no serveix: no el proposis.`,
+    `Respon també les quatre preguntes de la porta, amb SI o NO i amb una cita literal del text que sostingui la resposta:
+- esquerda: hi ha una esquerda de realitat que NO es recompon?
+- mentida: el sistema menteix d'una manera comprovable dins del text?
+- paranoia: la paranoia del protagonista té base verificable dins del text?
+- empatia: hi ha una decisió on l'empatia li costa alguna cosa concreta?`,
+    'PROHIBIT: posar nota, resumir el conte, elogiar res.',
+    'Format: JSON estricte { "defectes": [ {"cita","per_que"} ], "porta_pkd": { "esquerda": {"resposta","cita"}, "mentida": {...}, "paranoia": {...}, "empatia": {...} } }. Res més.'
+  ].join('\n\n');
+}
+
+async function lecturaHostil() {
+  const text = textActual();
+  const tria = CLIENT.triarModelPerPas('lectura', ESTAT_CONTE.config);
+  ESTAT_CONTE.lectura_avis_model = tria.avis || '';
+
+  const r = await cridarJSON('lectura', blocSistemaLectura(), promptLectura(text), 3000, ['defectes']);
+
+  const bruts = Array.isArray(r.dades.defectes) ? r.dades.defectes : [];
+  const acceptats = [];
+  const descartats = [];
+  bruts.forEach(d => {
+    const cita = String((d && d.cita) || '').trim();
+    if (!cita) { descartats.push({ per_que: (d && d.per_que) || '(sense explicació)', motiu: 'ha arribat sense cita literal' }); return; }
+    if (text.indexOf(cita) < 0) { descartats.push({ per_que: (d && d.per_que) || '', cita, motiu: 'la cita no apareix literalment al text' }); return; }
+    acceptats.push({ cita, per_que: String((d && d.per_que) || '').trim(), triat: false });
+  });
+
+  ESTAT_CONTE.lectura = {
+    model: tria.model,
+    mateix_model_que_prosa: tria.mateix_model_que_prosa,
+    defectes: acceptats,
+    descartats,
+    porta_pkd: r.dades.porta_pkd || null,
+    moment: new Date().toISOString()
+  };
+}
+
+function promptPedacDirigit(text, defectes) {
+  return [
+    'PEDAÇOS DIRIGITS.',
+    'CONTE SENCER:\n\n' + text,
+    'DEFECTES QUE HAS DE CORREGIR I CAP ALTRE:\n' +
+      defectes.map((d, i) => `${i + 1}. «${d.cita}»\n   Problema: ${d.per_que}`).join('\n'),
+    `Per a cada defecte retorna un objecte { "cerca", "substitueix", "motiu" }.
+- 'cerca' ha de ser un fragment LITERAL i ÚNIC del text, copiat caràcter a caràcter.
+- 'substitueix' ha de tenir una longitud semblant.
+- No canviïs cap fet, cap nom, cap xifra ni cap data. No toquis l'última frase del conte.`,
+    'Format: JSON estricte { "pedacos": [...] }. Res més.'
+  ].join('\n\n');
+}
+
+async function aplicarPedacDirigit() {
+  const triats = (ESTAT_CONTE.lectura.defectes || []).filter(d => d.triat);
+  if (triats.length === 0) throw new Error('No has triat cap defecte per corregir.');
+
+  const text = textActual();
+  const r = await cridarJSON('pedac', blocSistemaGeneracio({ corrector: true, forma: false }),
+    promptPedacDirigit(text, triats), 3000, ['pedacos']);
+
+  const resultat = aplicarLotDePedacos(text, r.dades.pedacos);
+  ESTAT_CONTE.rondes_pedac += 1;
+  triats.forEach(d => { d.triat = false; d.corregit = true; });
+  executarAuditoria();
+  return resultat;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  P8 — EXPORTACIÓ
+// ═══════════════════════════════════════════════════════════
+
+function metadadesConte() {
+  const text = textActual();
+  const c = CLIENT.comptador;
+  const est = ESTAT_CONTE.estimacio;
+  return {
+    titol: ESTAT_CONTE.titol,
+    caracters_amb_espais: NUCLI.comptaCaracters(text),
+    paraules: NUCLI.comptaParaules(text),
+    escenes: ESTAT_CONTE.escaleta.escenes.length,
+    interval_valid: [NUCLI.CONTE_MIN_CARACTERS, NUCLI.CONTE_MAX_CARACTERS],
+    dins_interval: NUCLI.comptaCaracters(text) >= NUCLI.CONTE_MIN_CARACTERS && NUCLI.comptaCaracters(text) <= NUCLI.CONTE_MAX_CARACTERS,
+    perfil: perfilActual(),
+    mode_demostracio: !!ESTAT_CONTE.config.demo,
+    models_per_pas: Object.keys(c.per_pas).reduce((acc, pas) => { acc[pas] = c.per_pas[pas].models; return acc; }, {}),
+    crides_reals: c.crides,
+    represes_per_truncacio: c.represes,
+    sostre_crides: CLIENT.sostreCrides(),
+    cost_real_usd: Number(c.cost_estimat_usd.toFixed(5)),
+    cost_estimat_inicial_usd: est ? Number(est.cost_usd.toFixed(5)) : null,
+    desviacio_cost: est ? Number((c.cost_estimat_usd - est.cost_usd).toFixed(5)) : null,
+    crides_estimades_inicialment: est ? est.crides : null,
+    cost_per_pas: Object.keys(c.per_pas).reduce((acc, pas) => {
+      acc[pas] = {
+        crides: c.per_pas[pas].crides,
+        cost_usd: Number(c.per_pas[pas].cost_usd.toFixed(5)),
+        cost_estimat_usd: est && est.per_pas[pas] ? Number(est.per_pas[pas].cost_usd.toFixed(5)) : null
+      };
+      return acc;
+    }, {}),
+    motius_pkd: (ESTAT_CONTE.dossier.motius_triats || []).map(id => {
+      const m = NUCLI.BANC_MOTIUS_PKD.find(x => x.id === id);
+      return m ? { id: m.id, motiu: m.motiu } : { id };
+    }),
+    auditoria_determinista: ESTAT_CONTE.auditoria ? {
+      caracters: ESTAT_CONTE.auditoria.caracters,
+      dins_interval: ESTAT_CONTE.auditoria.dins_interval,
+      problemes_per_severitat: ['alta', 'mitjana', 'baixa'].reduce((acc, s) => {
+        acc[s] = ESTAT_CONTE.auditoria.problemes.filter(p => p.severitat === s).length; return acc;
+      }, {}),
+      problemes: ESTAT_CONTE.auditoria.problemes,
+      lint_catala: 'parcial: llista tancada de castellanismes i anglicismes, no és una comprovació ortogràfica'
+    } : null,
+    porta_pkd_escaleta: NUCLI.validarGatePKD(ESTAT_CONTE.escaleta.escenes),
+    porta_pkd_segons_el_lector: ESTAT_CONTE.lectura ? ESTAT_CONTE.lectura.porta_pkd : null,
+    lector_mateix_model_que_prosa: ESTAT_CONTE.lectura ? ESTAT_CONTE.lectura.mateix_model_que_prosa : null,
+    defectes_descartats_sense_cita: ESTAT_CONTE.lectura ? ESTAT_CONTE.lectura.descartats : [],
+    pedacos_rebutjats: ESTAT_CONTE.pedacos_rebutjats
+  };
+}
+
+function baixar(nom, contingut, tipus) {
+  const blob = new Blob([contingut], { type: tipus || 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nom;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function nomFitxer(extensio) {
+  const base = (ESTAT_CONTE.titol || 'conte').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'conte';
+  return `${base}.${extensio}`;
+}
+
+function cosDelConte() {
+  // El títol NO s'insereix mai al cos si l'usuari no ho ha decidit.
+  const cos = textActual();
+  return ESTAT_CONTE.titol_al_cos && ESTAT_CONTE.titol ? `${ESTAT_CONTE.titol}\n\n${cos}` : cos;
+}
+
+function exportarTXT() { baixar(nomFitxer('txt'), cosDelConte()); }
+
+function exportarMD() {
+  const m = metadadesConte();
+  const md = [
+    cosDelConte(),
+    '\n\n---\n',
+    '## Metadades\n',
+    '```json',
+    JSON.stringify(m, null, 2),
+    '```'
+  ].join('\n');
+  baixar(nomFitxer('md'), md, 'text/markdown;charset=utf-8');
+}
+
+function exportarMetadades() {
+  baixar(nomFitxer('metadades.json'), JSON.stringify(metadadesConte(), null, 2), 'application/json;charset=utf-8');
+}
+
+function exportarProjecte() {
+  const projecte = JSON.parse(JSON.stringify(ESTAT_CONTE));
+  delete projecte.config.claus; // mai s'exporten les claus API
+  projecte.comptador = JSON.parse(JSON.stringify(CLIENT.comptador));
+  baixar(nomFitxer('projecte.json'), JSON.stringify(projecte, null, 2), 'application/json;charset=utf-8');
+}
+
+function importarProjecte(fitxer) {
+  const lector = new FileReader();
+  lector.onload = () => {
+    try {
+      const dades = JSON.parse(lector.result);
+      const claus = ESTAT_CONTE.config.claus;
+      ESTAT_CONTE = migrarEstat(dades);
+      ESTAT_CONTE.config.claus = claus;
+      if (dades.comptador) CLIENT.restaurarComptador(dades.comptador);
+      desarEstat();
+      renderitzar();
+    } catch (e) {
+      alert('El fitxer de projecte no es pot llegir: ' + (e && e.message));
+    }
+  };
+  lector.readAsText(fitxer);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FLUX I NAVEGACIÓ
+// ═══════════════════════════════════════════════════════════
+
+function avancarFins(pas) {
+  ESTAT_CONTE.pas_actual = Math.max(ESTAT_CONTE.pas_actual, pas);
+  ESTAT_CONTE.pas_obert = pas;
+  desarEstat();
+  renderitzar();
+  // Tota transició de pas deixa la vista al destí.
+  requestAnimationFrame(() => {
+    const el = document.getElementById('pas-' + pas);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+function obrirPas(pas) {
+  ESTAT_CONTE.pas_obert = (ESTAT_CONTE.pas_obert === pas) ? -1 : pas;
+  desarEstat();
+  renderitzar();
+}
+
+// Envoltori únic de tota acció asíncrona: gestiona l'indicador de càrrega, els
+// errors i el desat. Cap acció pot quedar penjada sense dir res.
+async function accio(idBoto, feina) {
+  const boto = document.getElementById(idBoto);
+  const carregant = boto ? boto.parentElement.querySelector('.carregant') : null;
+  if (boto) boto.disabled = true;
+  if (carregant) carregant.classList.add('visible');
+  try {
+    await feina();
+    ESTAT_CONTE.avisos = ESTAT_CONTE.avisos.slice(-8);
+  } catch (e) {
+    const missatge = (e && e.message) || String(e);
+    ESTAT_CONTE.avisos.push(missatge);
+    // Els sostres de pas i el pressupost esgotat són resultats PREVISTOS del
+    // disseny, no fallades: es mostren a la interfície i es registren com a
+    // informació. Només el que no s'esperava va a console.error.
+    if (e && (e.esLimitPas || e.esSostreCrides)) console.info('[pressupost]', missatge);
+    else console.error(e);
+  } finally {
+    if (carregant) carregant.classList.remove('visible');
+    desarEstat();
+    renderitzar();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDERITZAT
+// ═══════════════════════════════════════════════════════════
+
+function renderitzarProgres() {
+  const text = textActual();
+  const caracters = NUCLI.comptaCaracters(text);
+  const c = CLIENT.comptador;
+  const sostre = CLIENT.sostreCrides();
+
+  document.getElementById('pr-pas').textContent = NOMS_PAS[ESTAT_CONTE.pas_actual] || NOMS_PAS[0];
+  document.getElementById('pr-caracters').textContent = `${num(caracters)} / ${num(NUCLI.CONTE_OBJECTIU_CARACTERS)}`;
+
+  const crides = document.getElementById('pr-crides');
+  crides.textContent = `${c.crides} / ${sostre}` + (c.represes ? ` (${c.represes} represa${c.represes > 1 ? 'es' : ''})` : '');
+  crides.className = 'valor' + (c.crides >= sostre ? ' perill' : c.crides >= sostre * 0.75 ? ' alerta' : '');
+
+  document.getElementById('pr-estimat').textContent = ESTAT_CONTE.estimacio
+    ? usd(ESTAT_CONTE.estimacio.cost_usd) + ' (est.)' : '—';
+  document.getElementById('pr-real').textContent = usd(c.cost_estimat_usd);
+
+  const pct = Math.min(100, Math.round((caracters / NUCLI.CONTE_OBJECTIU_CARACTERS) * 100));
+  document.getElementById('pr-barra').style.width = pct + '%';
+
+  document.getElementById('pastilla-demo').hidden = !ESTAT_CONTE.config.demo;
+}
+
+function targeta(pas, titol, estat, classeEstat, cos) {
+  const obert = ESTAT_CONTE.pas_obert === pas;
+  const fet = ESTAT_CONTE.pas_actual > pas;
+  const actiu = ESTAT_CONTE.pas_actual === pas;
+  return `<section class="targeta ${obert ? '' : 'plegat'} ${fet ? 'fet' : ''} ${actiu ? 'actiu' : ''}" id="pas-${pas}">
+    <div class="targeta-cap" onclick="obrirPas(${pas})">
+      <span class="pas-num">${pas}</span>
+      <h2>${esc(titol)}</h2>
+      <span class="estat-pas ${classeEstat || ''}">${esc(estat)}</span>
+    </div>
+    <div class="targeta-cos">${cos}</div>
+  </section>`;
+}
+
+function blocatge(motiu, camp, accions) {
+  return `<div class="blocatge">
+    <div class="motiu">${esc(motiu)}</div>
+    ${camp ? `<div class="camp">${esc(camp)}</div>` : ''}
+    <div class="accions">${accions}</div>
+  </div>`;
+}
+
+function carregantHTML() { return '<span class="carregant"><span class="filador"></span>Esperant el model…</span>'; }
+
+// ── P0 ────────────────────────────────────────────────────
+function renderP0() {
+  const cfg = ESTAT_CONTE.config;
+  const registre = CLIENT.registreModels();
+  const ids = Object.keys(registre);
+
+  const opcions = (triat) => ids.map(id =>
+    `<option value="${esc(id)}" ${id === triat ? 'selected' : ''}>${esc(registre[id].nom)} · ${esc(registre[id].proveidor)} · ${registre[id].output_per_m} $/M sortida</option>`
+  ).join('');
+
+  const perfils = Object.keys(PERFILS_AUTOR).map(id =>
+    `<option value="${esc(id)}" ${id === cfg.perfil ? 'selected' : ''}>${esc(PERFILS_AUTOR[id].nom)}${id === 'dick' ? ' (per defecte)' : ''}</option>`
+  ).join('');
+
+  const problemes = CLIENT.validarDefaultsModels();
+  const senseClau = ['anthropic', 'openai', 'gemini'].filter(p => !String(cfg.claus[p] || '').trim());
+  const proveidorsAmbClau = ['anthropic', 'openai', 'gemini'].filter(p => String(cfg.claus[p] || '').trim());
+
+  let blocatges = '';
+  if (proveidorsAmbClau.length === 0 && !cfg.demo) {
+    blocatges += blocatge(
+      'No hi ha cap clau API configurada: sense clau no es pot cridar cap model.',
+      'config.claus',
+      `<button class="resolucio petit" onclick="document.getElementById('clau-anthropic').focus()">Escriu una clau API</button>
+       <button class="resolucio petit" onclick="alternarDemo(true)">O recorre el pipeline en mode demostració</button>`);
+  }
+  if (proveidorsAmbClau.length === 1 && !cfg.demo) {
+    blocatges += `<div class="nota">Només hi ha un proveïdor configurat. La lectura hostil de P7 necessita un model diferent del que escriu; amb un sol proveïdor, el lector comparteix part dels punts cecs del generador i l'aplicació t'ho dirà abans de llegir.</div>`;
+  }
+  if (problemes.length) {
+    blocatges += blocatge(
+      'Hi ha models per defecte que no quadren amb el registre: ' + problemes.join(' · '),
+      'MODELS_PER_PROVEIDOR',
+      `<button class="resolucio petit" onclick="restaurarModelsPerDefecte()">Restaura els models per defecte</button>`);
+  }
+
+  return targeta(0, 'Configuració', proveidorsAmbClau.length || cfg.demo ? 'a punt' : 'cal una clau API',
+    proveidorsAmbClau.length || cfg.demo ? 'ok' : 'avis', `
+    <div class="reixa2">
+      <div>
+        <label for="sel-perfil">Perfil d'autor</label>
+        <select id="sel-perfil" onchange="ESTAT_CONTE.config.perfil=this.value;desarEstat();renderitzar()">${perfils}</select>
+      </div>
+      <div>
+        <label for="sel-arquitecte">Model d'arquitectura <span style="color:var(--text3)">— llavor, dossier, escaleta</span></label>
+        <select id="sel-arquitecte" onchange="ESTAT_CONTE.config.models.arquitecte=this.value;actualitzarEstimacio()">${opcions(cfg.models.arquitecte)}</select>
+      </div>
+      <div>
+        <label for="sel-prosa">Model de prosa <span style="color:var(--text3)">— escenes, costura, pedaços</span></label>
+        <select id="sel-prosa" onchange="ESTAT_CONTE.config.models.prosa=this.value;actualitzarEstimacio()">${opcions(cfg.models.prosa)}</select>
+      </div>
+      <div>
+        <label for="sel-lectura">Model de lectura hostil <span style="color:var(--text3)">— ha de ser diferent del de prosa</span></label>
+        <select id="sel-lectura" onchange="ESTAT_CONTE.config.models.lectura=this.value;actualitzarEstimacio()">${opcions(cfg.models.lectura)}</select>
+      </div>
+    </div>
+
+    <div class="reixa2">
+      <div><label for="clau-anthropic">Clau API d'Anthropic</label>
+        <input type="password" id="clau-anthropic" value="${esc(cfg.claus.anthropic)}" autocomplete="off"
+          onchange="desarClau('anthropic', this.value)" placeholder="sk-ant-…"></div>
+      <div><label for="clau-openai">Clau API d'OpenAI</label>
+        <input type="password" id="clau-openai" value="${esc(cfg.claus.openai)}" autocomplete="off"
+          onchange="desarClau('openai', this.value)" placeholder="sk-…"></div>
+      <div><label for="clau-gemini">Clau API de Google Gemini</label>
+        <input type="password" id="clau-gemini" value="${esc(cfg.claus.gemini)}" autocomplete="off"
+          onchange="desarClau('gemini', this.value)" placeholder="AIza…"></div>
+    </div>
+    <p class="ajuda">Les claus es desen només al navegador i no s'inclouen mai a l'exportació del projecte.</p>
+
+    <label for="camp-tema">Tema o punt de partida <span style="color:var(--text3)">— opcional</span></label>
+    <input type="text" id="camp-tema" value="${esc(ESTAT_CONTE.tema)}" placeholder="Deixa-ho buit i el model tria el terreny"
+      onchange="ESTAT_CONTE.tema=this.value;desarEstat()">
+
+    ${blocatges}
+
+    ${ESTAT_CONTE.estimacio ? `
+    <table class="metrica">
+      <tr><th>Pas</th><th>Crides</th><th>Cost estimat</th></tr>
+      ${Object.keys(ESTAT_CONTE.estimacio.per_pas).map(p => `<tr><td>${esc(p)}</td><td class="num">${ESTAT_CONTE.estimacio.per_pas[p].crides}</td><td class="num">${usd(ESTAT_CONTE.estimacio.per_pas[p].cost_usd)}</td></tr>`).join('')}
+      <tr><td><b>Total</b></td><td class="num"><b>${ESTAT_CONTE.estimacio.crides}</b></td><td class="num"><b>${usd(ESTAT_CONTE.estimacio.cost_usd)}</b></td></tr>
+    </table>
+    <p class="ajuda">Això és una <b>estimació</b> feta amb els preus del registre i una previsió de 5 escenes. El cost real es compta crida a crida i es veu a la capçalera.</p>` : ''}
+
+    <div class="accions">
+      <button class="primari" id="b-config" onclick="avancarFins(1)">Comença el conte</button>
+      <button onclick="alternarDemo(${cfg.demo ? 'false' : 'true'})">${cfg.demo ? 'Surt del mode demostració' : 'Mode demostració (sense claus)'}</button>
+      <button onclick="if(confirm('Es perdrà el conte actual. Continuar?')) reiniciarProjecte()">Conte nou</button>
+      <label style="display:inline-flex;align-items:center;gap:.4rem;margin:0;cursor:pointer">
+        <input type="file" accept=".json" style="display:none" onchange="if(this.files[0])importarProjecte(this.files[0])">
+        <span class="pastilla" style="cursor:pointer">Obre un projecte .json</span>
+      </label>
+    </div>
+    ${cfg.demo ? '<div class="nota">Mode demostració actiu: no es crida cap model. Les respostes són fixes, però el pipeline (comptador, sostre de crides, parseig, auditoria) s\'executa de debò, i per això les xifres de crides que veus són reals.</div>' : ''}
+  `);
+}
+
+// ── P1 ────────────────────────────────────────────────────
+function renderP1() {
+  const llavors = ESTAT_CONTE.llavors;
+  const triada = ESTAT_CONTE.llavor_triada;
+
+  const motius = (ESTAT_CONTE.motius_conte || []).map(id => {
+    const m = NUCLI.BANC_MOTIUS_PKD.find(x => x.id === id);
+    return m ? `<span class="pastilla" title="${esc(m.tensio)}">${esc(m.motiu.slice(0, 60))}…</span>` : '';
+  }).join('');
+
+  const llista = llavors.map((l, i) => `
+    <div class="llavor ${triada === i ? 'triada' : ''}" onclick="triarLlavor(${i})">
+      <h3>${i + 1}. ${esc(l.premissa)}</h3>
+      <dl>
+        <dt>Esquerda</dt><dd>${esc(l.esquerda)}</dd>
+        <dt>Mentida del sistema</dt><dd>${esc(l.mentida_del_sistema)}</dd>
+        <dt>Final obligatori</dt><dd>${esc(l.final_obligatori)}</dd>
+        <dt>Protagonista</dt><dd>${esc(l.protagonista)}</dd>
+        <dt>Cost de l'empatia</dt><dd>${esc(l.cost_empatia)}</dd>
+      </dl>
+    </div>`).join('');
+
+  let bloc = '';
+  if (llavors.length === 0) {
+    bloc = blocatge('Encara no hi ha llavors: cal generar-les per poder continuar.', '',
+      `<button class="resolucio petit" onclick="accio('b-llavors', generarLlavors)">Genera sis llavors</button>`);
+  } else if (triada === null) {
+    bloc = blocatge('Cap llavor triada: el dossier no es pot muntar sense una llavor.', '',
+      `<button class="resolucio petit" onclick="triarLlavor(0)">Tria la primera</button>`);
+  }
+
+  return targeta(1, 'Llavor', llavors.length ? (triada !== null ? 'triada' : `${llavors.length} propostes`) : 'pendent',
+    triada !== null ? 'ok' : (llavors.length ? 'avis' : ''), `
+    ${motius ? `<p class="ajuda">Motius d'aquest conte: ${motius}</p>` : ''}
+    ${llista || '<p class="ajuda">Una crida al model proposa sis llavors amb premissa, esquerda, mentida del sistema, final obligatori, protagonista i cost de l\'empatia.</p>'}
+    ${bloc}
+    <div class="accions">
+      <button class="primari" id="b-llavors" onclick="accio('b-llavors', generarLlavors)">${llavors.length ? 'Regenera les llavors' : 'Genera sis llavors'} <span style="opacity:.7">· 1 crida</span></button>
+      ${carregantHTML()}
+    </div>
+  `);
+}
+
+// ── P2 ────────────────────────────────────────────────────
+function renderP2() {
+  const d = ESTAT_CONTE.dossier;
+  const v = NUCLI.validarDossier(d);
+  const mida = new Blob([JSON.stringify(d)]).size;
+
+  const blocatges = v.faltants.map(f => blocatge(f.motiu, f.camp,
+    `<button class="resolucio petit" onclick="accio('b-dossier-omplir', resoldreFaltantsDossier)">${esc(f.com_resoldre)}</button>`)).join('');
+
+  const resum = ESTAT_CONTE.dossier_generat ? `
+    <table class="metrica">
+      <tr><th>Camp</th><th>Contingut</th></tr>
+      <tr><td>Protagonista</td><td>${esc(d.protagonista.nom)} — ${esc(d.protagonista.feina_ordinaria)}</td></tr>
+      <tr><td>Ferida</td><td>${esc(d.protagonista.ferida)}</td></tr>
+      <tr><td>Món</td><td>${esc(d.mon.lloc)} · ${esc(d.mon.any)}</td></tr>
+      <tr><td>Secundaris</td><td>${(d.secundaris || []).map(s => esc(s.nom)).join(', ') || '—'}</td></tr>
+      <tr><td>Fets canònics</td><td>${(d.fets_canonics || []).length}</td></tr>
+      <tr><td>Cronologia</td><td>${(d.cronologia || []).length} fites</td></tr>
+      <tr><td>Frases que no diria</td><td>${((d.protagonista.veu || {}).mai_diria || []).length}</td></tr>
+      <tr><td>Cost del dossier per escena</td><td>≈ ${num(Math.round(mida / 3.5))} tokens d'entrada, un cop per escena</td></tr>
+      <tr><td>Mida serialitzada</td><td>${num(mida)} bytes ${
+        mida < 3072 ? '<span style="color:var(--verd)">(compacte)</span>'
+        : mida < 4096 ? '<span style="color:var(--groc)">(acceptable: l\'esquema ple hi arriba)</span>'
+        : '<span style="color:var(--vermell)">(infla totes les crides d\'escena)</span>'}</td></tr>
+    </table>
+    <details style="margin-top:.7rem"><summary style="cursor:pointer;font-size:.85rem;color:var(--text2)">Dossier sencer (editable)</summary>
+      <textarea rows="14" style="margin-top:.5rem;font-family:ui-monospace,monospace;font-size:.78rem"
+        onchange="editarDossier(this.value)">${esc(JSON.stringify(d, null, 2))}</textarea>
+    </details>` : '<p class="ajuda">Una crida converteix la llavor triada en el dossier: personatges, món, objectes, fets canònics i cronologia. És l\'única font de veritat narrativa del conte i cap altre pas n\'inventa res.</p>';
+
+  return targeta(2, 'Dossier', v.valid ? 'complet' : (ESTAT_CONTE.dossier_generat ? `${v.faltants.length} camps a resoldre` : 'pendent'),
+    v.valid ? 'ok' : (ESTAT_CONTE.dossier_generat ? 'avis' : ''), `
+    ${resum}
+    ${blocatges}
+    <div class="accions">
+      <button class="primari" id="b-dossier" onclick="accio('b-dossier', generarDossier)"
+        ${ESTAT_CONTE.llavor_triada === null ? 'disabled' : ''}>${ESTAT_CONTE.dossier_generat ? 'Regenera el dossier' : 'Genera el dossier'} <span style="opacity:.7">· 1 crida</span></button>
+      ${v.valid ? `<button onclick="avancarFins(3)">Continua a l'escaleta</button>` : ''}
+      <button id="b-dossier-omplir" style="display:none"></button>
+      ${carregantHTML()}
+    </div>
+    ${ESTAT_CONTE.llavor_triada === null ? '<div class="nota">Primer cal triar una llavor a P1.</div>' : ''}
+  `);
+}
+
+// Resolució de faltants: primer LOCAL i determinista, i només si això no
+// n'arregla cap, UNA crida de compleció que demana únicament el que falta.
+async function resoldreFaltantsDossier() {
+  const omplertsLocalment = completarDossierLocalment();
+  let v = NUCLI.validarDossier(ESTAT_CONTE.dossier);
+
+  if (omplertsLocalment.length) {
+    ESTAT_CONTE.avisos.push(`S'han omplert en local, sense cap crida: ${omplertsLocalment.join(', ')}.`);
+  }
+  if (v.valid) return;
+
+  if (ESTAT_CONTE.dossier_complecions >= 1) {
+    ESTAT_CONTE.avisos.push('Ja s\'ha gastat la crida de compleció d\'aquest dossier. Els camps que queden s\'han d\'omplir a mà al dossier editable.');
+    return;
+  }
+  await completarDossierAmbModel(v.faltants);
+  v = NUCLI.validarDossier(ESTAT_CONTE.dossier);
+  if (!v.valid) {
+    ESTAT_CONTE.avisos.push(`Després de la compleció encara falten: ${v.faltants.map(f => f.camp).join(', ')}. Edita'ls a mà al dossier.`);
+  }
+}
+
+function editarDossier(text) {
+  try {
+    const nou = JSON.parse(text);
+    ESTAT_CONTE.dossier = NUCLI.fusionarDossierSenseBuidar(NUCLI.crearDossierBuit(), nou);
+    desarEstat(); renderitzar();
+  } catch (e) {
+    ESTAT_CONTE.avisos.push('El dossier editat no és JSON vàlid: ' + (e && e.message));
+    renderitzar();
+  }
+}
+
+// ── P3 ────────────────────────────────────────────────────
+function renderP3() {
+  const escenes = ESTAT_CONTE.escaleta.escenes;
+  const gate = NUCLI.validarGatePKD(escenes);
+  const suma = escenes.reduce((a, e) => a + (e.caracters_objectiu || 0), 0);
+
+  const fitxes = escenes.map((e, i) => `
+    <div class="escena-fitxa">
+      <div class="cap">
+        <strong>Escena ${i + 1}</strong>
+        <span class="marca-pkd ${esc(e.funcio_pkd)}">${esc(e.funcio_pkd)}</span>
+        <span style="color:var(--text3);font-size:.78rem">${num(e.caracters_objectiu)} caràcters</span>
+        <select class="petit" style="width:auto;margin-left:auto;font-size:.78rem"
+          onchange="reassignarFuncioPKD(${i}, this.value)">
+          ${NUCLI.FUNCIONS_PKD.map(f => `<option value="${f}" ${f === e.funcio_pkd ? 'selected' : ''}>funció: ${f}</option>`).join('')}
+        </select>
+      </div>
+      <div class="camps">
+        <div><b>Punt de vista</b>${esc(e.pov)}</div>
+        <div><b>Lloc</b>${esc(e.lloc)}</div>
+        <div><b>Objectiu</b>${esc(e.objectiu_pov)}</div>
+        <div><b>Obstacle</b>${esc(e.obstacle)}</div>
+        <div><b>En disputa</b>${esc(e.objecte_o_informacio_en_disputa)}</div>
+        <div><b>Decisió irreversible</b>${esc(e.decisio_irreversible)}</div>
+        <div><b>Cost immediat</b>${esc(e.cost_immediat)}</div>
+        <div><b>Conseqüència</b>${esc(e.consequencia)}</div>
+      </div>
+      <details style="margin-top:.5rem"><summary style="cursor:pointer;font-size:.8rem;color:var(--text2)">Edita el contracte</summary>
+        <textarea rows="10" style="margin-top:.4rem;font-family:ui-monospace,monospace;font-size:.76rem"
+          onchange="editarContracte(${i}, this.value)">${esc(JSON.stringify(e, null, 2))}</textarea>
+      </details>
+    </div>`).join('');
+
+  let blocatges = '';
+  if (escenes.length && !gate.valid) {
+    blocatges = gate.faltants.map(f => blocatge(
+      `Porta PKD: falta la funció «${f.funcio}». ${f.motiu}`,
+      'La porta l\'ha de tancar el model o una persona: el fallback local no pot assignar cap funció PKD per accident.',
+      `<button class="resolucio petit" onclick="assignarFuncioAPrimeraLliure('${f.funcio}')">Assigna «${f.funcio}» a una escena</button>
+       <button class="resolucio petit" onclick="accio('b-escaleta', generarEscaleta)">Regenera l'escaleta · 1 crida</button>`)).join('');
+  }
+  if (escenes.length && !gate.paranoia_present) {
+    blocatges += `<div class="nota">${esc(gate.avis_paranoia)}</div>`;
+  }
+
+  return targeta(3, 'Escaleta i contractes',
+    escenes.length ? (gate.valid ? `${escenes.length} escenes · porta PKD tancada` : 'porta PKD oberta') : 'pendent',
+    escenes.length ? (gate.valid ? 'ok' : 'error') : '', `
+    ${ESTAT_CONTE.escaleta.justificacio_nombre ? `<p class="ajuda"><b>Per què ${escenes.length} escenes:</b> ${esc(ESTAT_CONTE.escaleta.justificacio_nombre)}</p>` : ''}
+    ${escenes.length ? `<p class="ajuda">Pressupost repartit: <b>${num(suma)}</b> caràcters ${suma === NUCLI.CONTE_OBJECTIU_CARACTERS ? '<span style="color:var(--verd)">(quadra amb l\'objectiu)</span>' : '<span style="color:var(--groc)">(no quadra amb l\'objectiu)</span>'}. Editar aquí no costa cap token; editar després del pas 4 costa el conte sencer.</p>` : '<p class="ajuda">Una crida proposa de 4 a 6 escenes amb contracte complet. Els forats del contracte es tapen en local; la porta PKD, no.</p>'}
+    ${fitxes}
+    ${blocatges}
+    <div class="accions">
+      <button class="primari" id="b-escaleta" onclick="accio('b-escaleta', generarEscaleta)"
+        ${NUCLI.validarDossier(ESTAT_CONTE.dossier).valid ? '' : 'disabled'}>${escenes.length ? 'Regenera l\'escaleta' : 'Genera l\'escaleta'} <span style="opacity:.7">· 1 crida</span></button>
+      ${escenes.length && gate.valid ? `<button onclick="avancarFins(4)">Continua a la redacció</button>` : ''}
+      ${carregantHTML()}
+    </div>
+    ${NUCLI.validarDossier(ESTAT_CONTE.dossier).valid ? '' : '<div class="nota">El dossier de P2 encara té camps per resoldre.</div>'}
+  `);
+}
+
+function assignarFuncioAPrimeraLliure(funcio) {
+  const escenes = ESTAT_CONTE.escaleta.escenes;
+  let i = escenes.findIndex(e => e.funcio_pkd === 'cap');
+  if (i < 0) i = escenes.findIndex(e => NUCLI.FUNCIONS_PKD_OBLIGATORIES.indexOf(e.funcio_pkd) < 0);
+  if (i < 0) i = 0;
+  reassignarFuncioPKD(i, funcio);
+}
+
+function editarContracte(i, text) {
+  try {
+    const nou = JSON.parse(text);
+    const { contracte } = NUCLI.completarContracteAmbFallback(
+      Object.assign({}, nou, { index: i }), ESTAT_CONTE.dossier, nou.caracters_objectiu);
+    ESTAT_CONTE.escaleta.escenes[i] = contracte;
+    desarEstat(); renderitzar();
+  } catch (e) {
+    ESTAT_CONTE.avisos.push(`El contracte de l'escena ${i + 1} no és JSON vàlid: ` + (e && e.message));
+    renderitzar();
+  }
+}
+
+// ── P4 ────────────────────────────────────────────────────
+function renderP4() {
+  const escenes = ESTAT_CONTE.escaleta.escenes;
+  const escrites = ESTAT_CONTE.escenes_text.filter(t => String(t || '').trim()).length;
+  const seguent = ESTAT_CONTE.escenes_text.findIndex((t, i) => i < escenes.length && !String(t || '').trim());
+  const totes = escenes.length > 0 && escrites === escenes.length;
+
+  const files = escenes.map((e, i) => {
+    const t = ESTAT_CONTE.escenes_text[i] || '';
+    const reals = NUCLI.comptaCaracters(t);
+    const desv = e.caracters_objectiu ? (reals - e.caracters_objectiu) / e.caracters_objectiu : 0;
+    return `<tr>
+      <td>${i + 1} <span class="marca-pkd ${esc(e.funcio_pkd)}">${esc(e.funcio_pkd)}</span></td>
+      <td class="num">${num(e.caracters_objectiu)}</td>
+      <td class="num">${t ? num(reals) : '—'}</td>
+      <td class="num" style="color:${!t ? 'var(--text3)' : Math.abs(desv) > NUCLI.TOLERANCIA_ESCENA ? 'var(--groc)' : 'var(--verd)'}">${t ? (desv >= 0 ? '+' : '') + Math.round(desv * 100) + '%' : '—'}</td>
+      <td>${t ? '<span class="semafor verd"></span>escrita' : '<span class="semafor" style="background:var(--text3)"></span>pendent'}</td>
+    </tr>`;
+  }).join('');
+
+  let bloc = '';
+  if (escenes.length && !totes) {
+    bloc = blocatge(`Falten ${escenes.length - escrites} escenes per escriure.`, `Una crida per escena, ni una més. No hi ha cap segona crida de refinament.`,
+      `<button class="resolucio petit" onclick="accio('b-escena', escriureSeguent)">Escriu l'escena ${seguent + 1}</button>
+       <button class="resolucio petit" onclick="accio('b-escena', escriureTotes)">Escriu-les totes seguides</button>`);
+  }
+
+  return targeta(4, 'Redacció per escenes', escenes.length ? `${escrites}/${escenes.length} escrites` : 'pendent',
+    totes ? 'ok' : (escrites ? 'avis' : ''), `
+    ${escenes.length ? `<table class="metrica">
+      <tr><th>Escena</th><th>Objectiu</th><th>Reals</th><th>Desviació</th><th>Estat</th></tr>${files}</table>` : '<p class="ajuda">Primer cal l\'escaleta de P3.</p>'}
+    <p class="ajuda">Cada crida rep el dossier, el contracte de la seva escena, un resum d'una línia de les anteriors i els últims 400 caràcters escrits. Res més: la mida de l'entrada no creix amb la longitud del conte.</p>
+    ${bloc}
+    <div class="accions">
+      <button class="primari" id="b-escena" onclick="accio('b-escena', escriureSeguent)"
+        ${!escenes.length || totes ? 'disabled' : ''}>Escriu l'escena ${Math.max(1, seguent + 1)} <span style="opacity:.7">· 1 crida</span></button>
+      <button onclick="accio('b-escena', escriureTotes)" ${!escenes.length || totes ? 'disabled' : ''}>Escriu-les totes <span style="opacity:.7">· ${escenes.length - escrites} crides</span></button>
+      ${totes ? `<button onclick="avancarFins(5)">Continua a la costura</button>` : ''}
+      ${carregantHTML()}
+    </div>
+    ${escrites ? `<div class="lectura">${esc(textActual()).replace(/· · ·/g, '<span class="separador">· · ·</span>')}</div>` : ''}
+  `);
+}
+
+async function escriureSeguent() {
+  const escenes = ESTAT_CONTE.escaleta.escenes;
+  const i = ESTAT_CONTE.escenes_text.findIndex((t, k) => k < escenes.length && !String(t || '').trim());
+  if (i < 0) throw new Error('Totes les escenes ja estan escrites.');
+  await escriureEscena(i);
+  if (ESTAT_CONTE.escenes_text.filter(t => String(t || '').trim()).length === escenes.length) {
+    ESTAT_CONTE.pas_actual = Math.max(ESTAT_CONTE.pas_actual, 5);
+  }
+}
+
+async function escriureTotes() {
+  const escenes = ESTAT_CONTE.escaleta.escenes;
+  for (let i = 0; i < escenes.length; i++) {
+    if (String(ESTAT_CONTE.escenes_text[i] || '').trim()) continue;
+    await escriureEscena(i);
+    renderitzarProgres();
+  }
+  ESTAT_CONTE.pas_actual = Math.max(ESTAT_CONTE.pas_actual, 5);
+}
+
+// ── P5 ────────────────────────────────────────────────────
+function renderP5() {
+  const text = textActual();
+  const caracters = NUCLI.comptaCaracters(text);
+  const dins = caracters >= NUCLI.CONTE_MIN_CARACTERS && caracters <= NUCLI.CONTE_MAX_CARACTERS;
+  const fetes = cridesFetesAlPas('costura');
+  const esgotat = fetes >= LIMITS_DURS_PAS.costura;
+
+  const rebutjats = ESTAT_CONTE.pedacos_rebutjats.length ? `
+    <p class="ajuda" style="margin-top:.8rem"><b>Pedaços rebutjats (${ESTAT_CONTE.pedacos_rebutjats.length}).</b> Un pedaç rebutjat és informació útil: vol dir que el model no ha sabut citar el text literalment i que aquell canvi NO s'ha aplicat.</p>
+    ${ESTAT_CONTE.pedacos_rebutjats.map(r => `<div class="problema baixa"><div>${esc(r.motiu_rebuig)}</div><div class="cita">«${esc(NUCLI.retallarParaules(r.cerca, 12))}»</div></div>`).join('')}` : '';
+
+  let bloc = '';
+  if (!dins && esgotat) {
+    bloc = blocatge(
+      `El conte té ${num(caracters)} caràcters i l'interval vàlid és ${num(NUCLI.CONTE_MIN_CARACTERS)}–${num(NUCLI.CONTE_MAX_CARACTERS)}. El pas de costura ja ha gastat les seves ${LIMITS_DURS_PAS.costura} crides i no en farà cap més.`,
+      'Entrar en bucle de correcció és exactament el patró que encaria el sistema.',
+      `<button class="resolucio petit" onclick="obrirEdicioManual()">Edita el text a mà</button>
+       <button class="resolucio petit" onclick="avancarFins(6)">Accepta-ho i continua</button>`);
+  } else if (!dins && fetes >= 1) {
+    bloc = blocatge(
+      `El conte té ${num(caracters)} caràcters. Queda ${LIMITS_DURS_PAS.costura - fetes} crida d'ajust de longitud.`, '',
+      `<button class="resolucio petit" onclick="accio('b-costura-b', costuraLongitud)">Ajusta la longitud · 1 crida</button>`);
+  }
+
+  return targeta(5, 'Costura per pedaços',
+    fetes ? `${fetes}/${LIMITS_DURS_PAS.costura} crides · ${num(caracters)} caràcters` : 'pendent',
+    dins && fetes ? 'ok' : (fetes ? 'avis' : ''), `
+    <p class="ajuda">El text acabat no es reescriu mai sencer. La costura demana una llista de pedaços <code>{cerca, substitueix}</code> i el codi els aplica només si <code>cerca</code> apareix <b>exactament un cop</b>. Sostre dur del pas: ${LIMITS_DURS_PAS.costura} crides, en qualsevol camí.</p>
+    <table class="metrica">
+      <tr><th>Mesura</th><th>Valor</th></tr>
+      <tr><td>Caràcters amb espais</td><td class="num">${num(caracters)}</td></tr>
+      <tr><td>Interval vàlid</td><td class="num">${num(NUCLI.CONTE_MIN_CARACTERS)} – ${num(NUCLI.CONTE_MAX_CARACTERS)}</td></tr>
+      <tr><td>Dins de l'interval</td><td>${dins ? '<span class="semafor verd"></span>sí' : '<span class="semafor vermell"></span>no'}</td></tr>
+      <tr><td>Crides gastades en aquest pas</td><td class="num">${fetes} / ${LIMITS_DURS_PAS.costura}</td></tr>
+    </table>
+    ${rebutjats}
+    ${bloc}
+    <div class="accions">
+      <button class="primari" id="b-costura" onclick="accio('b-costura', costuraEstil)"
+        ${esgotat || !text ? 'disabled' : ''}>Costura d'estil <span style="opacity:.7">· 1 crida</span></button>
+      <button id="b-costura-b" onclick="accio('b-costura-b', costuraLongitud)"
+        ${esgotat || dins || !text ? 'disabled' : ''}>Ajusta la longitud <span style="opacity:.7">· 1 crida</span></button>
+      <button onclick="executarAuditoria();avancarFins(6)" ${!text ? 'disabled' : ''}>Continua a l'auditoria</button>
+      ${carregantHTML()}
+    </div>
+    <details style="margin-top:.8rem"><summary style="cursor:pointer;font-size:.85rem;color:var(--text2)">Edita el conte a mà</summary>
+      <textarea id="edicio-manual" rows="18" style="margin-top:.5rem" onchange="ESTAT_CONTE.text_conte=this.value;executarAuditoria();renderitzar()">${esc(text)}</textarea>
+    </details>
+  `);
+}
+
+function obrirEdicioManual() {
+  const det = document.querySelector('#pas-5 details');
+  if (det) { det.open = true; det.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+}
+
+// ── P6 ────────────────────────────────────────────────────
+function renderP6() {
+  const a = ESTAT_CONTE.auditoria;
+  if (!a) {
+    return targeta(6, 'Auditoria determinista', 'pendent', '', `
+      <p class="ajuda">Zero crides i zero tokens: tot el que es pot comprovar per codi no es pregunta a cap model.</p>
+      <div class="accions">
+        <button class="primari" onclick="executarAuditoria();renderitzar()" ${textActual() ? '' : 'disabled'}>Executa l'auditoria <span style="opacity:.7">· 0 crides</span></button>
+      </div>`);
+  }
+
+  const perSeveritat = s => a.problemes.filter(p => p.severitat === s);
+  const alta = perSeveritat('alta'), mitjana = perSeveritat('mitjana'), baixa = perSeveritat('baixa');
+  const semafor = alta.length ? 'vermell' : mitjana.length ? 'groc' : 'verd';
+
+  const llista = a.problemes.map(p => `
+    <div class="problema ${esc(p.severitat)}">
+      <div>${esc(p.detall)}
+        ${p.heuristica ? '<span class="marca" title="Comprovació per coincidència de vocabulari: és una pista, no un veredicte">heurística</span>' : ''}
+        ${p.parcial ? '<span class="marca" title="Llista tancada de formes conegudes, no és una comprovació ortogràfica">comprovació parcial</span>' : ''}
+      </div>
+      ${p.cita ? `<div class="cita">«${esc(p.cita)}»</div>` : ''}
+      ${!p.cita && p.camp ? `<div class="cita">${esc(p.camp)}</div>` : ''}
+    </div>`).join('');
+
+  return targeta(6, 'Auditoria determinista',
+    `${a.problemes.length} troballes · ${num(a.caracters)} caràcters`,
+    alta.length ? 'error' : mitjana.length ? 'avis' : 'ok', `
+    <table class="metrica">
+      <tr><th>Mesura</th><th>Valor</th></tr>
+      <tr><td>Caràcters amb espais</td><td class="num">${num(a.caracters)}</td></tr>
+      <tr><td>Paraules <span style="color:var(--text3)">(informació secundària)</span></td><td class="num">${num(a.paraules)}</td></tr>
+      <tr><td>Dins de l'interval ${num(NUCLI.CONTE_MIN_CARACTERS)}–${num(NUCLI.CONTE_MAX_CARACTERS)}</td><td><span class="semafor ${a.dins_interval ? 'verd' : 'vermell'}"></span>${a.dins_interval ? 'sí' : 'no'}</td></tr>
+      <tr><td>Veredicte</td><td><span class="semafor ${semafor}"></span>${alta.length} altes · ${mitjana.length} mitjanes · ${baixa.length} baixes</td></tr>
+      <tr><td>Crides gastades en aquest pas</td><td class="num">0</td></tr>
+    </table>
+    <div class="nota"><b>Sobre el lint de català:</b> al navegador la comprovació és <b>parcial</b>. Compara el text amb una llista tancada de castellanismes i anglicismes coneguts; <b>no</b> és un corrector ortogràfic i no detecta paraules inventades. La comprovació completa amb hunspell s'executa sobre el text exportat des de <code>proves/c5_lint.mjs</code>. Les troballes marcades com a <i>heurística</i> es basen en coincidència de vocabulari i són una pista, no un veredicte.</div>
+    ${a.problemes.length ? llista : '<p class="ajuda" style="margin-top:.8rem">Cap problema detectat per les comprovacions deterministes. Això vol dir que no s\'ha trobat res del que aquestes comprovacions saben buscar; no vol dir que el conte sigui bo.</p>'}
+    <div class="accions">
+      <button class="primari" onclick="executarAuditoria();renderitzar()">Torna a executar l'auditoria <span style="opacity:.7">· 0 crides</span></button>
+      <button onclick="avancarFins(7)">Continua a la lectura hostil</button>
+    </div>
+  `);
+}
+
+// ── P7 ────────────────────────────────────────────────────
+function renderP7() {
+  const l = ESTAT_CONTE.lectura;
+  const tria = CLIENT.triarModelPerPas('lectura', ESTAT_CONTE.config);
+  const fetesLectura = cridesFetesAlPas('lectura');
+  const fetesPedac = cridesFetesAlPas('pedac');
+
+  // L'avís sobre el model es dona ABANS de llegir, no després.
+  const avisModel = tria.avis ? `<div class="avis"><b>Abans de llegir:</b> ${esc(tria.avis)}</div>` : '';
+
+  const porta = l && l.porta_pkd ? `
+    <p class="ajuda" style="margin-top:.9rem"><b>Porta PKD segons el lector.</b> Es mostra tal com ha arribat. Si contradiu el que P3 havia validat a l'escaleta, la contradicció es veu: l'escaleta declara intencions i el text és el que és.</p>
+    <table class="metrica">
+      <tr><th>Condició</th><th>Resposta</th><th>Cita del lector</th></tr>
+      ${['esquerda', 'mentida', 'paranoia', 'empatia'].map(k => {
+        const v = l.porta_pkd[k] || {};
+        const si = String(v.resposta || '').toUpperCase().startsWith('S');
+        return `<tr><td>${k}</td><td><span class="semafor ${si ? 'verd' : 'vermell'}"></span>${esc(v.resposta || '—')}</td><td style="color:var(--text2);font-style:italic">${esc(NUCLI.retallarParaules(v.cita || '', 14)) || '—'}</td></tr>`;
+      }).join('')}
+    </table>
+    ${(() => {
+      const gate = NUCLI.validarGatePKD(ESTAT_CONTE.escaleta.escenes);
+      const negades = ['esquerda', 'mentida', 'empatia'].filter(k => {
+        const v = (l.porta_pkd[k] || {}).resposta;
+        return v && !String(v).toUpperCase().startsWith('S');
+      });
+      return (gate.valid && negades.length)
+        ? `<div class="avis">L'escaleta de P3 declarava ${negades.join(', ')} i el lector diu que al text no hi són. La declaració de l'escaleta no es corregeix ni s'amaga: aquesta discrepància és precisament el que has de mirar.</div>`
+        : '';
+    })()}` : '';
+
+  const defectes = l ? l.defectes.map((d, i) => `
+    <div class="problema ${d.corregit ? 'baixa' : 'mitjana'}">
+      <label style="display:flex;gap:.5rem;align-items:flex-start;margin:0;color:var(--text);font-size:.85rem;cursor:pointer">
+        <input type="checkbox" style="width:auto;margin-top:.25rem" ${d.triat ? 'checked' : ''} ${d.corregit ? 'disabled' : ''}
+          onchange="ESTAT_CONTE.lectura.defectes[${i}].triat=this.checked;desarEstat()">
+        <span><span>${esc(d.per_que)}</span>${d.corregit ? '<span class="marca">ja corregit</span>' : ''}
+          <div class="cita">«${esc(NUCLI.retallarParaules(d.cita, 14))}»</div></span>
+      </label>
+    </div>`).join('') : '';
+
+  const descartats = l && l.descartats.length ? `
+    <p class="ajuda" style="margin-top:.8rem"><b>Defectes descartats (${l.descartats.length}).</b> Un defecte sense cita literal del text no es pot comprovar ni corregir, així que no entra a la llista. Es reporta perquè quedi constància que el lector els ha dit.</p>
+    ${l.descartats.map(d => `<div class="problema baixa"><div>${esc(d.per_que)}</div><div class="cita">${esc(d.motiu)}</div></div>`).join('')}` : '';
+
+  const triats = l ? l.defectes.filter(d => d.triat).length : 0;
+  const pedacEsgotat = fetesPedac >= LIMITS_DURS_PAS.pedac;
+
+  return targeta(7, 'Lectura hostil',
+    l ? `${l.defectes.length} defectes amb cita` : 'pendent', l ? 'ok' : '', `
+    <p class="ajuda">Un model <b>diferent</b> del que ha escrit busca el pitjor del conte, amb cita literal obligatòria. Aquest és l'únic pas on entren els criteris d'avaluació del perfil: si arribessin al prompt del redactor, l'examen mesuraria el seu propi enunciat.</p>
+    <table class="metrica">
+      <tr><th>Element</th><th>Valor</th></tr>
+      <tr><td>Model de prosa</td><td>${esc(ESTAT_CONTE.config.models.prosa || '—')}</td></tr>
+      <tr><td>Model de lectura</td><td>${esc(tria.model || '—')} ${tria.mateix_model_que_prosa ? '<span class="marca" style="color:var(--vermell);border-color:var(--vermell)">el mateix que escriu</span>' : ''}</td></tr>
+      <tr><td>Crides gastades</td><td class="num">lectura ${fetesLectura}/${LIMITS_DURS_PAS.lectura} · pedaç ${fetesPedac}/${LIMITS_DURS_PAS.pedac}</td></tr>
+    </table>
+    ${avisModel}
+    ${defectes}
+    ${descartats}
+    ${porta}
+    <div class="accions">
+      <button class="primari" id="b-lectura" onclick="accio('b-lectura', lecturaHostil)"
+        ${fetesLectura >= LIMITS_DURS_PAS.lectura || !textActual() ? 'disabled' : ''}>Llegeix-lo en contra <span style="opacity:.7">· 1 crida</span></button>
+      <button id="b-pedac" onclick="accio('b-pedac', aplicarPedacDirigit)"
+        ${!triats || pedacEsgotat ? 'disabled' : ''}>Corregeix els ${triats} defectes triats <span style="opacity:.7">· 1 crida</span></button>
+      <button onclick="avancarFins(8)">Continua a l'exportació</button>
+      ${carregantHTML()}
+    </div>
+    ${fetesLectura >= LIMITS_DURS_PAS.lectura ? '<div class="nota">La lectura hostil ja s\'ha fet. Aquest pas té un sostre de ' + (LIMITS_DURS_PAS.lectura + LIMITS_DURS_PAS.pedac) + ' crides en total.</div>' : ''}
+    ${pedacEsgotat ? '<div class="nota">Les dues rondes de pedaç dirigit ja s\'han gastat. El que quedi s\'ha de corregir a mà a P5.</div>' : ''}
+  `);
+}
+
+// ── P8 ────────────────────────────────────────────────────
+function renderP8() {
+  const m = metadadesConte();
+  const desviacio = m.desviacio_cost;
+
+  return targeta(8, 'Exportació', m.caracters_amb_espais ? `${num(m.caracters_amb_espais)} caràcters` : 'pendent',
+    m.dins_interval ? 'ok' : 'avis', `
+    <label for="camp-titol">Títol <span style="color:var(--text3)">— proposat a partir de la premissa, editable</span></label>
+    <input type="text" id="camp-titol" value="${esc(ESTAT_CONTE.titol)}" onchange="ESTAT_CONTE.titol=this.value;desarEstat();renderitzar()">
+    <label style="display:flex;align-items:center;gap:.5rem;margin-top:.6rem;cursor:pointer">
+      <input type="checkbox" style="width:auto" ${ESTAT_CONTE.titol_al_cos ? 'checked' : ''}
+        onchange="ESTAT_CONTE.titol_al_cos=this.checked;desarEstat();renderitzar()">
+      <span style="font-size:.85rem;color:var(--text2)">Insereix el títol al cos del text exportat</span>
+    </label>
+
+    <table class="metrica">
+      <tr><th>Mesura</th><th>Valor</th></tr>
+      <tr><td>Caràcters amb espais</td><td class="num">${num(m.caracters_amb_espais)}</td></tr>
+      <tr><td>Paraules</td><td class="num">${num(m.paraules)}</td></tr>
+      <tr><td>Escenes</td><td class="num">${m.escenes}</td></tr>
+      <tr><td>Crides reals</td><td class="num">${m.crides_reals} / ${m.sostre_crides}${m.represes_per_truncacio ? ` (${m.represes_per_truncacio} represes)` : ''}</td></tr>
+      <tr><td>Crides estimades a l'inici</td><td class="num">${m.crides_estimades_inicialment == null ? '—' : m.crides_estimades_inicialment}</td></tr>
+      <tr><td><b>Cost real</b></td><td class="num"><b>${usd(m.cost_real_usd)}</b></td></tr>
+      <tr><td>Cost estimat a l'inici</td><td class="num">${m.cost_estimat_inicial_usd == null ? '—' : usd(m.cost_estimat_inicial_usd)}</td></tr>
+      <tr><td>Desviació</td><td class="num" style="color:${desviacio == null ? 'var(--text3)' : Math.abs(desviacio) > (m.cost_estimat_inicial_usd || 1) * 0.35 ? 'var(--groc)' : 'var(--verd)'}">${desviacio == null ? '—' : (desviacio >= 0 ? '+' : '') + usd(desviacio)}</td></tr>
+    </table>
+    ${desviacio != null && m.cost_estimat_inicial_usd > 0 && Math.abs(desviacio) > m.cost_estimat_inicial_usd * 0.35
+      ? `<div class="avis">L'estimació inicial s'ha desviat un ${Math.round(Math.abs(desviacio) / m.cost_estimat_inicial_usd * 100)}% del cost real. Es mostra perquè es vegi: una estimació que falla sistemàticament és una estimació que no serveix.</div>` : ''}
+    ${m.mode_demostracio ? '<div class="nota">Aquest conte s\'ha generat en <b>mode demostració</b>: el text no ve de cap model i les metadades ho diuen.</div>' : ''}
+
+    <div class="accions">
+      <button class="primari" onclick="exportarTXT()" ${m.caracters_amb_espais ? '' : 'disabled'}>Exporta TXT</button>
+      <button onclick="exportarMD()" ${m.caracters_amb_espais ? '' : 'disabled'}>Exporta Markdown amb metadades</button>
+      <button onclick="exportarMetadades()" ${m.caracters_amb_espais ? '' : 'disabled'}>Exporta només les metadades</button>
+      <button onclick="exportarProjecte()">Exporta el projecte (.json)</button>
+    </div>
+    <p class="ajuda">L'exportació TXT i el cos del Markdown porten el conte sol, sense capçalera. Les metadades van en un bloc separat al final del Markdown o en un fitxer a part.</p>
+  `);
+}
+
+// ── Renderitzat general ───────────────────────────────────
+function renderitzar() {
+  const avisos = ESTAT_CONTE.avisos.length
+    ? `<div class="avis"><b>Avisos</b><ul style="margin:.4rem 0 0;padding-left:1.1rem">${ESTAT_CONTE.avisos.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
+       <div class="accions"><button class="petit" onclick="ESTAT_CONTE.avisos=[];desarEstat();renderitzar()">Descarta'ls</button></div></div>`
+    : '';
+
+  document.getElementById('passos').innerHTML =
+    avisos + renderP0() + renderP1() + renderP2() + renderP3() + renderP4() + renderP5() + renderP6() + renderP7() + renderP8();
+  renderitzarProgres();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ACCIONS DE CONFIGURACIÓ
+// ═══════════════════════════════════════════════════════════
+
+function desarClau(proveidor, valor) {
+  ESTAT_CONTE.config.claus[proveidor] = String(valor || '').trim();
+  desarEstat();
+  renderitzar();
+}
+
+function actualitzarEstimacio() {
+  ESTAT_CONTE.estimacio = CLIENT.estimarCostConte(
+    ESTAT_CONTE.dossier,
+    ESTAT_CONTE.escaleta.escenes.length ? ESTAT_CONTE.escaleta : null,
+    ESTAT_CONTE.config.models);
+  desarEstat();
+  renderitzar();
+}
+
+function restaurarModelsPerDefecte() {
+  const perProveidor = CLIENT.modelsPerProveidor();
+  const registre = CLIENT.registreModels();
+  const primer = rol => {
+    for (const prov of Object.keys(perProveidor)) {
+      const id = perProveidor[prov][rol];
+      if (registre[id]) return id;
+    }
+    return Object.keys(registre)[0] || '';
+  };
+  ESTAT_CONTE.config.models = {
+    arquitecte: primer('arquitectura'),
+    prosa: primer('generacio'),
+    lectura: primer('draft')
+  };
+  actualitzarEstimacio();
+}
+
+function alternarDemo(activar) {
+  ESTAT_CONTE.config.demo = !!activar;
+  if (activar) DEMO_CONTE.DemoConte.instalar();
+  else DEMO_CONTE.DemoConte.desinstalar();
+  // El mode demostració no necessita clau real, però el client n'exigeix una:
+  // se'n posa una de fictícia i visible perquè quedi clar que no és cap clau.
+  if (activar) {
+    ['anthropic', 'openai', 'gemini'].forEach(p => {
+      if (!ESTAT_CONTE.config.claus[p]) ESTAT_CONTE.config.claus[p] = 'demo-sense-clau';
+    });
+  } else {
+    ['anthropic', 'openai', 'gemini'].forEach(p => {
+      if (ESTAT_CONTE.config.claus[p] === 'demo-sense-clau') ESTAT_CONTE.config.claus[p] = '';
+    });
+  }
+  desarEstat();
+  renderitzar();
+}
+
+function reiniciarProjecte() {
+  const claus = ESTAT_CONTE.config.claus;
+  const models = ESTAT_CONTE.config.models;
+  const demo = ESTAT_CONTE.config.demo;
+  ESTAT_CONTE = estatBuit();
+  ESTAT_CONTE.config.claus = claus;
+  ESTAT_CONTE.config.models = models;
+  ESTAT_CONTE.config.demo = demo;
+  CLIENT.reiniciarComptador();
+  actualitzarEstimacio();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ARRENCADA
+// ═══════════════════════════════════════════════════════════
+
+function arrencar() {
+  carregarEstat();
+
+  const problemes = CLIENT.validarDefaultsModels();
+  if (problemes.length) ESTAT_CONTE.avisos.push('Models per defecte desalineats amb el registre: ' + problemes.join(' · '));
+
+  const registre = CLIENT.registreModels();
+  if (!ESTAT_CONTE.config.models.arquitecte || !registre[ESTAT_CONTE.config.models.arquitecte]) {
+    restaurarModelsPerDefecte();
+  } else {
+    actualitzarEstimacio();
+  }
+
+  renderitzar();
+  if (ESTAT_CONTE.pas_obert >= 0) {
+    const el = document.getElementById('pas-' + ESTAT_CONTE.pas_obert);
+    if (el) el.scrollIntoView({ block: 'start' });
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', arrencar, { once: true });
+} else {
+  arrencar();
+}
+</script>
 </body>
 </html>
