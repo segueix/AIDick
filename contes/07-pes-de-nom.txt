@@ -1,0 +1,407 @@
+El muntacàrregues de la torre Halberg puja buit fins al pis trenta-dos i, tanmateix, el visor marca setanta-quatre quilos.
+
+Marius Venn ho veu des del replà. La cabina s'atura dos dits per sota del nivell del terra, corregeix, torna a baixar i finalment obre les portes amb un gemec de metall fatigat.
+
+A dins no hi ha ningú. Només una cadira plegable, una bossa de ciment oberta i el nom LEDA VENN encès al panell de càrrega.
+
+Marius toca la pantalla. El nom desapareix. El pes baixa a sis quilos, que és el que deu pesar la cadira. Quan retira el dit, LEDA VENN torna a aparèixer i la xifra puja a setanta-quatre.
+
+—No la toquis massa —diu la senyora Ors, que viu al trenta-dos tot i que la torre consta com a desocupada—. Quan els noms s'enfaden, la cabina es queda entre plantes.
+
+La senyora Ors porta una bata blava i una galleda perquè l'aigua calenta només surt al safareig. Al registre, va abandonar l'edifici divuit mesos enrere. A la realitat, hi té tres geranis i dos néts.
+
+Marius no li pregunta com ho sap. Els inspectors que veuen residents inexistents duren poc a l'Oficina de Càrregues Habitables.
+
+La tauleta li mostra l'ordre del dia:
+
+TORRE HALBERG. OCUPACIÓ CERTIFICADA: 0.
+MASSA CÍVICA DE CÀLCUL: 41.684 KG.
+DESACTIVACIÓ DEL SISTEMA D'ESTABILITZACIÓ: 23.40 H.
+
+La massa cívica equival a sis-centes tretze persones. Al passadís hi ha sabates, una ràdio encesa i llençols estesos.
+
+—A quina hora vindran? —pregunta la senyora Ors.
+
+—A desactivar els amortidors?
+
+—A fer-nos fora.
+
+Marius revisa el segell de l'ordre. Departament de Regeneració Vertical. L'ordre no parla de desallotjament perquè, sobre el paper, no hi ha ningú per desallotjar. Parla d'alliberament de llast registral i demolició programada.
+
+—Abans de mitjanit —diu.
+
+La dona assenteix com si ell li hagués confirmat la previsió de pluja. Després assenyala el visor de la cabina.
+
+—La Leda era parenta teva?
+
+Marius tanca la caixa d'eines massa de pressa. Una clau anglesa li queda atrapada i el pestell no encaixa.
+
+—Era la meva germana.
+
+—Encara puja cada tarda.
+
+—No puja. El seu nom és al sistema.
+
+—És una manera molt tècnica de dir el mateix.
+
+El mòbil vibra. El congelador que perd aigua no es considera una avaria urgent; la multa del cotxe que va vendre fa sis mesos ha passat a recaptació. El bassal continuarà i el cotxe serà seu allà on les multes necessiten propietari.
+
+Connecta el lector de servei al quadre del muntacàrregues. Espera trobar un identificador antic associat a la Leda, una dada residual que algú no va purgar quan ella va morir. En lloc d'això, el sistema li retorna:
+
+VENN, LEDA MARA.
+ESTAT: RESIDENT ESTRUCTURAL ACTIU.
+PRESÈNCIA CORPORAL: NO REQUERIDA.
+FUNCIÓ: COMPENSACIÓ NORD-EST.
+DARRERA VALIDACIÓ: AVUI, 15.02 H.
+
+Són les quinze i deu.
+
+La senyora Ors s'ha quedat al costat, mirant la pantalla per damunt del seu braç.
+
+—Veus? —diu—. Ha pujat fa vuit minuts.
+
+Marius pensa que una base de dades no puja escales ni truca de matinada per una esquerda. Però la cabina es tanca tota sola i baixa amb setanta-quatre quilos d'absència.
+
+· · ·
+
+A l'arxiu tècnic de la torre, una antiga bugaderia del soterrani, hi ha sis-centes tretze carpetes grises penjades en rails que no apareixen als plànols.
+
+Marius hi arriba amb la clau mestra i la sensació desagradable que la clau ja sap què ha vingut a buscar. Els fluorescents s'encenen de tres en tres. Entre les rentadores rovellades hi ha bastidors de paper, tubs pneumàtics segellats i una balança industrial que encara duu l'escut de l'Oficina de Càrregues Habitables.
+
+La primera carpeta diu ORS, HELENA. La dona del trenta-dos hi consta com a evacuada, sense domicili posterior i, alhora, com a massa estructural activa de seixanta-vuit quilos. La segona és d'un home mort el 2041. La tercera correspon a una nena traslladada a una altra ciutat. Totes tenen dues fitxes:
+
+FITXA DE POBLACIÓ: ABSENT.
+FITXA DE CÀRREGA: PRESENT.
+
+Marius n'extreu una a l'atzar i la deixa damunt la balança. L'agulla es mou fins als seixanta-vuit quilos.
+
+No és el paper. La carpeta no pesa ni mig quilo a la mà. Però la plataforma s'enfonsa, els molls cruixen i el terra de la bugaderia respon amb una vibració fonda, com si sota l'edifici algú hagués recol·locat un contrapes.
+
+Marius aparta la carpeta. L'agulla torna a zero.
+
+Ho repeteix tres cops. Després prova amb dues carpetes alhora: cent trenta-sis quilos. Amb una carpeta buida: zero. Amb una fitxa on el nom està ratllat però encara és llegible: seixanta-vuit.
+
+No és la tinta: una fotocòpia no altera la balança. No és la persona: la senyora Ors és trenta-dos pisos més amunt. Ha de ser el vincle administratiu, repetit fins que la torre l'ha acceptat com una propietat física. Els amortidors es van calibrar durant dècades amb l'ocupació registrada; potser la ficció va acabar aprenent a fer força.
+
+És una explicació, no una prova.
+
+Obre el terminal de l'arxiu. La xarxa interna li demana una credencial de nivell cinc. Ell en té quatre, però els terminals antics accepten les claus de manteniment si s'introdueixen com a incidència de balança. El truc el va ensenyar la Leda quan encara treballava de delineant per al Departament de Regeneració Vertical, abans que la traslladessin a Halberg i abans que una escala interior cedís sota els seus peus.
+
+La consulta retorna dos informes del mateix dia.
+
+INFORME D'HABITABILITAT H-0:
+Residents físics verificats: 0.
+Serveis obligatoris: cap.
+Risc humà en demolició: nul.
+
+INFORME D'ESTABILITAT H-613:
+Residents estructurals necessaris: 613.
+Massa mínima per evitar torsió amb vent de ponent: 39.900 kg.
+Reducció admissible abans d'evacuació física: 3%.
+
+Marius llegeix dues vegades l'última línia. Evacuació física. L'informe d'habitabilitat diu que no hi ha cossos; el d'estabilitat preveu què cal fer abans de retirar-los.
+
+A la columna lateral hi ha el calendari de desactivació. A les 23.40, l'Oficina donarà de baixa els sis-cents tretze noms. A les 23.43, els amortidors passaran a mode inert. La previsió meteorològica anuncia ratxes de noranta quilòmetres per hora a partir de mitjanit.
+
+Volen deixar que la torre caigui i anomenar-ho resposta estructural no assistida.
+
+Marius busca la carpeta de la Leda. És al rail nord-est, codi 074. Quan la deixa damunt la balança, marca setanta-quatre quilos, no seixanta-vuit. A dins hi ha un annex manuscrit.
+
+CESSIÓ VOLUNTÀRIA DE NOM A FUNCIÓ PORTANT.
+Durada: indefinida.
+Compensació: prioritat d'habitatge per a un familiar directe.
+Familiar designat: MARIUS VENN.
+
+La signatura s'assembla a la de la seva germana, però la data és quatre dies posterior a la mort. Marius ho sap perquè va identificar el cos un dimarts i el formulari diu dissabte.
+
+La porta de la bugaderia s'obre. Entra Sorel Dane, supervisora de sector, amb l'abric encara posat i un paraigua sec sota el braç.
+
+—Sabia que series tu —diu.
+
+Marius no aparta la carpeta de la balança.
+
+—La torre figura buida.
+
+—Ho està a efectes de servei.
+
+—L'informe d'estabilitat parla d'evacuació física.
+
+—És llenguatge heretat.
+
+—La signatura de la Leda és posterior a la seva mort.
+
+Sorel observa l'agulla a setanta-quatre quilos. No sembla sorpresa.
+
+—Els noms no moren el mateix dia que els cossos.
+
+—Qui va signar?
+
+—El sistema va validar una voluntat anterior.
+
+—No hi ha cap voluntat anterior.
+
+—Hi ha trenta anys de jurisprudència sobre continuïtat nominal.
+
+La frase s'assembla massa a les que ell mateix ha utilitzat per aprovar ascensors amb peces caducades. La burocràcia menteix amb paraules que abans van servir per arreglar coses petites.
+
+Sorel s'acosta a la balança.
+
+—Halberg es manté dreta perquè aquests noms reparteixen la torsió. Durant anys, això va permetre allotjar gent que no podia entrar al registre normal. Ara la parcel·la val més que l'edifici.
+
+—Hi ha famílies a dins.
+
+—No consten.
+
+—Tu les has vistes.
+
+—Veure no és certificar.
+
+El mòbil de Marius torna a vibrar. El tècnic del congelador ofereix una visita entre les vuit del matí i les sis de la tarda d'un dia laborable. La recaptació li dona quaranta-vuit hores per demostrar que ja no era propietari del cotxe.
+
+Sorel mira la pantalla il·luminada.
+
+—Tens prou problemes reals, Marius.
+
+—Aquests també són reals.
+
+—Aquests pesen només perquè nosaltres continuem dient que pesen.
+
+Marius assenyala la balança.
+
+—Llavors deixa de dir-ho ara mateix i posa't a sota de la torre.
+
+Per primera vegada, Sorel no té una resposta preparada. Mira els rails, les sis-centes tretze carpetes, els noms convertits en llast. Després tanca el paraigua amb una corretja que ja era tancada.
+
+—Tens fins a les nou per acabar la inspecció —diu—. Després el teu accés quedarà revocat.
+
+Quan se'n va, Marius fotocopia els dos informes, l'annex de la Leda i la llista completa de residents estructurals. Les còpies no pesen res, però contenen dues dades que no poden coexistir sense confessar el mecanisme.
+
+Torna la carpeta al rail. La torre es mou lleument.
+
+· · ·
+
+La Leda va morir perquè Marius no va contestar el telèfon.
+
+Aquesta és la frase que ell ha anat reduint durant set anys fins a convertir-la en una peça sòlida, sense matisos, fàcil de transportar. No va morir perquè una biga estigués corroïda, ni perquè el contractista hagués substituït cargols certificats per uns altres de més barats, ni perquè el Departament ajornés tres vegades la reparació de l'escala. Va morir perquè va trucar al seu germà i ell, que inspeccionava un elevador d'hotel a l'altra banda de la ciutat, va mirar el nom LEDA a la pantalla i va deixar que sonés.
+
+Al pis vint-i-un hi ha l'antic apartament de la Leda. La porta conserva una etiqueta de paper amb el seu cognom, tot i que a dins viuen la senyora Ors i els seus néts quan el vent és fort, perquè és l'únic habitatge del costat nord que no té esquerdes obertes.
+
+Marius hi entra sol. La família ha baixat a preparar bosses al vestíbul. A la sala hi queda una prestatgeria baixa, una tassa amb una vora trencada i el dibuix d'un pont que la Leda va fer directament sobre la paret quan encara creia que els edificis eren promeses congelades.
+
+Aquell dia, ella li havia deixat tres missatges.
+
+El primer deia que sentia sorolls a l'escala; el segon, que el replà s'havia inclinat. Al tercer només hi havia la seva respiració i un espetec llarg.
+
+Marius els va escoltar quaranta minuts després. Des de llavors manté el telèfon sempre amb so i contesta qualsevol trucada. No ha obtingut cap redempció, només onze anys sense silenci.
+
+S'asseu davant del dibuix. La Leda no havia previst morir ni havia cedit el nom per salvar-lo. Algú va aprofitar una sol·licitud antiga, una signatura escanejada i el parentiu. El document és fals, però ofereix una versió més suportable: ella va triar convertir-se en pes per protegir-lo. La realitat és més ordinària. Va trucar; ell estava cansat i va pensar que ja li tornaria la trucada.
+
+El muntacàrregues s'atura al pis vint-i-un. Les portes s'obren.
+
+LEDA VENN, 74 KG.
+
+La cabina és buida.
+
+Marius no hi entra. Es queda mirant el nom. Una part d'ell voldria parlar, demanar perdó, explicar que aquell hotel va aprovar la inspecció i que dues setmanes després el van ascendir. Seria fàcil tractar el visor com una boca. També seria una manera d'utilitzar-la una vegada més.
+
+—No ets ella —diu.
+
+El nom continua encès.
+
+—Però tampoc ets només una dada.
+
+La cabina espera. El sistema interpreta el seu pes invisible, reajusta els frens i manté obertes les portes. Marius pensa que una persona pot ser absent per als serveis i present per a les càrregues; morta per a una indemnització i activa per sostenir una torre.
+
+El seu telèfon sona. És un número desconegut. Contesta.
+
+—Senyor Venn? Truquem pel vehicle matriculat al seu nom.
+
+Marius mira el visor.
+
+—Ja no és meu.
+
+—Al registre sí.
+
+—Al registre hi ha moltes coses.
+
+La veu li demana que presenti un contracte, una declaració jurada i una prova de lliurament. Marius escolta fins al final, anota els requisits en un tros de paper i no promet res. Quan penja, el nom de la Leda s'apaga. La cabina baixa.
+
+No se sent perdonat. Se sent una mica menys disposat a acceptar el perdó que li ofereix un formulari fals.
+
+A les dinou i trenta, baixa al vestíbul amb les còpies dels informes. Hi ha vuitanta-dues persones assegudes entre maletes, carretons de compra i caixes. No són sis-centes tretze, però tampoc són zero.
+
+—Quantes hores tenim? —pregunta la senyora Ors.
+
+Marius mira el rellotge.
+
+—Quatre, si fem el que esperen. Potser més, si els obliguem a reconèixer què pesa.
+
+· · ·
+
+L'Oficina de Càrregues Habitables ocupa els primers sis pisos d'un aparcament reconvertit, un edifici baix que no necessita noms per mantenir-se dret.
+
+Marius hi entra a les vint-i-una amb la senyora Ors, dos residents de Halberg i una carpeta transparent plena de còpies. La seguretat li ha revocat la credencial, però la porta de personal encara reconeix el seu rostre. Durant uns segons és simultàniament un empleat expulsat i una cara autoritzada. La porta tria la cara.
+
+A la planta tres, el responsable de guàrdia, Pell, porta una armilla damunt una camisa massa estreta. Marius li posa els informes sobre la taula.
+
+—Vull registrar una objecció de coherència estructural.
+
+Pell llegeix els encapçalaments.
+
+—Les objeccions tanquen a les disset.
+
+—La torre també.
+
+—Demà ho pot presentar per via ordinària.
+
+—Demà no hi haurà via.
+
+La senyora Ors deixa la galleda al costat de la cadira. L'ha portada perquè no tenia cap altra bossa prou gran per guardar medicaments i documents.
+
+Pell truca a Sorel. Ella arriba al cap de set minuts, sense paraigua. Mira Marius amb una tristesa irritada, com si ell hagués obligat una màquina útil a fer soroll.
+
+—Això no aturarà la baixa —diu.
+
+—Els informes es contradiuen.
+
+—Pertanyen a àmbits diferents.
+
+—Un diu que no hi ha ningú. L'altre estableix un protocol per evacuar cossos.
+
+—És una plantilla.
+
+—Llavors signeu que és una plantilla errònia.
+
+Pell aparta la mirada. Sorel no.
+
+—No podem modificar un informe actiu el mateix dia d'una desactivació —diu ella.
+
+—Podeu suspendre-la.
+
+—Només si hi ha una reclamació de titularitat sobre la massa cívica.
+
+Marius ja ho havia trobat en el reglament, article vuitanta-dos. Una massa vinculada a un nom no es pot alliberar mentre dues parts en reclamen la custòdia. El problema és que els residents reals no tenen cap dret sobre els noms estructurals i els morts no poden reclamar.
+
+—La Leda em va designar familiar beneficiari —diu.
+
+Sorel entén abans que Pell.
+
+—No ho facis.
+
+Marius treu l'annex fals.
+
+—Si el document és vàlid per mantenir el seu nom a la torre, també és vàlid per transmetre'm la custòdia.
+
+—La custòdia d'un nom portant no és una herència personal.
+
+—L'article trenta-u diu que tota compensació familiar crea interès material directe.
+
+Pell consulta el reglament. Té les mans humides. El sistema li ofereix un formulari nou.
+
+RECLAMACIÓ DE TITULARITAT SOBRE ACTIU NOMINAL.
+
+—Necessita identificar l'actiu —diu.
+
+—Tots els noms de Halberg.
+
+—No pot reclamar sis-cents tretze noms.
+
+—Reclamo la cartera estructural com a unitat. L'Oficina la tracta com una unitat als informes.
+
+Sorel s'inclina cap a ell.
+
+—Si t'assignen la cartera, també t'assignen la responsabilitat. Deutes de servei, risc civil, manteniment diferit.
+
+—Quant?
+
+—No ho sabem.
+
+—Llavors és compatible amb el meu sou.
+
+La senyora Ors fa un soroll que podria ser una rialla. Pell no sap si riure i decideix no fer-ho.
+
+Sorel baixa la veu.
+
+—El teu nom deixarà de ser una identitat laboral. Un custodi estructural és un actiu vinculat. No podràs cobrar nòmina, renovar el lloguer ni sortir del districte sense autorització.
+
+Marius pensa en el congelador que perd aigua, en la multa del cotxe, en la petita quantitat de diners que té al banc. Són problemes modestos, precisament per això reals. Signar no els resoldrà. Els farà més difícils.
+
+—Quant dura la suspensió? —pregunta.
+
+—Fins que un tribunal decideixi qui té dret a alliberar la massa.
+
+—Setmanes?
+
+—Mesos.
+
+La torre necessita hores, no una victòria.
+
+Marius omple el formulari. A l'apartat MOTIU, escriu: DIVERGÈNCIA ENTRE ABSÈNCIA DE POBLACIÓ I PRESÈNCIA DE CÀRREGA HUMANA. A l'apartat COST ACCEPTAT, marca responsabilitat integral. Signa amb el dit.
+
+El sistema processa la reclamació.
+
+A vint quilòmetres, la torre Halberg deu gemegar. A la pantalla de Pell, la desactivació de les 23.40 canvia d'estat: SUSPESA PER CONFLICTE DE TITULARITAT.
+
+Al mateix moment, el terminal laboral de Marius s'apaga. El seu saldo bancari queda bloquejat com a garantia. La targeta del pis passa a revisió. El mòbil rep tres missatges seguits: baixa d'empleat, immobilització de fons, requeriment de domicili.
+
+La multa del cotxe continua oberta. El servei del congelador cancel·la la visita perquè el titular del contracte ja no és una persona facturable.
+
+Pell mira la pantalla.
+
+—Ja està.
+
+—No —diu Marius—. Ara heu de notificar els residents.
+
+—Quins residents?
+
+Marius assenyala el primer informe i després el segon.
+
+—Decidiu-ho vosaltres. Però feu-ho per escrit.
+
+Sorel s'asseu, cansada.
+
+—Has comprat temps —diu.
+
+—És el que venem aquí, oi? Temps perquè una mentida sembli una estructura.
+
+Recull les còpies, deixa els originals i torna cap a Halberg amb la senyora Ors.
+
+· · ·
+
+A les tres de la matinada, el vent colpeja la torre pel costat de ponent.
+
+Els amortidors continuen actius. Cada ràfega fa que els noms dels sis-cents tretze residents estructurals apareguin i desapareguin als visors dels ascensors. Els habitants reals baixen per grups de deu amb bosses, gàbies i mantes. No hi ha autobusos perquè no existeix cap ordre d'evacuació; una cooperativa de taxis envia sis vehicles.
+
+Marius dirigeix la baixada. Ja no té credencial, sou ni accés al pis; té una cartera de noms que pesa quaranta-una tones.
+
+La torre es balanceja, però no cau.
+
+LEDA VENN apareix cada vegada que la cabina passa pel vint-i-un. Marius no hi parla: comprova frens i ajuda una dona amb una bombona d'oxigen. No convertir el nom en la seva germana no el fa menys dolorós; impedeix que el dolor faci de prova.
+
+A les cinc, queden dotze persones. La senyora Ors es nega a marxar fins que els geranis siguin a baix. Marius puja amb ella. Al pis trenta-dos, el passadís fa olor de sopa freda i guix humit. La dona posa els testos dins la galleda, damunt dels medicaments.
+
+—I tu, on aniràs? —pregunta.
+
+Marius mira el mòbil. La targeta de casa ha estat desactivada. El compte continua bloquejat. Hi ha un nou avís de la recaptació: com que la seva identitat ha canviat de categoria, la multa s'ha transferit a l'actiu estructural MARIUS VENN. Fins i tot convertit en llast, continua sent propietari d'un cotxe que no té.
+
+—Encara no ho sé.
+
+—A Halberg hi ha pisos buits.
+
+—Segons quin informe.
+
+Baixen amb els geranis. La cabina marca el pes de tots dos, el de les plantes i, durant tres pisos, setanta-quatre quilos addicionals. Després el nom de la Leda desapareix.
+
+Quan surt el sol, la torre queda físicament buida. Als registres continua ocupada per sis-centes tretze persones i un custodi. Els informes ja circulen i l'Oficina anuncia una revisió sense data.
+
+Marius s'asseu a la vorera amb la caixa d'eines. No pot endur-se-la perquè és propietat de l'Oficina. Tampoc no la vol deixar. Finalment, la posa al costat de la porta, on algú haurà de reconèixer que existeix per retirar-la.
+
+El vent afluixa. Halberg queda dreta, inclinada uns mil·límetres cap al nord-est.
+
+A la planta baixa, el muntacàrregues obre les portes buit. El visor mostra MARIUS VENN, 82 KG. El seu propi nom ja ha entrat a la distribució de càrrega.
+
+No ho interpreta com una condemna. Ho havia acceptat, i aquell pes manté l'edifici estable prou temps perquè ningú hi mori.
+
+S'aixeca i camina cap al centre d'acollida improvisat. No té targeta per entrar al seu pis, ni diners disponibles, ni una resposta per al congelador, ni cap document que demostri que el cotxe ja no és seu. Darrere seu, la torre conserva els noms dels absents; davant, vuitanta-dues persones necessiten un lloc on ser presents.
+
+Marius continua caminant amb el cos lliure i el nom atrapat, sabent que les dues coses ja no tornaran a coincidir del tot.
