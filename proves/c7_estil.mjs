@@ -232,6 +232,44 @@ comprova('el pedaç dirigit avisa que cada canvi es llegeix sobre el conte sence
 comprova('la costura rebutja els diagnòstics que demanen regenerar, no apedaçar',
   prompts.costura.usuari.includes('el conte s\'ha de tornar a generar, no apedaçar'));
 
+// ── Divergència: que dues generacions no caiguin al mateix lloc ─────────────
+const coordenades = await pagina.evaluate(() => ESTAT_CONTE.divergencia);
+comprova('la generació fixa les sis coordenades abans de demanar res',
+  !!coordenades && Object.keys(coordenades).length === 6);
+comprova('les coordenades arriben senceres al prompt de llavors, amb la seva instrucció',
+  await pagina.evaluate(() =>
+    CONTE_CORE.EIXOS_DIVERGENCIA.every(e =>
+      promptLlavors(CONTE_CORE.triarMotius([], 3)).includes(ESTAT_CONTE.divergencia[e.id]) &&
+      promptLlavors(CONTE_CORE.triarMotius([], 3)).includes(e.instruccio))));
+comprova('les coordenades arriben també a l\'escaleta i a cada escena',
+  await pagina.evaluate(() =>
+    CONTE_CORE.EIXOS_DIVERGENCIA.every(e =>
+      promptEscaleta().includes(ESTAT_CONTE.divergencia[e.id]) &&
+      promptEscena(0).includes(ESTAT_CONTE.divergencia[e.id]))));
+comprova('a la redacció es demana complir-les, no declarar-les',
+  await pagina.evaluate(() => promptEscena(0).includes('no es declaren')));
+comprova('els noms de protagonista ja utilitzats arriben com a prohibició',
+  await pagina.evaluate(() => {
+    const noms = nomsUsats();
+    const p = promptLlavors(CONTE_CORE.triarMotius([], 3));
+    return noms.length > 0 && noms.every(n => p.includes(n)) && p.includes('cap dels quals pot tornar a sortir');
+  }));
+comprova('el nom del protagonista triat queda registrat per prohibir-lo després',
+  await pagina.evaluate(() => nomsUsats().includes(ESTAT_CONTE.dossier.protagonista.nom)));
+
+// La prova de debò: dues generacions seguides amb el mateix model.
+const dosContes = await pagina.evaluate(async () => {
+  const primera = Object.assign({}, ESTAT_CONTE.divergencia);
+  await accio('b-llavors', generarLlavors);
+  const segona = Object.assign({}, ESTAT_CONTE.divergencia);
+  return { primera, segona };
+});
+comprova('la segona generació no comparteix cap coordenada amb la primera',
+  Object.keys(dosContes.primera).every(k => dosContes.primera[k] !== dosContes.segona[k]),
+  JSON.stringify(dosContes));
+comprova('l\'històric de coordenades es desa entre generacions',
+  await pagina.evaluate(() => divergenciaUsada().length === 12));
+
 // ── L'entrada de les escenes no creix amb la longitud del conte ─────────────
 const midaPrompts = await pagina.evaluate(() => ESTAT_CONTE.escaleta.escenes.map((_, i) => promptEscena(i).length));
 const creixement = midaPrompts[midaPrompts.length - 1] - midaPrompts[0];

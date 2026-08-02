@@ -1467,6 +1467,136 @@ function validarCoherenciaGlobal(text, context) {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  11 ter. PEDAÇ O REGENERACIÓ
+//
+//  Un pedaç canvia una frase. Hi ha diagnòstics que no es poden arreglar
+//  canviant frases: si la premissa és un recull de coses ja vistes, si el
+//  registre de la prosa és pla de la primera línia a l'última o si el
+//  protagonista no té res fora de la trama, cap llista de {cerca, substitueix}
+//  no ho tocarà. Apedaçar-ho només fa que el defecte quedi amagat sota una
+//  redacció millor.
+//
+//  Aquesta classificació decideix, per a cada diagnòstic, si es corregeix o si
+//  es torna a generar amb el prompt corregit, i des de quin pas. La llista és
+//  editable i les paraules clau són tancades, com les del lint.
+// ═══════════════════════════════════════════════════════════
+
+const CATEGORIES_DIAGNOSTIC = [
+  {
+    id: 'premissa',
+    nom: 'Premissa',
+    accio: 'regenerar',
+    pas: 1,
+    que_es: "L'anomalia de partida: que sigui coneguda, recombinada d'altres contes o previsible.",
+    com_resoldre: 'Torna a P1 i genera una altra llavor amb una anomalia nova',
+    claus: ['premissa', 'anomalia', 'ja vist', 'ja llegit', 'conegut', 'clixé', 'clixe', 'tòpic', 'topic',
+            'recombina', 'previsible', 'original', 'derivatiu', 'pastitx', 'cànon', 'canon']
+  },
+  {
+    id: 'prosa',
+    nom: 'Registre de la prosa',
+    accio: 'regenerar',
+    pas: 4,
+    que_es: 'La manera d\'escriure de tot el conte: monotonia de frase, absència de digressió, paràgrafs tots iguals.',
+    com_resoldre: 'Torna a P4 i reescriu les escenes amb el prompt corregit',
+    claus: ['registre', 'monoton', 'monòton', 'prosa', 'ritme', 'sintaxi', 'totes les frases',
+            'longitud de les frases', 'estil indirecte', 'digressió', 'digressio', 'paràgrafs', 'paragrafs', 'pla']
+  },
+  {
+    id: 'personatge',
+    nom: 'Profunditat de personatge',
+    accio: 'regenerar',
+    pas: 2,
+    que_es: 'El protagonista no té vida fora de la trama, o la seva ferida no ocupa espai.',
+    com_resoldre: 'Torna a P2, refes el dossier i torna a escriure les escenes',
+    claus: ['personatge', 'protagonista', 'profunditat', 'instrument de la trama', 'no té vida',
+            'ferida', 'psicolog', 'motivació', 'motivacio', 'veu del personatge', 'interior']
+  },
+  {
+    id: 'llengua',
+    nom: 'Llengua',
+    accio: 'pedac',
+    pas: null,
+    que_es: 'Verbs inventats, castellanismes, tractaments inconsistents, designacions variables.',
+    com_resoldre: 'Corregeix-ho amb un pedaç dirigit',
+    claus: ['castellanisme', 'anglicisme', 'verb', 'ortograf', 'tractament', 'concordan',
+            'lèxic', 'lexic', 'paraula inventada', 'no existeix', 'vostè', 'voste', 'designa']
+  },
+  {
+    id: 'continuitat',
+    nom: 'Continuïtat',
+    accio: 'pedac',
+    pas: null,
+    que_es: 'Contradiccions, referències trencades, repeticions, coses que canvien de nom pel camí.',
+    com_resoldre: 'Corregeix-ho amb un pedaç dirigit',
+    claus: ['contradic', 'continuïtat', 'continuitat', 'repetei', 'repetid', 'duplicad',
+            'referència', 'referencia', 'incoherèn', 'incoheren', 'abans deia', 'no quadra']
+  },
+  {
+    id: 'mecanica',
+    nom: 'Mecànica',
+    accio: 'pedac',
+    pas: null,
+    que_es: 'Format de diàleg, longitud, transicions, marques d\'escena.',
+    com_resoldre: 'Corregeix-ho amb un pedaç dirigit',
+    claus: ['diàleg', 'dialeg', 'guió', 'guio', 'format', 'longitud', 'caràcters', 'caracters',
+            'transició', 'transicio', 'talla', 'marca d\'escena']
+  }
+];
+
+// Retorna { categoria, nom, accio, pas, motiu, com_resoldre, per_paraules_clau }.
+//
+// 'entrada' pot ser un text o un objecte { categoria, per_que }. Si el lector
+// hostil ha classificat el defecte ell mateix i la categoria existeix, mana la
+// seva; si no, es classifica per paraules clau, i si no en toca cap es diu que
+// no s'ha pogut classificar en lloc d'inventar-se una categoria. El defecte
+// sense classificar es tracta com a local: bloquejar l'única correcció barata
+// per un dubte de classificació seria pitjor que deixar-la passar.
+function classificarDiagnostic(entrada) {
+  const e = (entrada && typeof entrada === 'object') ? entrada : { per_que: String(entrada || '') };
+  const declarada = String(e.categoria || '').trim().toLowerCase();
+  const text = String(e.per_que || e.text || '').toLowerCase();
+
+  const decidir = (cat, perParaules) => ({
+    categoria: cat.id,
+    nom: cat.nom,
+    accio: cat.accio,
+    pas: cat.pas,
+    motiu: cat.que_es,
+    com_resoldre: cat.com_resoldre,
+    per_paraules_clau: !!perParaules
+  });
+
+  const declaradaValida = CATEGORIES_DIAGNOSTIC.find(c => c.id === declarada);
+  if (declaradaValida) return decidir(declaradaValida, false);
+
+  let millor = null;
+  let maxEncerts = 0;
+  CATEGORIES_DIAGNOSTIC.forEach(c => {
+    const encerts = c.claus.filter(k => text.includes(k)).length;
+    if (encerts > maxEncerts) { maxEncerts = encerts; millor = c; }
+  });
+  if (millor) return decidir(millor, true);
+
+  return {
+    categoria: 'sense_classificar',
+    nom: 'Sense classificar',
+    accio: 'pedac',
+    pas: null,
+    motiu: 'No s\'ha pogut classificar el diagnòstic amb les paraules clau conegudes.',
+    com_resoldre: 'Tracta\'l com a local, o mira si de fet parla de la premissa, de la prosa o del personatge',
+    per_paraules_clau: true
+  };
+}
+
+// Els diagnòstics d'un lot que demanen regenerar en lloc d'apedaçar.
+function diagnosticsQueDemanenRegenerar(defectes) {
+  return (Array.isArray(defectes) ? defectes : [])
+    .map(d => Object.assign({}, d, { decisio: classificarDiagnostic(d) }))
+    .filter(d => d.decisio.accio === 'regenerar');
+}
+
+// ═══════════════════════════════════════════════════════════
 //  12. MOTIUS VETATS
 //
 //  TOPICS_PROHIBITS prohibeix NOMS: escriure «Ubik» o «Precrim». Això no impedeix
@@ -1779,6 +1909,145 @@ const TOPICS_PROHIBITS = [
   'Sidney\'s', 'WPO', 'Ganímedes de Dick', 'Mars colònia Dick'
 ];
 
+// ═══════════════════════════════════════════════════════════
+//  12 quater. DIVERGÈNCIA ENTRE GENERACIONS
+//
+//  El banc de motius reparteix DE QUÈ va el conte. No reparteix res més, i un
+//  mateix model amb un mateix prompt torna sempre al mateix lloc: un funcionari
+//  d'oficina de rang baix, tercera persona en passat, un despatx amb
+//  fluorescents, un expedient. El motiu canvia i el conte s'assembla igualment.
+//
+//  Aquests eixos fixen per CODI les coordenades de cada generació —feina,
+//  institució, escenari, veu, restricció formal i temperatura— i les roten
+//  perquè dues generacions seguides no en comparteixin cap.
+//
+//  Les llistes tenen longituds diferents a propòsit: si totes en tinguessin
+//  deu, els sis eixos avançarien alhora i al cap de deu contes tornaria a
+//  sortir la mateixa combinació. Amb 12, 10, 9, 8, 6 i 5 opcions, la
+//  combinació no es repeteix en centenars de generacions.
+// ═══════════════════════════════════════════════════════════
+
+const EIXOS_DIVERGENCIA = [
+  {
+    id: 'ofici',
+    nom: 'Feina del protagonista',
+    instruccio: 'El protagonista fa aquesta feina i hi és de rang baix. No el converteixis en funcionari d\'oficina si no ho és.',
+    opcions: [
+      'repartidor de paqueteria amb ruta fixa',
+      'inspectora de comptadors d\'aigua',
+      'telefonista de servei d\'urgències nocturnes',
+      'conductor de grua municipal',
+      'auxiliar de laboratori d\'anàlisis clíniques',
+      'reposadora de màquines expenedores',
+      'vigilant de nit d\'un aparcament subterrani',
+      'perruquera a domicili per a gent gran',
+      'peó de manteniment de vies de tren',
+      'caixera d\'un supermercat de barri',
+      'taxador de danys de vehicles a domicili',
+      'operari d\'una planta de reciclatge de paper'
+    ]
+  },
+  {
+    id: 'institucio',
+    nom: 'Qui menteix',
+    instruccio: 'La mentida verificable del sistema surt d\'aquesta institució i no de cap altra.',
+    opcions: [
+      'una mutualitat d\'enterraments',
+      'la junta d\'aigües comarcal',
+      'una cooperativa de consum',
+      'l\'oficina de patents i marques',
+      'una empresa de transport escolar',
+      'el servei municipal de recollida d\'animals',
+      'una companyia de telefonia de baix cost',
+      'la inspecció de treball',
+      'un fons de pensions d\'empresa',
+      'una escola de formació professional privada'
+    ]
+  },
+  {
+    id: 'escenari',
+    nom: 'On passa',
+    instruccio: 'El pes del conte passa en aquest lloc. Cap despatx amb fluorescents si no és aquest.',
+    opcions: [
+      'un aparcament subterrani de tres plantes',
+      'una carretera comarcal i les seves àrees de servei',
+      'un bloc de pisos amb l\'ascensor espatllat',
+      'un mercat municipal a mig buidar',
+      'una nau industrial reconvertida en magatzem',
+      'un tanatori de poble',
+      'una piscina coberta fora de temporada',
+      'un tren de rodalies i les seves estacions',
+      'una urbanització de segona residència a l\'hivern'
+    ]
+  },
+  {
+    id: 'veu',
+    nom: 'Veu narrativa',
+    instruccio: 'Escriu tot el conte en aquesta veu, de la primera línia a l\'última.',
+    opcions: [
+      'tercera persona limitada en passat',
+      'primera persona en passat',
+      'tercera persona limitada en present',
+      'primera persona en present',
+      'tercera persona amb estil indirecte lliure predominant',
+      'primera persona que parla d\'ella mateixa en tercera quan explica la feina'
+    ]
+  },
+  {
+    id: 'forma',
+    nom: 'Restricció formal',
+    instruccio: 'Aquesta restricció s\'aplica a tot el conte. No és decorativa: si no es compleix, el conte no val.',
+    opcions: [
+      'cap escena passa al lloc de treball del protagonista',
+      'el conte inclou un document oficial reproduït sencer',
+      'tot passa en menys de vint-i-quatre hores',
+      'hi ha un personatge que apareix a totes les escenes i no diu mai res',
+      'el protagonista no està mai sol: sempre hi ha algú altre a l\'habitació',
+      'una escena sencera és una conversa telefònica',
+      'el conte comença i acaba amb el mateix objecte a la mà',
+      'cap escena té més de tres personatges'
+    ]
+  },
+  {
+    id: 'temperatura',
+    nom: 'Temperatura',
+    instruccio: 'El color emocional dominant. No l\'anunciïs: es nota en el que el narrador tria mirar.',
+    opcions: [
+      'còmica per acumulació de tràmits absurds',
+      'freda i clínica',
+      'irritada, de qui ja n\'està tip',
+      'melancòlica sense autocompassió',
+      'd\'urgència continguda'
+    ]
+  }
+];
+
+// Tria una coordenada per eix evitant les que ja s'han fet servir. Determinista:
+// amb el mateix històric, el mateix resultat. Quan un eix s'esgota, recicla la
+// MENYS RECENT, igual que triarMotius.
+//
+// 'usats' és una llista plana de claus "eix:opcio", de la més antiga a la més
+// nova, que és com la desa la interfície.
+function triarDivergencia(usats) {
+  const historic = (Array.isArray(usats) ? usats : []).map(x => String(x));
+  const tria = {};
+  EIXOS_DIVERGENCIA.forEach(eix => {
+    const clau = o => `${eix.id}:${o}`;
+    const noUsades = eix.opcions.filter(o => historic.indexOf(clau(o)) < 0);
+    if (noUsades.length) { tria[eix.id] = noUsades[0]; return; }
+    const perAntiguitat = eix.opcions.slice()
+      .sort((a, b) => historic.indexOf(clau(a)) - historic.indexOf(clau(b)));
+    tria[eix.id] = perAntiguitat[0];
+  });
+  return tria;
+}
+
+// Les claus "eix:opcio" d'una tria, que són el que es desa a l'històric.
+function clausDivergencia(tria) {
+  const t = tria || {};
+  return EIXOS_DIVERGENCIA.filter(e => t[e.id]).map(e => `${e.id}:${t[e.id]}`);
+}
+
 // Els motius que no estan vetats per cap mecanisme de MOTIUS_VETATS. És l'única
 // llista que arriba mai a un prompt.
 function motiusDisponibles() {
@@ -1828,7 +2097,9 @@ const CONTE_CORE_API = {
   lintCatalaParcial, densitatAdverbisMent, frasesRepetides, formatDialegInconsistent,
   auditoriaDeterministaConte, aplicarPedacos,
   validarCoherenciaGlobal, CRITERIS_COHERENCIA_GLOBAL,
+  CATEGORIES_DIAGNOSTIC, classificarDiagnostic, diagnosticsQueDemanenRegenerar,
   DISTANCIA_PARAGRAFS_DUPLICAT, LLINDAR_SIMILITUD_FRASE, MAX_OCURRENCIES_REFERENCIA,
+  EIXOS_DIVERGENCIA, triarDivergencia, clausDivergencia,
   BANC_MOTIUS_PKD, TOPICS_PROHIBITS, triarMotius, motiusDisponibles,
   MOTIUS_VETATS, CRITERIS_LLENGUA_REVISIO,
   CASTELLANISMES, ANGLICISMES, ADVERBIS_MENT,

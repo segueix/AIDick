@@ -234,7 +234,13 @@ const CLIENT = globalThis.LLM_CLIENT;
 
 const CLAU_PROJECTE = 'aidick_conte_projecte';
 const CLAU_MOTIUS = 'aidick_motius_usats';
+const CLAU_DIVERGENCIA = 'aidick_divergencia_usada';
+const CLAU_NOMS = 'aidick_noms_protagonistes';
 const CLAU_CLAUS_API = 'aidick_claus_api';
+
+// Quants noms de protagonista es recorden per prohibir-los. Prou per cobrir una
+// tanda llarga de generacions sense que la llista infli el prompt.
+const MAX_NOMS_RECORDATS = 15;
 const VERSIO_ESQUEMA = 1;
 
 // Sostres per pas, independents del sostre global de 24 crides. Existeixen
@@ -270,6 +276,7 @@ function estatBuit() {
     titol: '',
     titol_al_cos: false,
     motius_conte: [],
+    divergencia: null,
     llavors: [],
     llavor_triada: null,
     dossier: NUCLI.crearDossierBuit(),
@@ -366,6 +373,32 @@ function registrarMotiusUsats(ids) {
   const previs = motiusUsats();
   const nous = previs.concat(ids.filter(id => previs.indexOf(id) < 0));
   try { localStorage.setItem(CLAU_MOTIUS, JSON.stringify(nous)); } catch (e) { /* quota plena */ }
+}
+
+// ── Divergència entre generacions ─────────────────────────
+// El banc de motius reparteix de què va el conte. Això reparteix tota la
+// resta: feina, institució, escenari, veu, restricció formal i temperatura.
+// L'històric viu a localStorage al costat del dels motius i es llegeix igual.
+function divergenciaUsada() {
+  try { return JSON.parse(localStorage.getItem(CLAU_DIVERGENCIA) || '[]'); } catch (e) { return []; }
+}
+
+function registrarDivergencia(tria) {
+  const previs = divergenciaUsada();
+  const nous = previs.concat(NUCLI.clausDivergencia(tria).filter(c => previs.indexOf(c) < 0));
+  try { localStorage.setItem(CLAU_DIVERGENCIA, JSON.stringify(nous)); } catch (e) { /* quota plena */ }
+}
+
+function nomsUsats() {
+  try { return JSON.parse(localStorage.getItem(CLAU_NOMS) || '[]'); } catch (e) { return []; }
+}
+
+function registrarNomProtagonista(nom) {
+  const net = String(nom || '').trim();
+  if (!net) return;
+  const previs = nomsUsats().filter(n => n.toLowerCase() !== net.toLowerCase());
+  const nous = previs.concat([net]).slice(-MAX_NOMS_RECORDATS);
+  try { localStorage.setItem(CLAU_NOMS, JSON.stringify(nous)); } catch (e) { /* quota plena */ }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -487,6 +520,30 @@ function blocMotiusVetats(opcions) {
     'Un conte que en recombina dos o tres no és un conte nou: és un recull de grans èxits.';
 }
 
+// Les coordenades d'aquesta generació, fixades per codi abans de demanar res.
+// Un model amb un mateix prompt torna sempre al mateix lloc: aquest bloc és el
+// que fa que dues generacions seguides no comparteixin ni feina, ni institució,
+// ni escenari, ni veu, ni restricció formal, ni temperatura.
+function blocDivergencia(tria, opcions) {
+  const t = tria || {};
+  const o = opcions || {};
+  const linies = NUCLI.EIXOS_DIVERGENCIA
+    .filter(e => t[e.id])
+    .map(e => `· ${e.nom}: ${t[e.id]}\n  ${e.instruccio}`);
+  if (!linies.length) return '';
+
+  const jaFets = (o.noms || []).filter(Boolean);
+  const tancament = o.mode === 'redaccio'
+    ? 'Aquestes coordenades ja han decidit la llavor i el dossier. Aquí s\'han d\'ESCRIURE: la veu i la restricció formal es compleixen frase a frase, no es declaren.'
+    : 'No són suggeriments ni ambientació: són les condicions de partida. Una llavor que no les compleixi no serveix.';
+
+  return 'COORDENADES OBLIGATÒRIES D\'AQUESTA GENERACIÓ:\n' +
+    linies.join('\n') + '\n\n' + tancament +
+    (jaFets.length
+      ? `\n\nNOMS DE PROTAGONISTA JA UTILITZATS EN GENERACIONS ANTERIORS, cap dels quals pot tornar a sortir (ni el nom ni el cognom):\n${jaFets.join(' · ')}`
+      : '');
+}
+
 // Els criteris de llengua que no es poden comprovar per codi. Van al corrector,
 // no al redactor: són control de qualitat, no estil.
 function blocCriterisLlengua() {
@@ -549,6 +606,7 @@ async function cridarJSON(pas, sistema, usuari, maxTokens, claus) {
 function promptLlavors(motius) {
   return [
     ESTAT_CONTE.tema ? `Tema o punt de partida que ha donat l'usuari: ${ESTAT_CONTE.tema}` : 'L\'usuari no ha donat cap tema: tria tu el terreny.',
+    blocDivergencia(ESTAT_CONTE.divergencia, { noms: nomsUsats() }),
     blocMotius(motius),
     blocTopicsProhibits(),
     blocMotiusVetats(),
@@ -577,6 +635,11 @@ function promptLlavors(motius) {
 async function generarLlavors() {
   const motius = NUCLI.triarMotius(motiusUsats(), 3);
   ESTAT_CONTE.motius_conte = motius.map(m => m.id);
+  // Les coordenades es fixen ABANS de la crida i es desen encara que la crida
+  // falli: si es tornessin a triar a cada intent, dos intents seguits podrien
+  // sortir amb les mateixes.
+  ESTAT_CONTE.divergencia = NUCLI.triarDivergencia(divergenciaUsada());
+  registrarDivergencia(ESTAT_CONTE.divergencia);
 
   const r = await cridarJSON('llavor',
     blocSistemaGeneracio({ forma: true }),
@@ -629,6 +692,10 @@ function triarLlavor(i) {
     const nom = prota.split(/[,;.]/)[0].trim();
     if (nom && nom.split(/\s+/).length <= 4) d.protagonista.nom = nom;
   }
+
+  // El nom triat queda registrat perquè no torni a sortir en cap generació
+  // futura: el repertori de noms d'un model és curt i es repeteix de seguida.
+  registrarNomProtagonista(d.protagonista.nom);
 
   ESTAT_CONTE.titol = ESTAT_CONTE.titol || proposarTitol(l);
   avancarFins(2);
@@ -711,6 +778,10 @@ async function generarDossier() {
   ESTAT_CONTE.dossier = NUCLI.fusionarDossierSenseBuidar(ESTAT_CONTE.dossier, r.dades);
   ESTAT_CONTE.dossier.motius_triats = ESTAT_CONTE.motius_conte.slice();
   ESTAT_CONTE.dossier_generat = true;
+  // El nom definitiu és el del dossier, que pot no ser el que es deduïa de la
+  // llavor. registrarNomProtagonista desduplica, així que registrar-lo dos cops
+  // no allarga la llista.
+  registrarNomProtagonista(ESTAT_CONTE.dossier.protagonista.nom);
 }
 
 // Intent LOCAL i determinista d'omplir els forats. No gasta cap token i és el
@@ -857,6 +928,7 @@ async function completarDossierAmbModel(faltants) {
 function promptEscaleta() {
   return [
     'DOSSIER DEL CONTE:\n' + JSON.stringify(ESTAT_CONTE.dossier, null, 2),
+    blocDivergencia(ESTAT_CONTE.divergencia, { mode: 'redaccio' }),
     `Escriu l'escaleta del conte. Entre ${NUCLI.CONTE_MIN_ESCENES} i ${NUCLI.CONTE_MAX_ESCENES} escenes: tria tu el nombre exacte i justifica'l.`,
     `Cada escena porta aquests camps exactes:
 - pov: qui mira
@@ -989,6 +1061,7 @@ function promptEscena(i) {
   const parts = [
     `ESCENA ${i + 1} DE ${total}.`,
     'DOSSIER DEL CONTE:\n' + JSON.stringify(ESTAT_CONTE.dossier, null, 2),
+    blocDivergencia(ESTAT_CONTE.divergencia, { mode: 'redaccio' }),
     'CONTRACTE D\'AQUESTA ESCENA:\n' + JSON.stringify(c, null, 2)
   ];
 
@@ -1233,14 +1306,18 @@ function promptLectura(text) {
     `Troba els CINC defectes més greus d'aquest conte. Per a cadascun:
 - "cita": un fragment LITERAL del text, copiat caràcter a caràcter, que mostri el defecte.
 - "per_que": una sola frase que digui per què és un defecte.
+- "categoria": exactament una d'aquestes sis, i cap altra paraula:
+${NUCLI.CATEGORIES_DIAGNOSTIC.map(c => `  · ${c.id} — ${c.que_es}`).join('\n')}
 Un defecte sense cita literal no serveix: no el proposis.`,
+    `SOBRE LA CATEGORIA. Els tres primers (premissa, prosa, personatge) són defectes que no es poden corregir canviant frases: obliguen a tornar a generar. Els tres últims (llengua, continuïtat, mecànica) sí que es corregeixen amb un pedaç local.
+No forcis cap defecte cap a una categoria local perquè sembli més fàcil d'arreglar: si el problema és la premissa, digues que és la premissa.`,
     `Respon també les quatre preguntes de la porta, amb SI o NO i amb una cita literal del text que sostingui la resposta:
 - esquerda: hi ha una esquerda de realitat que NO es recompon?
 - mentida: el sistema menteix d'una manera comprovable dins del text?
 - paranoia: la paranoia del protagonista té base verificable dins del text?
 - empatia: hi ha una decisió on l'empatia li costa alguna cosa concreta?`,
     'PROHIBIT: posar nota, resumir el conte, elogiar res.',
-    'Format: JSON estricte { "defectes": [ {"cita","per_que"} ], "porta_pkd": { "esquerda": {"resposta","cita"}, "mentida": {...}, "paranoia": {...}, "empatia": {...} } }. Res més.'
+    'Format: JSON estricte { "defectes": [ {"cita","per_que","categoria"} ], "porta_pkd": { "esquerda": {"resposta","cita"}, "mentida": {...}, "paranoia": {...}, "empatia": {...} } }. Res més.'
   ].join('\n\n');
 }
 
@@ -1258,7 +1335,11 @@ async function lecturaHostil() {
     const cita = String((d && d.cita) || '').trim();
     if (!cita) { descartats.push({ per_que: (d && d.per_que) || '(sense explicació)', motiu: 'ha arribat sense cita literal' }); return; }
     if (text.indexOf(cita) < 0) { descartats.push({ per_que: (d && d.per_que) || '', cita, motiu: 'la cita no apareix literalment al text' }); return; }
-    acceptats.push({ cita, per_que: String((d && d.per_que) || '').trim(), triat: false });
+    // La decisió pedaç/regeneració es pren aquí, un cop, i viatja amb el
+    // defecte: la interfície no l'ha de tornar a deduir a cada renderitzat.
+    const per_que = String((d && d.per_que) || '').trim();
+    const decisio = NUCLI.classificarDiagnostic({ categoria: (d && d.categoria) || '', per_que });
+    acceptats.push({ cita, per_que, categoria: decisio.categoria, decisio, triat: false });
   });
 
   ESTAT_CONTE.lectura = {
@@ -1293,6 +1374,18 @@ function promptPedacDirigit(text, defectes) {
 async function aplicarPedacDirigit() {
   const triats = (ESTAT_CONTE.lectura.defectes || []).filter(d => d.triat);
   if (triats.length === 0) throw new Error('No has triat cap defecte per corregir.');
+
+  // La decisió de la fase 3, aplicada per codi i no només demanada al prompt:
+  // un diagnòstic de premissa, de registre de prosa o de profunditat de
+  // personatge no es pot apedaçar. Si s'apedacés, el defecte quedaria amagat
+  // sota una redacció millor i el conte seguiria tenint-lo.
+  const aRegenerar = NUCLI.diagnosticsQueDemanenRegenerar(triats);
+  if (aRegenerar.length) {
+    const detall = aRegenerar
+      .map(d => `«${NUCLI.retallar(d.per_que, 70)}» → ${d.decisio.nom}: ${d.decisio.com_resoldre}`)
+      .join(' · ');
+    throw new Error(`${aRegenerar.length} dels defectes triats no es poden corregir amb un pedaç: ${detall}. Desmarca'ls i regenera des del pas que toca.`);
+  }
 
   const text = textActual();
   const r = await cridarJSON('pedac', blocSistemaGeneracio({ corrector: true, forma: false }),
@@ -1338,6 +1431,7 @@ function metadadesConte() {
       };
       return acc;
     }, {}),
+    coordenades_divergencia: ESTAT_CONTE.divergencia || null,
     motius_pkd: (ESTAT_CONTE.dossier.motius_triats || []).map(id => {
       const m = NUCLI.BANC_MOTIUS_PKD.find(x => x.id === id);
       return m ? { id: m.id, motiu: m.motiu } : { id };
@@ -1639,6 +1733,14 @@ function renderP1() {
     return m ? `<span class="pastilla" title="${esc(m.tensio)}">${esc(m.motiu.slice(0, 60))}…</span>` : '';
   }).join('');
 
+  const dv = ESTAT_CONTE.divergencia;
+  const coordenades = dv ? `
+    <p class="ajuda" style="margin-top:.5rem"><b>Coordenades d'aquesta generació.</b> Les fixa el codi abans de demanar res i roten a cada conte, perquè un mateix model amb un mateix prompt torna sempre al mateix funcionari d'oficina. ${nomsUsats().length} nom${nomsUsats().length === 1 ? '' : 's'} de protagonista ja utilitzat${nomsUsats().length === 1 ? '' : 's'} i prohibit${nomsUsats().length === 1 ? '' : 's'}.</p>
+    <table class="metrica">
+      ${NUCLI.EIXOS_DIVERGENCIA.filter(e => dv[e.id]).map(e =>
+        `<tr><td>${esc(e.nom)}</td><td>${esc(dv[e.id])}</td></tr>`).join('')}
+    </table>` : '';
+
   const llista = llavors.map((l, i) => `
     <div class="llavor ${triada === i ? 'triada' : ''}" onclick="triarLlavor(${i})">
       <h3>${i + 1}. ${esc(l.titol || l.premissa)}</h3>
@@ -1668,6 +1770,7 @@ function renderP1() {
   return targeta(1, 'Llavor', llavors.length ? (triada !== null ? 'triada' : `${llavors.length} propostes`) : 'pendent',
     triada !== null ? 'ok' : (llavors.length ? 'avis' : ''), `
     ${motius ? `<p class="ajuda">Motius d'aquest conte: ${motius}</p>` : ''}
+    ${coordenades}
     ${llista || '<p class="ajuda">Una crida al model proposa sis llavors amb premissa, esquerda, mentida del sistema, final obligatori, protagonista i cost de l\'empatia.</p>'}
     ${bloc}
     <div class="accions">
@@ -2096,21 +2199,44 @@ function renderP7() {
         : '';
     })()}` : '';
 
-  const defectes = l ? l.defectes.map((d, i) => `
+  // Cada defecte porta la seva decisió: pedaç o regeneració. Els projectes
+  // desats abans d'aquesta versió no la porten i es classifiquen en llegir-los.
+  const ambDecisio = l ? l.defectes.map((d, i) => Object.assign({ i }, d, {
+    decisio: d.decisio || NUCLI.classificarDiagnostic({ categoria: d.categoria, per_que: d.per_que })
+  })) : [];
+  const locals = ambDecisio.filter(d => d.decisio.accio === 'pedac');
+  const deRegenerar = ambDecisio.filter(d => d.decisio.accio === 'regenerar');
+
+  const fitxaDefecte = (d) => `
     <div class="problema ${d.corregit ? 'baixa' : 'mitjana'}">
       <label style="display:flex;gap:.5rem;align-items:flex-start;margin:0;color:var(--text);font-size:.85rem;cursor:pointer">
         <input type="checkbox" style="width:auto;margin-top:.25rem" ${d.triat ? 'checked' : ''} ${d.corregit ? 'disabled' : ''}
-          onchange="ESTAT_CONTE.lectura.defectes[${i}].triat=this.checked;desarEstat()">
+          onchange="ESTAT_CONTE.lectura.defectes[${d.i}].triat=this.checked;desarEstat()">
         <span><span>${esc(d.per_que)}</span>${d.corregit ? '<span class="marca">ja corregit</span>' : ''}
+          <span class="marca">${esc(d.decisio.nom)}${d.decisio.per_paraules_clau ? ' · per paraules clau' : ''}</span>
           <div class="cita">«${esc(NUCLI.retallarParaules(d.cita, 14))}»</div></span>
       </label>
-    </div>`).join('') : '';
+    </div>`;
+
+  const defectes = !l ? '' : `
+    ${locals.length ? `<p class="ajuda" style="margin-top:.8rem"><b>Es corregeixen amb un pedaç (${locals.length}).</b> Llengua, continuïtat i mecànica: són errors locals i un canvi de frase els arregla.</p>
+      ${locals.map(fitxaDefecte).join('')}` : ''}
+    ${deRegenerar.length ? `<p class="ajuda" style="margin-top:.9rem"><b>No es poden apedaçar (${deRegenerar.length}).</b> Premissa, registre de prosa i profunditat de personatge no són errors de frase: un pedaç només els amagaria sota una redacció millor. Aquests defectes es tornen a generar amb el prompt corregit.</p>
+      ${deRegenerar.map(d => `
+        <div class="problema alta">
+          <div>${esc(d.per_que)} <span class="marca">${esc(d.decisio.nom)}${d.decisio.per_paraules_clau ? ' · per paraules clau' : ''}</span></div>
+          <div class="cita">«${esc(NUCLI.retallarParaules(d.cita, 14))}»</div>
+          <div class="accions" style="margin-top:.4rem">
+            <button class="resolucio petit" onclick="avancarFins(${d.decisio.pas})">${esc(d.decisio.com_resoldre)}</button>
+          </div>
+        </div>`).join('')}` : ''}`;
 
   const descartats = l && l.descartats.length ? `
     <p class="ajuda" style="margin-top:.8rem"><b>Defectes descartats (${l.descartats.length}).</b> Un defecte sense cita literal del text no es pot comprovar ni corregir, així que no entra a la llista. Es reporta perquè quedi constància que el lector els ha dit.</p>
     ${l.descartats.map(d => `<div class="problema baixa"><div>${esc(d.per_que)}</div><div class="cita">${esc(d.motiu)}</div></div>`).join('')}` : '';
 
-  const triats = l ? l.defectes.filter(d => d.triat).length : 0;
+  // Només compten els locals: els de regeneració no tenen casella per marcar.
+  const triats = locals.filter(d => d.triat).length;
   const pedacEsgotat = fetesPedac >= LIMITS_DURS_PAS.pedac;
 
   return targeta(7, 'Lectura hostil',

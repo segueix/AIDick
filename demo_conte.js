@@ -221,11 +221,14 @@ const DEMO_PEDACOS = {
   ]
 };
 
+// El lector hostil classifica cada defecte. Els tres defectes de la
+// demostració cobreixen els tres camins: un de local amb categoria declarada,
+// un que demana regenerar, i un que arriba sense cita i es descarta.
 const DEMO_LECTURA = {
   defectes: [
-    { cita: "Halloran portava onze anys al departament", per_que: "L'antiguitat s'informa en comptes de deduir-se del que el personatge sap fer sense mirar." },
-    { cita: "La conclusió era raonable. Era això el que li feia més mal", per_que: "El narrador nomena l'efecte que la frase hauria de produir sola." },
-    { cita: "", per_que: "El final es podria llegir com un somni." }
+    { cita: "Halloran portava onze anys al departament", per_que: "L'antiguitat s'informa en comptes de deduir-se del que el personatge sap fer sense mirar.", categoria: "mecanica" },
+    { cita: "La conclusió era raonable. Era això el que li feia més mal", per_que: "El registre és pla: totes les frases tenen la mateixa llargada i cap paràgraf porta més d'una unitat d'acció.", categoria: "prosa" },
+    { cita: "", per_que: "El final es podria llegir com un somni.", categoria: "premissa" }
   ],
   porta_pkd: {
     esquerda: { resposta: "SI", cita: "La numeració és el que digui el llibre" },

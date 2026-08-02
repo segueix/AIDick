@@ -302,6 +302,60 @@ comprova('triarMotius és determinista amb el mateix estat',
 comprova('esgotat el banc, triarMotius recicla els menys recents sense petar',
   C.triarMotius(C.BANC_MOTIUS_PKD.map(m => m.id), 3).length === 3);
 
+// ── Divergència entre generacions ────────────────────────────────────────────
+// El banc de motius reparteix de què va el conte; això reparteix tota la resta,
+// que és el que fa que un mateix model no torni sempre al mateix funcionari
+// d'oficina amb fluorescents.
+comprova('hi ha sis eixos de divergència', C.EIXOS_DIVERGENCIA.length === 6);
+comprova('cada eix porta nom, instrucció i opcions',
+  C.EIXOS_DIVERGENCIA.every(e => e.id && e.nom && e.instruccio && e.opcions.length >= 5));
+comprova('els eixos tenen longituds diferents perquè no avancin alhora',
+  new Set(C.EIXOS_DIVERGENCIA.map(e => e.opcions.length)).size === C.EIXOS_DIVERGENCIA.length,
+  C.EIXOS_DIVERGENCIA.map(e => `${e.id}:${e.opcions.length}`).join(' '));
+comprova('cap eix té opcions repetides',
+  C.EIXOS_DIVERGENCIA.every(e => new Set(e.opcions).size === e.opcions.length));
+
+comprova('triarDivergencia dona una coordenada per eix',
+  C.EIXOS_DIVERGENCIA.every(e => !!C.triarDivergencia([])[e.id]));
+comprova('triarDivergencia és determinista amb el mateix històric',
+  JSON.stringify(C.triarDivergencia(['ofici:repartidor de paqueteria amb ruta fixa'])) ===
+  JSON.stringify(C.triarDivergencia(['ofici:repartidor de paqueteria amb ruta fixa'])));
+comprova('clausDivergencia serialitza la tria com a "eix:opcio"',
+  C.clausDivergencia(C.triarDivergencia([])).length === 6 &&
+  C.clausDivergencia(C.triarDivergencia([])).every(c => c.includes(':')));
+
+// Dues generacions seguides no poden compartir cap coordenada.
+let historicDiv = [];
+const generacions = [];
+for (let i = 0; i < 5; i++) {
+  const tria = C.triarDivergencia(historicDiv);
+  generacions.push(tria);
+  historicDiv = historicDiv.concat(C.clausDivergencia(tria));
+}
+comprova('cinc generacions seguides no repeteixen cap coordenada en cap eix',
+  C.EIXOS_DIVERGENCIA.every(e => new Set(generacions.map(g => g[e.id])).size === 5),
+  C.EIXOS_DIVERGENCIA.map(e => `${e.id}:${new Set(generacions.map(g => g[e.id])).size}`).join(' '));
+comprova('dues generacions consecutives no comparteixen res',
+  generacions.every((g, i) => i === 0 ||
+    C.EIXOS_DIVERGENCIA.every(e => g[e.id] !== generacions[i - 1][e.id])));
+
+// Esgotat un eix, recicla el menys recent sense petar i sense repetir l'últim.
+const totesLesClaus = C.EIXOS_DIVERGENCIA.flatMap(e => e.opcions.map(o => `${e.id}:${o}`));
+const reciclada = C.triarDivergencia(totesLesClaus);
+comprova('esgotades les opcions, torna a triar la menys recent sense petar',
+  C.EIXOS_DIVERGENCIA.every(e => e.opcions.includes(reciclada[e.id])));
+comprova('la tria reciclada agafa la primera de l\'històric, no l\'última',
+  C.EIXOS_DIVERGENCIA.every(e => reciclada[e.id] === e.opcions[0]));
+comprova('triarDivergencia tolera un històric buit, nul o amb brossa',
+  (() => {
+    try {
+      C.triarDivergencia(null);
+      C.triarDivergencia(['brossa', 42, null]);
+      C.clausDivergencia(null);
+      return C.clausDivergencia({}).length === 0;
+    } catch (e) { return false; }
+  })());
+
 // ── Auditoria sobre text correcte (el fals positiu és el defecte més car) ────
 const contenet = readFileSync(new URL('./ajudes/conte_net.txt', import.meta.url), 'utf8');
 const dossierNet = JSON.parse(JSON.stringify(dossierValid));
