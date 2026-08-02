@@ -35,6 +35,12 @@ diferents**; no són els prompts retrospectius d'aquests contes de prova:
 - [`Set minuts de garantia`](../prompts/02-set-minuts-de-garantia.txt)
 - [`La cua dels absents`](../prompts/03-la-cua-dels-absents.txt)
 
+Els tres contes resultants també es poden descarregar en text pla:
+
+- [`El padró de les ombres`](04-el-padro-de-les-ombres.txt)
+- [`Set minuts de garantia`](05-set-minuts-de-garantia.txt)
+- [`La cua dels absents`](06-la-cua-dels-absents.txt)
+
 ---
 
 ## 1. Procedència

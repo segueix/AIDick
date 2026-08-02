@@ -21,11 +21,11 @@ així que les xifres de crides que hi veus són reals.
 Els tres prompts descarregables proposen premisses noves que **no corresponen als
 tres contes ja escrits** i no n'inclouen cap resolució:
 
-| Prompt inèdit | Descàrrega |
-|---|---|
-| El padró de les ombres | [Descarrega el prompt](prompts/01-el-padro-de-les-ombres.txt) |
-| Set minuts de garantia | [Descarrega el prompt](prompts/02-set-minuts-de-garantia.txt) |
-| La cua dels absents | [Descarrega el prompt](prompts/03-la-cua-dels-absents.txt) |
+| Conte inèdit | Prompt | Conte complet |
+|---|---|---|
+| El padró de les ombres | [Descarrega el prompt](prompts/01-el-padro-de-les-ombres.txt) | [Descarrega el conte](contes/04-el-padro-de-les-ombres.txt) |
+| Set minuts de garantia | [Descarrega el prompt](prompts/02-set-minuts-de-garantia.txt) | [Descarrega el conte](contes/05-set-minuts-de-garantia.txt) |
+| La cua dels absents | [Descarrega el prompt](prompts/03-la-cua-dels-absents.txt) | [Descarrega el conte](contes/06-la-cua-dels-absents.txt) |
 
 Separadament, el repositori conserva tres contes de mostra complets en text pla:
 [Procedència](contes/01-procedencia.txt), [Escomesa cega](contes/02-escomesa-cega.txt)
