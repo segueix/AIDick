@@ -1141,10 +1141,20 @@ const CONNECTORS_DEPENDENTS = [
 // Marques amb què s'anuncia una cosa que ha de tornar: una condició, un horari,
 // una amenaça ajornada. Serveixen per no acusar de setup sense pagament
 // qualsevol paraula llarga que aparegui un sol cop.
+//
+// Han d'anar a l'INICI de la frase, i això no és un detall: «si» i «quan» al
+// mig d'una frase són subordinades corrents i hi surten a cada paràgraf. Amb la
+// marca lliure, tres contes de 18.000 caràcters donaven trenta-nou avisos i tots
+// trenta-nou eren falsos («arronsar», «espatlles», «fregidora»). Ancorada a
+// l'inici, la frase és una condició o un horari de debò: «Després de mitjanit
+// el sistema de ventilació allibera un sedant».
+// Només marques d'HÀBIT o de CONDICIÓ, mai d'un moment concret: «A les 23.40
+// entra la sisena trucada» és narració amb hora, no un anunci, i incloure-hi
+// «a les» tornava a omplir l'informe de falsos positius en un conte que
+// s'estructura per hores.
 const MARCADORS_ANUNCI = [
-  'si ', 'quan ', 'abans que', 'després de', 'a partir de', 'cada nit',
-  'cada matí', 'a partir d\'', 'hauria de', 'hauria d\'', 'podria', 'pot arribar a',
-  'en cas de', 'mai no s\'ha de', 'no s\'ha de', 'està prohibit', 'obliga a'
+  'si ', 'quan ', 'abans que', 'després de', 'després d\'', 'a partir de', 'a partir d\'',
+  'cada nit', 'cada matí', 'cada vegada que', 'en cas de', 'sempre que'
 ];
 
 const CRITERIS_COHERENCIA_GLOBAL = [
@@ -1385,8 +1395,8 @@ function validarCoherenciaGlobal(text, context) {
   const meitat = Math.floor(frases.length * 0.6);
   const anunciats = new Set();
   frases.slice(0, meitat).forEach(f => {
-    const minuscula = f.frase.toLowerCase();
-    if (!MARCADORS_ANUNCI.some(m => minuscula.includes(m))) return;
+    const minuscula = f.frase.toLowerCase().replace(/^[—–«"(¿¡\s]+/, '');
+    if (!MARCADORS_ANUNCI.some(m => minuscula.startsWith(m))) return;
     paraulesDistintives(f.frase)
       .filter(t => t.length >= 8 && !anunciats.has(t))
       .forEach(terme => {

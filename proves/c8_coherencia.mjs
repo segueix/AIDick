@@ -182,12 +182,35 @@ comprova('l\'anunci sense pagament es marca com a heurística i amb severitat ba
     .filter(p => p.detall.includes('ventilació'))
     .every(p => p.heuristica === true && p.severitat === 'baixa'));
 
+comprova('també detecta l\'anunci que comença amb una condició',
+  problemesDe(C.validarCoherenciaGlobal(
+    'Si el nivell baixa, la comporta del dipòsit es tanca sola i no la pot tornar a obrir ningú.\n\n' + base, {}),
+    'setups_sense_pagament').some(p => p.detall.includes('comporta')));
+
 // Cas legítim: una paraula llarga que surt un sol cop dins d'una descripció
 // normal, sense cap marca d'anunci. Un conte de 18.000 caràcters en té desenes.
 const descripcioNormal = 'El passadís feia una llum groga que ho aplanava tot i olor de pols escalfada.\n\n' + base;
 comprova('NO marca una paraula llarga que surt un cop en una frase descriptiva',
   problemesDe(C.validarCoherenciaGlobal(descripcioNormal, {}), 'setups_sense_pagament').length === 0,
   JSON.stringify(problemesDe(C.validarCoherenciaGlobal(descripcioNormal, {}), 'setups_sense_pagament').map(p => p.detall)));
+
+// Cas legítim, i el més car de tots: les subordinades amb «si» i «quan» al mig
+// de la frase. Amb el marcador sense ancorar a l'inici, tres contes reals de
+// 18.000 caràcters van donar trenta-nou avisos i els trenta-nou eren falsos.
+const subordinades =
+  'El Merle va arronsar les espatlles amb una satisfacció íntima, com si acabés de guanyar una cosa petita.\n\n' +
+  'El pis feia olor de la fregidora del bar de sota, que era una olor que ja no notava excepte quan tornava d\'algun lloc molt fred.\n\n' +
+  'Feia el fred sec de finals de febrer, el que et deixa els dits sense sensibilitat abans que et facin mal.\n\n' + base;
+comprova('NO marca les subordinades amb «si», «quan» o «abans que» al mig de la frase',
+  problemesDe(C.validarCoherenciaGlobal(subordinades, {}), 'setups_sense_pagament').length === 0,
+  JSON.stringify(problemesDe(C.validarCoherenciaGlobal(subordinades, {}), 'setups_sense_pagament').map(p => p.detall)));
+
+// Cas legítim: una hora concreta obre narració, no anuncia res. Un conte
+// estructurat per hores en té una a cada escena.
+const ambHora = 'A les 23.40 entra la sisena trucada de la nit i cap de les sis no és una urgència.\n\n' + base;
+comprova('NO marca una frase que comença amb una hora concreta',
+  problemesDe(C.validarCoherenciaGlobal(ambHora, {}), 'setups_sense_pagament').length === 0,
+  JSON.stringify(problemesDe(C.validarCoherenciaGlobal(ambHora, {}), 'setups_sense_pagament').map(p => p.detall)));
 
 // ── 4. Clàusules òrfenes ─────────────────────────────────────────────────────
 // El cas documentat: s'esborren les opcions i es queden les clàusules que les

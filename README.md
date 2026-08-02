@@ -37,6 +37,7 @@ vàlid és 15.000–20.000; l'objectiu central, 17.500 (≈ 2.900 paraules en ca
 | P4 | Redacció | 1 per escena | Una crida per escena, mai més |
 | P5 | Costura | màxim 2 | Llista de pedaços `{cerca, substitueix}`, mai el text sencer |
 | P6 | Auditoria determinista | **0** | Informe per codi, zero tokens |
+| — | Coherència global | **0** | Després de **tota** edició, sobre el text sencer |
 | P7 | Lectura hostil | màxim 3 | Un model **diferent** busca el pitjor del conte, amb cita |
 | P8 | Exportació | 0 | TXT, Markdown amb metadades, projecte JSON |
 
@@ -152,24 +153,89 @@ interfície. Són una pista, no un veredicte.
 
 ---
 
-## Varietat: el banc de motius
+## Varietat: què impedeix que tots els contes s'assemblin
 
 Un generador PKD sense control escriu sempre el mateix conte: androides, drogues,
-simulació. `conte_core.js` porta un banc de **30 motius** que cobreixen el ventall
-real de Dick —precognició, història alternativa, entropia dels objectes,
-falsificacions, religions mediatitzades, funcionaris de rang baix, tests
-d'empatia, lliscaments temporals, records implantats, corporacions pòstumes,
-telèpates funcionaritzats, drogues prescrites, mitjans que fabriquen consens,
-colònies fracassades, burocràcia que decideix qui existeix.
+simulació. Hi ha tres llistes, totes tres a `conte_core.js` i totes tres
+editables.
 
-Cada motiu porta la **tensió ontològica** que obre i el **clixé concret** que
-tendeix a produir i que el prompt prohibeix pel seu nom. L'ús es registra a
-`localStorage`: deu generacions seguides gasten els 30 motius sense repetir-ne cap.
+**El banc de motius** reparteix de què va el conte: **30 entrades** que cobreixen
+el ventall real de Dick —història alternativa, falsificacions, religions
+mediatitzades, tests d'empatia, lliscaments temporals, corporacions pòstumes,
+telèpates funcionaritzats, mitjans que fabriquen consens, colònies fracassades,
+burocràcia que decideix qui existeix. Cada motiu porta la **tensió ontològica**
+que obre i el **clixé concret** que tendeix a produir i que el prompt prohibeix
+pel seu nom. **Sis estan vetats** i no es proposen mai —coincidien amb un
+mecanisme de la llista de sota—, així que en queden 24 disponibles: vuit
+generacions seguides sense repetir-ne cap.
+
+**Els mecanismes vetats** (`MOTIUS_VETATS`) prohibeixen vuit dispositius del
+cànon de Dick pel nom del mecanisme, no pel nom propi: entropia d'objectes,
+precrim, entorn fals que amaga una realitat devastada, aparell que exigeix
+pagament, records comprats, simulacre que dubta de la seva humanitat, droga que
+obre capes de realitat i entitat que resulta ser una gravació. Cadascun porta
+també **la forma en què torna disfressat**, que és com tornen sempre. Prohibir
+«Ubik» no impedeix escriure mitja vida amb un altre vocabulari; prohibir el
+mecanisme, sí.
+
+**Els eixos de divergència** (`EIXOS_DIVERGENCIA`) reparteixen tota la resta, que
+és el que feia que dos contes diferents s'assemblessin: feina del protagonista,
+institució que menteix, escenari, veu narrativa, restricció formal i temperatura.
+El codi en fixa una coordenada de cada abans de demanar res i les rota, de manera
+que **dues generacions seguides no en comparteixen cap**. Les llistes tenen 12,
+10, 9, 8, 6 i 5 opcions a propòsit: amb longituds iguals, els sis eixos
+avançarien alhora i la combinació tornaria al desè conte. Els últims 15 noms de
+protagonista utilitzats viatgen al prompt com a prohibició explícita.
 
 Hi ha també una llista de **tòpics prohibits** amb els noms propis i les marques
 de l'obra de Dick i de les seves adaptacions (Deckard, Ubik, Rekal, Precrim,
 replicant…). L'objectiu és escriure com Dick, no fer un pastitx de les seves
 pel·lícules.
+
+L'ús de motius, coordenades i noms es registra a `localStorage`.
+
+---
+
+## Després de tota edició: la coherència global
+
+`aplicarPedacos` garanteix que cada pedaç s'aplica on toca. No garanteix res
+sobre **la resta del text**, i és allà on apareixien els destrosses: una revisió
+de 90 caràcters que canviava una classificació impresa i deixava quatre línies
+més avall una frase que parlava d'una paraula que ja no hi era.
+
+`validarCoherenciaGlobal` s'executa **sempre després de qualsevol edició** —les
+del model i les fetes a mà—, sobre el **text sencer** i no sobre el fragment
+editat, i costa **zero tokens**:
+
+1. **Frases duplicades** idèntiques o quasi a menys de tres paràgrafs.
+2. **Referències trencades**: per cada designació que una edició treu d'un lloc,
+   busca les altres aparicions al conte. Només designacions —majúscules, noms
+   propis i vocabulari canònic del dossier—, perquè marcar qualsevol paraula que
+   un pedaç d'estil canviï de lloc equival a no marcar res.
+3. **Setups sense pagament**: objectes clau que surten un sol cop, el que
+   l'escaleta posava en disputa i no hi és, i el que s'anuncia amb condició o
+   horari i no torna.
+4. **Clàusules òrfenes**: frases que justifiquen una cosa que l'edició ha
+   esborrat.
+5. **Comptador de caràcters** dins de l'interval.
+
+Les dues comprovacions que necessiten saber què s'ha canviat es declaren **no
+executades** quan no hi ha context d'edició, en lloc de sortir en verd.
+
+## Pedaç o regeneració
+
+Un pedaç canvia una frase. Si el diagnòstic és que la premissa és un recull de
+coses ja vistes, que el registre és pla o que el protagonista no té res fora de
+la trama, cap llista de `{cerca, substitueix}` no ho arregla: només ho amaga sota
+una redacció millor.
+
+El lector hostil ha de classificar cada defecte en una de sis categories.
+**Premissa, prosa i personatge** tornen a generar, i cadascuna diu des de quin
+pas. **Llengua, continuïtat i mecànica** es corregeixen amb un pedaç. Si el model
+no dona categoria o se la inventa, es classifica per paraules clau; si no encaixa
+enlloc, es diu que no s'ha pogut classificar i es tracta com a local. La decisió
+no és un consell del prompt: `aplicarPedacDirigit` **rebutja el lot** si hi ha cap
+defecte de regeneració, i no gasta la crida.
 
 ---
 
@@ -207,6 +273,7 @@ barat arribar a un esborrany estructuralment sòlid. La lectura segueix sent tev
 | `nkg_core.js` | Se'n reutilitza `parseJsonRobust`; la resta és del mode novel·la |
 | `ui_fixes.js` | Pedaços d'interfície del mode novel·la |
 | `proves/` | Suite de regressió del conte |
+| `contes/` | Tres contes generats amb el prompt corregit i la seva avaluació |
 | `llegat/` | Mode novel·la congelat, amb les seves proves i els seus documents |
 
 ---
@@ -218,17 +285,19 @@ npx http-server -p 8099 -c-1 .        # des de l'arrel, en una terminal
 node proves/executa-totes.mjs         # en una altra
 ```
 
-**234/234 comprovacions**, codi de sortida 0.
+**388/388 comprovacions**, codi de sortida 0.
 
 | Suite | Comprovacions | Què cobreix |
 |---|---|---|
-| `c1_nucli.mjs` | 77 | `conte_core.js` amb node sol, sense navegador |
+| `c1_nucli.mjs` | 116 | `conte_core.js` amb node sol, sense navegador |
 | `c2_pressupost.mjs` | 17 | El sostre de crides en tots els camins, forçats |
 | `c3_gate_pkd.mjs` | 23 | La porta PKD i que el fallback no la pugui tancar |
 | `c4_longitud.mjs` | 15 | Compensació per codi i ajust de longitud |
 | `c5_lint.mjs` | 32 | Lint del navegador i hunspell sobre el text |
 | `c6_flux.mjs` | 28 | P0..P8, recàrrega, migració d'esquema |
-| `c7_estil.mjs` | 42 | Els prompts muntats de debò |
+| `c7_estil.mjs` | 77 | Els prompts muntats de debò |
+| `c8_coherencia.mjs` | 48 | La coherència global després de cada edició |
+| `c9_regeneracio.mjs` | 32 | Quan s'apedaça i quan es torna a generar |
 
 Les suites bloquegen el trànsit extern: una crida real no simulada falla de
 seguida. Per a cada comprovació de l'auditoria hi ha el cas que ha de detectar i

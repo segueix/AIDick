@@ -65,6 +65,30 @@ cregui que s'ha corregit una cosa que segueix igual.
 `aplicarPedacos` no llança mai cap excepció: sempre retorna un text, l'original
 si no s'aplica res.
 
+### 3 bis. Tota edició passa per la coherència global
+
+`aplicarLotDePedacos` és l'únic embut per on passa qualsevol edició del text, i
+crida sempre `validarCoherenciaGlobal` **sobre el text sencer**, no sobre el
+fragment editat. L'edició a mà hi passa igual, per `editarTextAMa`.
+
+El motiu és documentat: una revisió que va tocar 90 caràcters sobre 18.700 va
+canviar una classificació impresa i va deixar quatre línies més avall una frase
+que parlava d'una paraula que ja no hi era, va duplicar una frase i va deixar
+dues clàusules justificant unes opcions esborrades. Cada pedaç era correcte.
+
+Les comprovacions que necessiten saber què s'ha canviat es declaren **no
+executades** quan no hi ha context d'edició. Una comprovació que no s'ha fet no es
+pot presentar com una comprovació que passa.
+
+### 3 ter. Hi ha diagnòstics que no s'apedacen
+
+Premissa, registre de prosa i profunditat de personatge es tornen a generar amb
+el prompt corregit; llengua, continuïtat i mecànica s'apedacen. La taula és
+`CATEGORIES_DIAGNOSTIC` i la decisió la fa complir el codi:
+`aplicarPedacDirigit` rebutja el lot sencer si hi ha cap defecte de regeneració,
+i no gasta la crida. Un pedaç sobre un defecte de premissa no l'arregla: l'amaga
+sota una redacció millor.
+
 ### 4. El que es pot comprovar per codi no es pregunta a cap model
 
 Longitud, repeticions literals, adverbis, castellanismes, anglicismes, format de
@@ -211,7 +235,7 @@ Les claus API es desen a part i **no s'inclouen mai** a l'exportació del projec
 
 ```
 npx http-server -p 8099 -c-1 .        # des de l'arrel
-node proves/executa-totes.mjs         # 234/234 comprovacions
+node proves/executa-totes.mjs         # 388/388 comprovacions
 node llegat/proves/executa-totes.mjs  # 281/281 del mode novel·la congelat
 ```
 
@@ -225,8 +249,11 @@ node llegat/proves/executa-totes.mjs  # 281/281 del mode novel·la congelat
   conte correcte és pitjor que no tenir-lo, perquè la gent n'aprèn a ignorar
   l'avís.
 - Qualsevol canvi al pressupost, a la porta PKD, als prompts o als perfils ha de
-  deixar les 234 comprovacions en verd, o actualitzar la suite explicant per què
+  deixar les 388 comprovacions en verd, o actualitzar la suite explicant per què
   canvia el comportament esperat.
+- Les llistes de contingut —motius vetats, criteris de llengua, criteris de
+  coherència, categories de diagnòstic, eixos de divergència— viuen en constants
+  de `conte_core.js`, mai dins d'un string de prompt.
 
 ---
 
