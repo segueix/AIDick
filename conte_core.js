@@ -1096,6 +1096,377 @@ function buidaUnParagraf(abans, despres) {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  11 bis. COHERÈNCIA GLOBAL POST-EDICIÓ
+//
+//  aplicarPedacos garanteix que cada pedaç s'aplica on toca. No garanteix res
+//  sobre la RESTA del text, i és allà on van aparèixer els destrosses reals:
+//
+//   · una revisió que va tocar 90 caràcters sobre 18.700 va canviar una
+//     classificació impresa i va deixar quatre línies més avall una frase que
+//     parlava d'una paraula que ja no hi era;
+//   · un altre pedaç va deixar la mateixa frase dues vegades seguides;
+//   · un tercer va esborrar unes opcions i va deixar les clàusules que les
+//     justificaven penjades de res.
+//
+//  Aquesta passada mira SEMPRE el text sencer, mai el fragment editat, i no
+//  gasta cap token. Les cinc comprovacions viuen a CRITERIS_COHERENCIA_GLOBAL i
+//  els seus paràmetres, a les constants de sota: totes dues coses són
+//  editables sense tocar cap prompt.
+// ═══════════════════════════════════════════════════════════
+
+// Dues frases iguals a més distància que aquesta ja no són un descuit d'edició:
+// en un conte de Dick, repetir una fórmula administrativa és un recurs.
+const DISTANCIA_PARAGRAFS_DUPLICAT = 3;
+// Coeficient de Dice sobre les paraules. 1 és idèntica. A 0,75 hi entra la
+// frase repetida amb dues paraules canviades («…aquella nit» / «…aquell
+// vespre»), que és el residu d'edició típic, i encara queda molt marge per
+// sobre de dues frases del mateix tema amb contingut diferent, que es queden
+// al voltant de 0,3. Per sota d'1 es reporta com a heurística.
+const LLINDAR_SIMILITUD_FRASE = 0.75;
+const MIN_PARAULES_FRASE_DUPLICADA = 5;
+// Un terme que surt més vegades que això al conte és vocabulari, no una
+// designació concreta: canviar-lo en un lloc no trenca cap cadena.
+const MAX_OCURRENCIES_REFERENCIA = 6;
+const MAX_PROBLEMES_PER_CRITERI = 6;
+
+// Obertures que depenen d'alguna cosa dita abans. Llista tancada, com la dels
+// castellanismes: no es dedueix per categoria gramatical.
+const CONNECTORS_DEPENDENTS = [
+  'perquè', 'ja que', 'atès que', 'com que', 'per això', 'per tant',
+  'de manera que', 'en canvi', 'l\'altra', 'la primera', 'la segona',
+  'aquesta opció', 'aquesta possibilitat', 'l\'altra opció', 'cap de les dues',
+  'totes dues', 'la diferència'
+];
+
+// Marques amb què s'anuncia una cosa que ha de tornar: una condició, un horari,
+// una amenaça ajornada. Serveixen per no acusar de setup sense pagament
+// qualsevol paraula llarga que aparegui un sol cop.
+const MARCADORS_ANUNCI = [
+  'si ', 'quan ', 'abans que', 'després de', 'a partir de', 'cada nit',
+  'cada matí', 'a partir d\'', 'hauria de', 'hauria d\'', 'podria', 'pot arribar a',
+  'en cas de', 'mai no s\'ha de', 'no s\'ha de', 'està prohibit', 'obliga a'
+];
+
+const CRITERIS_COHERENCIA_GLOBAL = [
+  {
+    id: 'frases_duplicades',
+    nom: 'Frases duplicades',
+    que_detecta: `Frases idèntiques o quasi idèntiques a menys de ${DISTANCIA_PARAGRAFS_DUPLICAT} paràgrafs de distància.`,
+    necessita_edicio: false
+  },
+  {
+    id: 'referencies_trencades',
+    nom: 'Referències trencades',
+    que_detecta: 'Termes que una edició ha tret d\'un lloc i que segueixen apareixent en un altre, on ja no tenen a què referir-se.',
+    necessita_edicio: true
+  },
+  {
+    id: 'setups_sense_pagament',
+    nom: 'Setups sense pagament',
+    que_detecta: 'Objectes, dades o amenaces que s\'introdueixen i no es recuperen mai.',
+    necessita_edicio: false
+  },
+  {
+    id: 'clausules_orfenes',
+    nom: 'Clàusules òrfenes',
+    que_detecta: 'Fragments que justifiquen o contrasten una cosa que l\'edició ha esborrat.',
+    necessita_edicio: true
+  },
+  {
+    id: 'longitud',
+    nom: 'Comptador de caràcters',
+    que_detecta: `El text ha de quedar dins de ${CONTE_MIN_CARACTERS}–${CONTE_MAX_CARACTERS} caràcters amb espais.`,
+    necessita_edicio: false
+  }
+];
+
+// Un paràgraf és un bloc de línia no buida. Es compta sobre el text tal com
+// arriba, perquè normalitzarTextConte ja converteix els salts dobles en simples
+// i la distància s'ha de poder mesurar en tots dos casos.
+function paragrafsDeText(text) {
+  return String(text == null ? '' : text)
+    .split(/\n\s*\n|\n/)
+    .map(p => p.trim())
+    .filter(Boolean);
+}
+
+// Cada frase amb el número de paràgraf on viu.
+function frasesAmbParagraf(text) {
+  const resultat = [];
+  paragrafsDeText(text).forEach((paragraf, iParagraf) => {
+    paragraf.split(/(?<=[.!?…])\s+/).forEach(frase => {
+      const neta = frase.trim();
+      if (neta) resultat.push({ frase: neta, paragraf: iParagraf });
+    });
+  });
+  return resultat;
+}
+
+function tokensFrase(frase) {
+  return String(frase || '').toLowerCase()
+    .split(/[^\p{L}\p{N}·']+/u)
+    .filter(Boolean);
+}
+
+// Coeficient de Dice sobre multiconjunts de paraules: 1 si són la mateixa
+// frase, i baixa de pressa quan canvia el contingut i no només l'ordre.
+function similitudFrases(a, b) {
+  const ta = tokensFrase(a);
+  const tb = tokensFrase(b);
+  if (!ta.length || !tb.length) return 0;
+  const restants = new Map();
+  tb.forEach(t => restants.set(t, (restants.get(t) || 0) + 1));
+  let comuns = 0;
+  ta.forEach(t => {
+    const n = restants.get(t) || 0;
+    if (n > 0) { comuns += 1; restants.set(t, n - 1); }
+  });
+  return (2 * comuns) / (ta.length + tb.length);
+}
+
+// Les paraules amb contingut d'un fragment. Serveix per saber si una edició ha
+// esborrat material del conte, no per acusar ningú de trencar cap referència.
+function termesDestacats(fragment) {
+  const text = String(fragment || '');
+  const majuscules = (text.match(/\b[A-ZÀ-ÖØ-Þ][A-ZÀ-ÖØ-Þ·'-]{3,}\b/g) || []).map(t => t.toLowerCase());
+  return [...new Set(paraulesDistintives(text).concat(majuscules))];
+}
+
+// El vocabulari propi d'aquest conte: noms de personatge, objectes clau, lloc i
+// fets canònics. Surt del dossier, que és l'única font de veritat narrativa.
+function vocabulariCanonic(dossier) {
+  const d = dossier || {};
+  const trossos = [(d.protagonista || {}).nom || '', (d.mon || {}).lloc || ''];
+  (Array.isArray(d.secundaris) ? d.secundaris : []).forEach(s => trossos.push((s && s.nom) || ''));
+  (Array.isArray(d.objectes_clau) ? d.objectes_clau : []).forEach(o => trossos.push((o && o.nom) || ''));
+  (Array.isArray(d.fets_canonics) ? d.fets_canonics : []).forEach(f => trossos.push(f || ''));
+  const paraules = new Set();
+  trossos.forEach(t => paraulesDistintives(t).forEach(p => paraules.add(p)));
+  return paraules;
+}
+
+// Les DESIGNACIONS d'un fragment: el que anomena una cosa concreta i sosté una
+// cadena al llarg del conte. Tres orígens i cap més:
+//   · majúscules —les classificacions impreses i els noms d'imprès—,
+//   · noms propis, descomptant la paraula que obre cada frase,
+//   · vocabulari canònic del dossier.
+// Sense aquest filtre, la comprovació marcaria qualsevol paraula que un pedaç
+// d'estil hagi canviat de lloc ('calaix' per 'caixa'), i dotze pedaços de
+// costura produirien dotze avisos que no assenyalen res.
+function designacionsDelFragment(fragment, canonic) {
+  const text = String(fragment || '');
+  const majuscules = (text.match(/\b[A-ZÀ-ÖØ-Þ][A-ZÀ-ÖØ-Þ·'-]{3,}\b/g) || []).map(t => t.toLowerCase());
+
+  const propis = [];
+  text.split(/(?<=[.!?…])\s+|\n+/).forEach(frase => {
+    frase.trim().split(/\s+/).slice(1).forEach(paraula => {
+      const net = paraula.replace(/^[—–«"(]+/, '').replace(/[.,;:!?…»")]+$/, '');
+      if (/^[A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ·'-]{2,}$/.test(net)) propis.push(net.toLowerCase());
+    });
+  });
+
+  const delDossier = paraulesDistintives(text).filter(t => canonic && canonic.has(t));
+  return [...new Set(majuscules.concat(propis, delDossier))];
+}
+
+function ocurrenciesInsensibles(text, terme) {
+  if (!terme) return 0;
+  const re = new RegExp(escaparRegex(terme), 'gi');
+  return (String(text || '').match(re) || []).length;
+}
+
+// Retorna { caracters, dins_interval, comprovacions, problemes, moment }.
+//
+// 'context' pot portar { textAnterior, pedacos, dossier, escaleta, origen }.
+// Sense textAnterior i pedaços, les dues comprovacions que necessiten saber què
+// s'ha canviat no s'executen i ho DIUEN: una comprovació que no s'ha fet no es
+// pot presentar com una comprovació que ha passat.
+function validarCoherenciaGlobal(text, context) {
+  const ctx = context || {};
+  const sencer = String(text == null ? '' : text);
+  const net = normalitzarTextConte(sencer);
+  const problemes = [];
+  const comptador = {};
+
+  const afegir = (criteri, severitat, detall, cita, camp, extra) => {
+    if (!esTextUtil(cita) && !esTextUtil(camp)) return; // la mateixa regla de l'auditoria
+    comptador[criteri] = (comptador[criteri] || 0) + 1;
+    if (comptador[criteri] > MAX_PROBLEMES_PER_CRITERI) return;
+    problemes.push(Object.assign(
+      { id: `${criteri}_${comptador[criteri]}`, criteri, severitat, detall, cita: cita || '', camp: camp || '' },
+      extra || {}));
+  };
+
+  const pedacos = (Array.isArray(ctx.pedacos) ? ctx.pedacos : [])
+    .map(p => (p && p.pedac) ? p.pedac : p)
+    .filter(p => p && typeof p.cerca === 'string');
+  const textAnterior = typeof ctx.textAnterior === 'string' ? ctx.textAnterior : '';
+  const teEdicio = pedacos.length > 0 && !!textAnterior;
+
+  // ── 1. Frases duplicades ──────────────────────────────────
+  const frases = frasesAmbParagraf(sencer);
+  for (let i = 0; i < frases.length; i++) {
+    const a = frases[i];
+    if (tokensFrase(a.frase).length < MIN_PARAULES_FRASE_DUPLICADA) continue;
+    for (let j = i + 1; j < frases.length; j++) {
+      const b = frases[j];
+      if (b.paragraf - a.paragraf > DISTANCIA_PARAGRAFS_DUPLICAT) break;
+      if (tokensFrase(b.frase).length < MIN_PARAULES_FRASE_DUPLICADA) continue;
+      const s = similitudFrases(a.frase, b.frase);
+      if (s < LLINDAR_SIMILITUD_FRASE) continue;
+      afegir('frases_duplicades', s === 1 ? 'alta' : 'mitjana',
+        s === 1
+          ? `Aquesta frase apareix dues vegades a ${b.paragraf - a.paragraf} paràgrafs de distància.`
+          : `Dues frases quasi idèntiques (${Math.round(s * 100)}% de coincidència) a ${b.paragraf - a.paragraf} paràgrafs de distància: «${retallarParaules(b.frase, 12)}».`,
+        retallarParaules(a.frase, 12), '', s === 1 ? undefined : { heuristica: true });
+      break; // una troballa per frase: la resta serien la mateixa notícia
+    }
+  }
+
+  // ── 2. Referències trencades ──────────────────────────────
+  if (teEdicio) {
+    const canonic = vocabulariCanonic(ctx.dossier);
+    const jaReportat = new Set();
+    pedacos.forEach(p => {
+      const treguts = designacionsDelFragment(p.cerca, canonic)
+        .filter(t => ocurrenciesInsensibles(p.substitueix || '', t) === 0);
+      treguts.forEach(terme => {
+        if (jaReportat.has(terme)) return;
+        const abans = ocurrenciesInsensibles(textAnterior, terme);
+        if (abans === 0 || abans > MAX_OCURRENCIES_REFERENCIA) return; // vocabulari, no designació
+        const despres = ocurrenciesInsensibles(sencer, terme);
+        if (despres === 0) return;
+        jaReportat.add(terme);
+        const frase = frases.find(f => ocurrenciesInsensibles(f.frase, terme) > 0);
+        afegir('referencies_trencades', 'alta',
+          `L'edició ha tret «${terme}» d'un lloc i el terme encara apareix ${despres} ${despres === 1 ? 'vegada' : 'vegades'} més al conte. Comprova que el que hi queda segueix tenint a què referir-se.`,
+          frase ? retallarParaules(frase.frase, 14) : '', `terme: ${terme}`);
+      });
+    });
+  }
+
+  // ── 3. Setups sense pagament ──────────────────────────────
+  // Part determinista: el que el dossier i l'escaleta havien promès.
+  const d = ctx.dossier || {};
+  const netMinuscula = net.toLowerCase();
+  (Array.isArray(d.objectes_clau) ? d.objectes_clau : []).forEach(o => {
+    if (!o || !esTextUtil(o.nom)) return;
+    const claus = paraulesDistintives(o.nom);
+    if (!claus.length) return;
+    const aparicions = Math.max(...claus.map(k => ocurrenciesInsensibles(netMinuscula, k)));
+    if (aparicions === 1) {
+      afegir('setups_sense_pagament', 'mitjana',
+        `L'objecte clau «${retallar(o.nom, 60)}» apareix una sola vegada al conte: s'introdueix i no es recupera.`,
+        '', `objecte_clau: ${retallar(o.nom, 60)}`);
+    }
+  });
+
+  const escenes = Array.isArray(ctx.escaleta)
+    ? ctx.escaleta
+    : (ctx.escaleta && Array.isArray(ctx.escaleta.escenes) ? ctx.escaleta.escenes : []);
+  escenes.forEach((e, i) => {
+    const enDisputa = e && e.objecte_o_informacio_en_disputa;
+    if (!esTextUtil(enDisputa)) return;
+    const claus = paraulesDistintives(enDisputa);
+    if (claus.length === 0) return;
+    const presents = claus.filter(k => netMinuscula.includes(k));
+    if (presents.length === 0) {
+      afegir('setups_sense_pagament', 'mitjana',
+        `El que l'escena ${i + 1} posava en disputa —«${retallar(enDisputa, 60)}»— no apareix enlloc del text.`,
+        '', `escena ${i + 1}`, { heuristica: true });
+    }
+  });
+
+  // Part heurística, i marcada com a tal: una cosa anunciada amb condició o amb
+  // horari («el sedant de ventilació de després de mitjanit») que no torna mai.
+  // El filtre és estret a propòsit: sense el marcador d'anunci, qualsevol
+  // paraula llarga que surti un sol cop seria una acusació, i un validador que
+  // es queixa de text correcte s'acaba ignorant.
+  const meitat = Math.floor(frases.length * 0.6);
+  const anunciats = new Set();
+  frases.slice(0, meitat).forEach(f => {
+    const minuscula = f.frase.toLowerCase();
+    if (!MARCADORS_ANUNCI.some(m => minuscula.includes(m))) return;
+    paraulesDistintives(f.frase)
+      .filter(t => t.length >= 8 && !anunciats.has(t))
+      .forEach(terme => {
+        if (ocurrenciesInsensibles(netMinuscula, terme) !== 1) return;
+        anunciats.add(terme);
+        afegir('setups_sense_pagament', 'baixa',
+          `«${terme}» s'anuncia en una frase condicional o d'horari i no torna a aparèixer mai més.`,
+          retallarParaules(f.frase, 14), '', { heuristica: true });
+      });
+  });
+
+  // ── 4. Clàusules òrfenes ──────────────────────────────────
+  if (teEdicio) {
+    const paragrafs = paragrafsDeText(sencer);
+    pedacos.forEach(p => {
+      const treguts = termesDestacats(p.cerca)
+        .filter(t => ocurrenciesInsensibles(p.substitueix || '', t) === 0)
+        .filter(t => ocurrenciesInsensibles(sencer, t) === 0);
+      if (treguts.length === 0) return; // no s'ha esborrat res que es pugui haver quedat orfe
+
+      const iParagraf = paragrafs.findIndex(x => p.substitueix && x.includes(p.substitueix));
+      if (iParagraf < 0) return;
+      paragrafs.slice(iParagraf, iParagraf + 2).forEach(paragraf => {
+        paragraf.split(/(?<=[.!?…])\s+/).forEach(frase => {
+          const neta = frase.trim();
+          // La frase que acaba d'escriure el pedaç no pot quedar òrfena d'ella
+          // mateixa: el que es busca és el que ha quedat penjat al voltant.
+          if (p.substitueix && p.substitueix.includes(neta)) return;
+          const minuscula = neta.toLowerCase().replace(/^[—–«"]\s*/, '');
+          const connector = CONNECTORS_DEPENDENTS.find(c => minuscula.startsWith(c));
+          if (!connector) return;
+          afegir('clausules_orfenes', 'mitjana',
+            `Aquesta frase comença per «${connector}» i l'edició acaba d'esborrar del conte ${treguts.length === 1 ? 'el terme' : 'els termes'} ${treguts.map(t => `«${t}»`).join(', ')}. Comprova que encara justifica alguna cosa que hi consti.`,
+            retallarParaules(neta, 14), '', { heuristica: true });
+        });
+      });
+    });
+  }
+
+  // ── 5. Comptador de caràcters ─────────────────────────────
+  const caracters = net.length;
+  const dinsInterval = caracters >= CONTE_MIN_CARACTERS && caracters <= CONTE_MAX_CARACTERS;
+  if (!dinsInterval) {
+    afegir('longitud', 'alta',
+      caracters < CONTE_MIN_CARACTERS
+        ? `Després de l'edició el conte té ${caracters} caràcters: ${CONTE_MIN_CARACTERS - caracters} per sota del mínim.`
+        : `Després de l'edició el conte té ${caracters} caràcters: ${caracters - CONTE_MAX_CARACTERS} per sobre del màxim.`,
+      '', 'longitud');
+  }
+
+  // Cada criteri diu si s'ha executat i quantes troballes ha tingut. Un criteri
+  // que no s'ha pogut executar no es pot presentar com un criteri superat.
+  const comprovacions = CRITERIS_COHERENCIA_GLOBAL.map(c => {
+    const executada = c.necessita_edicio ? teEdicio : true;
+    const trobades = comptador[c.id] || 0;
+    return {
+      id: c.id,
+      nom: c.nom,
+      que_detecta: c.que_detecta,
+      executada,
+      motiu_no_executada: executada ? '' : 'Necessita saber què s\'ha canviat: no hi ha ni text anterior ni llista de pedaços.',
+      trobades,
+      reportades: Math.min(trobades, MAX_PROBLEMES_PER_CRITERI)
+    };
+  });
+
+  return {
+    caracters,
+    dins_interval: dinsInterval,
+    interval: [CONTE_MIN_CARACTERS, CONTE_MAX_CARACTERS],
+    sobre: 'text sencer',
+    origen: String(ctx.origen || ''),
+    amb_context_d_edicio: teEdicio,
+    comprovacions,
+    problemes,
+    moment: new Date().toISOString()
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
 //  12. MOTIUS VETATS
 //
 //  TOPICS_PROHIBITS prohibeix NOMS: escriure «Ubik» o «Precrim». Això no impedeix
@@ -1456,6 +1827,8 @@ const CONTE_CORE_API = {
   contracteFallbackLocal, completarContracteAmbFallback,
   lintCatalaParcial, densitatAdverbisMent, frasesRepetides, formatDialegInconsistent,
   auditoriaDeterministaConte, aplicarPedacos,
+  validarCoherenciaGlobal, CRITERIS_COHERENCIA_GLOBAL,
+  DISTANCIA_PARAGRAFS_DUPLICAT, LLINDAR_SIMILITUD_FRASE, MAX_OCURRENCIES_REFERENCIA,
   BANC_MOTIUS_PKD, TOPICS_PROHIBITS, triarMotius, motiusDisponibles,
   MOTIUS_VETATS, CRITERIS_LLENGUA_REVISIO,
   CASTELLANISMES, ANGLICISMES, ADVERBIS_MENT,

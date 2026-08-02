@@ -183,6 +183,7 @@ table.metrica td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .semafor.verd { background: var(--verd); }
 .semafor.groc { background: var(--groc); }
 .semafor.vermell { background: var(--vermell); }
+.semafor.gris { background: var(--text3); }
 
 .pastilla {
   display: inline-block; font-size: .72rem; padding: .1rem .45rem; border-radius: 4px;
@@ -280,6 +281,7 @@ function estatBuit() {
     pedacos_rebutjats: [],
     costura_feta: 0,
     auditoria: null,
+    coherencia: null,
     lectura: null,
     lectura_avis_model: '',
     rondes_pedac: 0,
@@ -1143,7 +1145,7 @@ async function costuraEstil() {
   const text = textActual();
   const r = await cridarJSON('costura', blocSistemaGeneracio({ corrector: true, forma: false }),
     promptCosturaEstil(text), 3500, ['pedacos']);
-  return aplicarLotDePedacos(text, r.dades.pedacos);
+  return aplicarLotDePedacos(text, r.dades.pedacos, 'costura d\'estil');
 }
 
 async function costuraLongitud() {
@@ -1156,15 +1158,58 @@ async function costuraLongitud() {
 
   const r = await cridarJSON('costura', blocSistemaGeneracio({ corrector: true, forma: false }),
     promptCosturaLongitud(text, diferencia), 3500, ['pedacos']);
-  return aplicarLotDePedacos(text, r.dades.pedacos);
+  return aplicarLotDePedacos(text, r.dades.pedacos, 'ajust de longitud');
 }
 
-function aplicarLotDePedacos(text, pedacos) {
+// L'ÚNIC embut per on passa qualsevol edició feta pel model. Per això la
+// validació de coherència global es crida aquí i no a cada pas: qualsevol camí
+// que apedaci el text hi passa per força, i cap camí nou se la pot saltar sense
+// saltar-se també aplicarPedacos.
+function aplicarLotDePedacos(text, pedacos, origen) {
   const resultat = NUCLI.aplicarPedacos(text, Array.isArray(pedacos) ? pedacos : []);
   ESTAT_CONTE.text_conte = resultat.text;
   ESTAT_CONTE.pedacos_rebutjats = ESTAT_CONTE.pedacos_rebutjats.concat(
     resultat.rebutjats.map(r => ({ cerca: (r.pedac && r.pedac.cerca) || '', motiu_rebuig: r.motiu, motiu_pedac: (r.pedac && r.pedac.motiu) || '' })));
+
+  executarCoherencia({
+    textAnterior: text,
+    pedacos: resultat.aplicats,
+    origen: origen || 'pedaç',
+    pedacos_aplicats: resultat.aplicats.length,
+    pedacos_rebutjats: resultat.rebutjats.length
+  });
   return resultat;
+}
+
+// La passada de coherència mira el text SENCER, no el fragment editat, i costa
+// zero tokens. S'executa després de tota edició, també de les que ha generat el
+// mateix model, perquè els destrosses documentats van ser exactament això:
+// pedaços correctes que trencaven el text que no tocaven.
+function executarCoherencia(context) {
+  const ctx = context || {};
+  const informe = NUCLI.validarCoherenciaGlobal(textActual(), {
+    textAnterior: ctx.textAnterior,
+    pedacos: ctx.pedacos,
+    dossier: ESTAT_CONTE.dossier,
+    escaleta: ESTAT_CONTE.escaleta.escenes,
+    origen: ctx.origen
+  });
+  informe.pedacos_aplicats = Number(ctx.pedacos_aplicats) || 0;
+  informe.pedacos_rebutjats_al_lot = Number(ctx.pedacos_rebutjats) || 0;
+  ESTAT_CONTE.coherencia = informe;
+  desarEstat();
+  return informe;
+}
+
+// Edició a mà: també és una edició, i també passa per la validació. Aquí no hi
+// ha llista de pedaços, així que les dues comprovacions que necessiten saber
+// què s'ha canviat es declaren no executades en lloc de donar-se per bones.
+function editarTextAMa(nou) {
+  const anterior = textActual();
+  ESTAT_CONTE.text_conte = String(nou == null ? '' : nou);
+  executarAuditoria();
+  executarCoherencia({ textAnterior: anterior, pedacos: [], origen: 'edició a mà' });
+  renderitzar();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1253,7 +1298,7 @@ async function aplicarPedacDirigit() {
   const r = await cridarJSON('pedac', blocSistemaGeneracio({ corrector: true, forma: false }),
     promptPedacDirigit(text, triats), 3000, ['pedacos']);
 
-  const resultat = aplicarLotDePedacos(text, r.dades.pedacos);
+  const resultat = aplicarLotDePedacos(text, r.dades.pedacos, 'pedaç dirigit');
   ESTAT_CONTE.rondes_pedac += 1;
   triats.forEach(d => { d.triat = false; d.corregit = true; });
   executarAuditoria();
@@ -1305,6 +1350,14 @@ function metadadesConte() {
       }, {}),
       problemes: ESTAT_CONTE.auditoria.problemes,
       lint_catala: 'parcial: llista tancada de castellanismes i anglicismes, no és una comprovació ortogràfica'
+    } : null,
+    coherencia_global: ESTAT_CONTE.coherencia ? {
+      executada_sobre: ESTAT_CONTE.coherencia.sobre,
+      origen: ESTAT_CONTE.coherencia.origen,
+      amb_context_d_edicio: ESTAT_CONTE.coherencia.amb_context_d_edicio,
+      moment: ESTAT_CONTE.coherencia.moment,
+      comprovacions: ESTAT_CONTE.coherencia.comprovacions,
+      problemes: ESTAT_CONTE.coherencia.problemes
     } : null,
     porta_pkd_escaleta: NUCLI.validarGatePKD(ESTAT_CONTE.escaleta.escenes),
     porta_pkd_segons_el_lector: ESTAT_CONTE.lectura ? ESTAT_CONTE.lectura.porta_pkd : null,
@@ -1864,6 +1917,51 @@ async function escriureTotes() {
   ESTAT_CONTE.pas_actual = Math.max(ESTAT_CONTE.pas_actual, 5);
 }
 
+// Informe de coherència global. El mateix bloc es mostra a P5 i a P7, que són
+// els dos passos on el text es pot editar: la validació és una sola i el que
+// canvia és qui l'ha disparada.
+function blocCoherencia() {
+  const c = ESTAT_CONTE.coherencia;
+  if (!c) {
+    return `<p class="ajuda" style="margin-top:.8rem"><b>Coherència global:</b> encara no s'ha executat. S'executa sola després de cada edició —les del model i les fetes a mà— i mira el text sencer, no el fragment editat. Zero crides.</p>`;
+  }
+
+  const ordre = { alta: 0, mitjana: 1, baixa: 2 };
+  const problemes = c.problemes.slice().sort((a, b) => (ordre[a.severitat] ?? 3) - (ordre[b.severitat] ?? 3));
+  const altes = problemes.filter(p => p.severitat === 'alta').length;
+
+  const files = c.comprovacions.map(x => `
+    <tr>
+      <td>${esc(x.nom)}<div style="color:var(--text3);font-size:.76rem">${esc(x.que_detecta)}</div></td>
+      <td>${x.executada
+        ? `<span class="semafor ${x.trobades ? (x.id === 'longitud' || x.id === 'referencies_trencades' ? 'vermell' : 'groc') : 'verd'}"></span>${x.trobades ? `${x.trobades} troballa${x.trobades > 1 ? 'es' : ''}` : 'cap troballa'}`
+        : `<span class="semafor gris"></span>no executada`}</td>
+    </tr>`).join('');
+
+  const noExecutades = c.comprovacions.filter(x => !x.executada);
+
+  return `
+    <p class="ajuda" style="margin-top:.9rem"><b>Coherència global després de l'edició.</b>
+    Executada sobre el <b>text sencer</b> (${num(c.caracters)} caràcters), no sobre el fragment editat.
+    Origen: ${esc(c.origen || '—')}${c.pedacos_aplicats ? ` · ${c.pedacos_aplicats} pedaç${c.pedacos_aplicats > 1 ? 'os' : ''} aplicat${c.pedacos_aplicats > 1 ? 's' : ''}` : ''}. Zero crides.</p>
+    <table class="metrica">
+      <tr><th>Comprovació</th><th>Resultat</th></tr>
+      ${files}
+    </table>
+    ${noExecutades.length ? `<div class="nota">${noExecutades.map(x => `<b>${esc(x.nom)}</b>: ${esc(x.motiu_no_executada)}`).join('<br>')}</div>` : ''}
+    ${problemes.length
+      ? `<p class="ajuda" style="margin-top:.6rem">${problemes.length} ${problemes.length === 1 ? 'troballa' : 'troballes'}${altes ? `, ${altes} d'alta severitat` : ''}. Les marcades com a heurística són una pista, no un veredicte.</p>` +
+        problemes.map(p => `<div class="problema ${esc(p.severitat)}">
+          <div>${esc(p.detall)}${p.heuristica ? ' <span style="color:var(--text3)">(heurística)</span>' : ''}</div>
+          ${p.cita ? `<div class="cita">«${esc(p.cita)}»</div>` : ''}
+          ${p.camp ? `<div class="cita">${esc(p.camp)}</div>` : ''}
+        </div>`).join('')
+      : '<p class="ajuda" style="margin-top:.6rem">Cap troballa a les comprovacions que s\'han pogut executar. Vol dir que no s\'ha trobat res del que aquestes cinc comprovacions saben buscar; no vol dir que l\'edició sigui bona.</p>'}
+    <div class="accions">
+      <button class="petit" onclick="executarCoherencia({ origen: 'revisió manual' });renderitzar()">Torna a validar la coherència <span style="opacity:.7">· 0 crides</span></button>
+    </div>`;
+}
+
 // ── P5 ────────────────────────────────────────────────────
 function renderP5() {
   const text = textActual();
@@ -1901,6 +1999,7 @@ function renderP5() {
       <tr><td>Crides gastades en aquest pas</td><td class="num">${fetes} / ${LIMITS_DURS_PAS.costura}</td></tr>
     </table>
     ${rebutjats}
+    ${blocCoherencia()}
     ${bloc}
     <div class="accions">
       <button class="primari" id="b-costura" onclick="accio('b-costura', costuraEstil)"
@@ -1911,7 +2010,7 @@ function renderP5() {
       ${carregantHTML()}
     </div>
     <details style="margin-top:.8rem"><summary style="cursor:pointer;font-size:.85rem;color:var(--text2)">Edita el conte a mà</summary>
-      <textarea id="edicio-manual" rows="18" style="margin-top:.5rem" onchange="ESTAT_CONTE.text_conte=this.value;executarAuditoria();renderitzar()">${esc(text)}</textarea>
+      <textarea id="edicio-manual" rows="18" style="margin-top:.5rem" onchange="editarTextAMa(this.value)">${esc(text)}</textarea>
     </details>
   `);
 }
@@ -2027,6 +2126,7 @@ function renderP7() {
     ${defectes}
     ${descartats}
     ${porta}
+    ${ESTAT_CONTE.rondes_pedac ? blocCoherencia() : ''}
     <div class="accions">
       <button class="primari" id="b-lectura" onclick="accio('b-lectura', lecturaHostil)"
         ${fetesLectura >= LIMITS_DURS_PAS.lectura || !textActual() ? 'disabled' : ''}>Llegeix-lo en contra <span style="opacity:.7">· 1 crida</span></button>
