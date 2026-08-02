@@ -28,6 +28,15 @@ l'aplicació amb **Exporta TXT**:
 - [`02-escomesa-cega.txt`](02-escomesa-cega.txt)
 - [`03-escolta-ampliada.txt`](03-escolta-ampliada.txt)
 
+També pots descarregar els **prompts autònoms** que defineixen el repte narratiu
+de cada conte. Estan pensats per enganxar-los directament en un model de text;
+fixen la premissa, les coordenades de divergència i les restriccions, però no
+inclouen el conte ni en revelen la resolució:
+
+- [`Prompt 01 · Procedència`](../prompts/01-procedencia.txt)
+- [`Prompt 02 · Escomesa cega`](../prompts/02-escomesa-cega.txt)
+- [`Prompt 03 · Escolta ampliada`](../prompts/03-escolta-ampliada.txt)
+
 ---
 
 ## 1. Procedència

@@ -1,0 +1,50 @@
+PROMPT 02 · ESCOMESA CEGA
+
+Escriu un conte especulatiu original en català, d'entre 15.000 i 20.000
+caràcters amb espais. Parteix d'una feina ordinària i d'una irregularitat
+mesurable. La inquietud ha de néixer de dades administratives incompatibles, no
+de màgia ni d'una conspiració explicada en un monòleg.
+
+PREMISSA
+Una inspectora d'aigua comprova una escomesa que consumeix cada nit, tot i que
+els plànols, les vàlvules i el cadastre afirmen que no alimenta cap edifici.
+Aquesta és l'única anomalia del conte.
+
+COORDENADES OBLIGATÒRIES
+- Protagonista: una inspectora municipal de xarxa d'aigua.
+- Institució que menteix: una empresa concessionària de serveis públics.
+- Escenari: una àrea de servei abandonada i el polígon que l'envolta.
+- Veu: primera persona en passat, precisa i poc sentimental.
+- Restricció formal: cada escena ha de contenir una mesura, una hora o una dada
+  que la narradora pugui comprovar.
+- Temperatura: freda i física; canonades, pressió, desnivell i burocràcia.
+
+CONTRACTE NARRATIU
+1. Organitza el conte en cinc escenes sense títols interns, separades per «· · ·».
+2. Dona a la narradora dos problemes quotidians que no siguin pistes: una pujada
+   imminent del lloguer i l'àcid d'estómac provocat pel cafè. Fes-los tornar
+   almenys tres cops en total i deixa'ls sense resoldre.
+3. Fes que la versió oficial quedi desmentida per una seqüència de mesures que
+   el lector pugui seguir. Les xifres que descriguin magnituds diferents no s'han
+   de presentar com una contradicció.
+4. La narradora ha de formular hipòtesis, descartar-les i fer una prova de tall
+   amb conseqüències observables.
+5. Reserva una escena per a la ferida emocional que explica per què una acta
+   correcta pot ser més insuportable que un error. No la converteixis en gir.
+6. La decisió empàtica final ha de tenir un cost professional o material exacte.
+7. A cada escena posa una frase de sintaxi llarga, dos passatges breus d'estil
+   indirecte lliure i una digressió laboral que no resolgui la investigació.
+8. Diàlegs només amb guió llarg a inici de paràgraf.
+9. El clímax ha de permetre una explicació hidràulica ordinària i falsable, però
+   el conte no ha de certificar que sigui la veritat definitiva.
+10. Acaba amb una acció de feina petita. No facis cap revelació d'última línia.
+
+PROHIBICIONS
+No introdueixis una ciutat simulada, un món devastat ocult, previsions de crims,
+records implantats, androides autoconscients, drogues reveladores, objectes que
+envelleixen de cop, màquines que cobren per funcionar ni veus que resultin ser
+gravacions. No copiïs noms ni elements distintius de cap obra existent. Evita
+l'explicació còsmica i el final de «tot era una simulació».
+
+Retorna només un títol d'una a quatre paraules, procedent del vocabulari del
+conte, i el text complet.

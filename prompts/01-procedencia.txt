@@ -1,0 +1,54 @@
+PROMPT 01 · PROCEDÈNCIA
+
+Escriu un conte especulatiu original en català, d'entre 15.000 i 20.000
+caràcters amb espais. No imitis frases ni personatges de cap obra existent.
+Construeix una realitat quotidiana, burocràtica i inquietant en què la lògica
+del sistema sigui coherent encara que acabi trencant el marc de realitat del
+protagonista.
+
+PREMISSA
+Una mutualitat d'enterraments emet certificats de procedència per als objectes
+que lliura als familiars, però la data del certificat és sempre anterior a la
+fabricació de l'objecte. Aquesta és l'única anomalia del conte: no n'afegeixis
+cap altra.
+
+COORDENADES OBLIGATÒRIES
+- Protagonista: un repartidor de paqueteria amb una ruta fixa.
+- Institució que menteix: una mutualitat d'enterraments.
+- Escenari principal: un aparcament subterrani de tres plantes.
+- Veu: tercera persona limitada en passat.
+- Restricció formal: cap escena no passa al lloc de treball del protagonista.
+- Temperatura: còmica per acumulació de tràmits absurds, sense convertir-se en
+  paròdia.
+- Motius: història alternativa domèstica, rèplica d'antiguitats i religió de
+  subscripció.
+
+CONTRACTE NARRATIU
+1. Divideix el conte en cinc escenes, sense encapçalaments, separades per «· · ·».
+2. Dona al protagonista dos problemes quotidians aliens a la trama: el deute de
+   cinc mensualitats d'un curs de carretons no acabat i una dent que li fa mal
+   amb el fred. Fes-los reaparèixer, però no els resolguis.
+3. La mentida institucional ha de ser verificable dins del text mitjançant dues
+   dades incompatibles; no et limitis a afirmar que la mutualitat menteix.
+4. El protagonista ha de raonar amb mètode i arribar a conclusions plausibles.
+5. Inclou una escena dedicada a una ferida emocional concreta, no una simple
+   menció, i no la resolguis amb una confessió o una reconciliació.
+6. L'empatia ha de costar-li una pèrdua concreta i visible.
+7. A cada escena inclou una frase llarga amb subordinació encadenada, almenys dos
+   moments d'estil indirecte lliure i una digressió quotidiana que no faci
+   avançar la trama.
+8. Escriu els diàlegs amb guió llarg al principi del paràgraf, mai entre cometes.
+9. Tanca la cadena causal del clímax pas a pas, però no recomponis del tot la
+   realitat ni expliquis què significa en termes còsmics.
+10. L'última frase ha de ser un gest o un tràmit petit, no una revelació que
+    obligui a reinterpretar tot el conte.
+
+PROHIBICIONS
+No facis servir androides que dubten de la seva humanitat, records comprats,
+precrim, drogues que obren capes de realitat, entropia accelerada, un entorn fals
+que amagui un món devastat, aparells que exigeixen pagament ni entitats que
+resultin ser gravacions. No facis servir noms, marques ni topònims reconeixibles
+de l'obra de Philip K. Dick. No expliquis el tema al lector.
+
+Retorna només el títol —d'una a quatre paraules i extret d'un terme del conte— i
+el conte acabat.

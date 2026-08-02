@@ -16,6 +16,21 @@ respostes fixes. No simula el pipeline: l'executa de debò —comptador, sostre 
 crides, parseig, auditoria— i només substitueix la resposta HTTP del proveïdor,
 així que les xifres de crides que hi veus són reals.
 
+## Mostres descarregables
+
+El repositori inclou tres parelles de mostra, cadascuna amb un prompt autònom i
+el conte complet en text pla:
+
+| Mostra | Prompt | Conte |
+|---|---|---|
+| Procedència | [Descarrega el prompt](prompts/01-procedencia.txt) | [Descarrega el conte](contes/01-procedencia.txt) |
+| Escomesa cega | [Descarrega el prompt](prompts/02-escomesa-cega.txt) | [Descarrega el conte](contes/02-escomesa-cega.txt) |
+| Escolta ampliada | [Descarrega el prompt](prompts/03-escolta-ampliada.txt) | [Descarrega el conte](contes/03-escolta-ampliada.txt) |
+
+Els prompts fixen la premissa i les restriccions de cada repte sense incloure'n
+la resolució. Els contes són els fitxers TXT exportables documentats i avaluats a
+[`contes/CONTES_DE_PROVA.md`](contes/CONTES_DE_PROVA.md).
+
 ---
 
 ## Què fa
