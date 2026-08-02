@@ -16,20 +16,21 @@ respostes fixes. No simula el pipeline: l'executa de debò —comptador, sostre 
 crides, parseig, auditoria— i només substitueix la resposta HTTP del proveïdor,
 així que les xifres de crides que hi veus són reals.
 
-## Mostres descarregables
+## Prompts inèdits i contes de mostra
 
-El repositori inclou tres parelles de mostra, cadascuna amb un prompt autònom i
-el conte complet en text pla:
+Els tres prompts descarregables proposen premisses noves que **no corresponen als
+tres contes ja escrits** i no n'inclouen cap resolució:
 
-| Mostra | Prompt | Conte |
-|---|---|---|
-| Procedència | [Descarrega el prompt](prompts/01-procedencia.txt) | [Descarrega el conte](contes/01-procedencia.txt) |
-| Escomesa cega | [Descarrega el prompt](prompts/02-escomesa-cega.txt) | [Descarrega el conte](contes/02-escomesa-cega.txt) |
-| Escolta ampliada | [Descarrega el prompt](prompts/03-escolta-ampliada.txt) | [Descarrega el conte](contes/03-escolta-ampliada.txt) |
+| Prompt inèdit | Descàrrega |
+|---|---|
+| El padró de les ombres | [Descarrega el prompt](prompts/01-el-padro-de-les-ombres.txt) |
+| Set minuts de garantia | [Descarrega el prompt](prompts/02-set-minuts-de-garantia.txt) |
+| La cua dels absents | [Descarrega el prompt](prompts/03-la-cua-dels-absents.txt) |
 
-Els prompts fixen la premissa i les restriccions de cada repte sense incloure'n
-la resolució. Els contes són els fitxers TXT exportables documentats i avaluats a
-[`contes/CONTES_DE_PROVA.md`](contes/CONTES_DE_PROVA.md).
+Separadament, el repositori conserva tres contes de mostra complets en text pla:
+[Procedència](contes/01-procedencia.txt), [Escomesa cega](contes/02-escomesa-cega.txt)
+i [Escolta ampliada](contes/03-escolta-ampliada.txt). El procés i l'avaluació són
+a [`contes/CONTES_DE_PROVA.md`](contes/CONTES_DE_PROVA.md).
 
 ---
 

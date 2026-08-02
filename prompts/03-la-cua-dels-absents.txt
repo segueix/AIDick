@@ -1,0 +1,48 @@
+PROMPT 03 · LA CUA DELS ABSENTS
+
+Escriu un conte especulatiu original i inèdit en català, d'entre 15.000 i
+20.000 caràcters amb espais. Construeix una sàtira burocràtica continguda en què
+la premissa alteri relacions ordinàries sense desembocar en una revolució.
+
+PREMISSA INÈDITA
+El sistema de torns d'un centre cívic comença a expedir números a nom de persones
+que no hi són. Si ningú no respon quan les criden, durant vint-i-quatre hores
+ningú no recorda haver rebut mai cap favor d'aquella persona, tot i conservar-ne
+la resta de records. Aquesta és l'única anomalia.
+
+COORDENADES OBLIGATÒRIES
+- Protagonista: el conserge suplent del torn de tarda.
+- Institució que menteix: l'empresa de manteniment, que presenta els noms com una
+  funció de demostració sense connexió amb els usuaris.
+- Espai únic: un centre cívic durant una jornada electoral d'una associació de
+  barri; no surtis mai de l'edifici.
+- Veu: tercera persona limitada en futur, com si tot fos un protocol pendent.
+- Temperatura: cordialitat forçada, cansament i por social de baixa intensitat.
+
+CONTRACTE NARRATIU
+1. Escriu quatre escenes llargues separades per «· · ·», sense títols interns.
+2. Demostra l'efecte amb tres favors concrets que deixen de ser recordats, mentre
+   altres records de les mateixes persones romanen intactes.
+3. Dona al protagonista dos problemes quotidians aliens a l'anomalia —unes
+   sabates noves que li fan mal i una trucada pendent amb la gestoria—. Recupera'ls
+   a totes les escenes i no els resolguis.
+4. Fes que investigui la impressora, l'ordre de la base de dades i els horaris
+   abans d'atribuir cap efecte als números.
+5. Dedica una escena a un favor que ell va acceptar i mai no va agrair. La ferida
+   ha d'existir abans de l'anomalia i no s'ha de curar.
+6. Per protegir una persona antipàtica, el protagonista haurà de respondre en nom
+   seu i perdre així un favor essencial que li havien fet a ell.
+7. A cada escena inclou una frase llarga subordinada, dos moments d'estil
+   indirecte lliure i una digressió sobre el manteniment de l'edifici.
+8. Diàlegs només amb guió llarg al principi del paràgraf.
+9. El clímax ha de dependre de l'ordre exacte de la cua i ha de poder-se seguir
+   sense cap explicació del narrador.
+10. Acaba quan el conserge torna a col·locar una cadira; cap revelació final.
+
+PROHIBICIONS
+No s'esborren persones, identitats ni records sencers: només el record d'haver-ne
+rebut favors. No introdueixis androides, precrim, realitats simulades, drogues,
+records comercials, entropia d'objectes, aparells que cobren ni gravacions
+personificades. La impressora no és conscient i ningú no descobreix que és mort.
+
+Retorna només un títol d'una a quatre paraules extret del conte i el conte complet.

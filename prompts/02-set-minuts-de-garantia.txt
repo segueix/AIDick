@@ -1,0 +1,49 @@
+PROMPT 02 · SET MINUTS DE GARANTIA
+
+Escriu un conte especulatiu original i inèdit en català, d'entre 15.000 i
+20.000 caràcters amb espais. La ciència-ficció ha de néixer d'una obligació
+laboral petita i comprovable, no d'una explicació còsmica.
+
+PREMISSA INÈDITA
+Una empresa d'electrodomèstics incorpora set minuts de garantia humana a cada
+reparació: durant aquell interval, qualsevol ferida del client apareix al cos de
+la tècnica que ha signat el servei. Quan el rellotge arriba a zero, la ferida
+torna al propietari, però els informes neguen que hi hagi hagut cap transferència.
+Aquesta és l'única anomalia.
+
+COORDENADES OBLIGATÒRIES
+- Protagonista: una tècnica autònoma que repara rentadores a domicili.
+- Institució que menteix: la plataforma que assigna els serveis i ven la garantia.
+- Espais: pisos habitats, una bugaderia automàtica i la furgoneta de la tècnica.
+- Veu: segona persona en passat; el «tu» és la protagonista parlant-se des d'un
+  futur proper, no el lector.
+- Restricció formal: cada escena dura exactament el temps d'un servei registrat.
+- Temperatura: corporal i precisa, sense gore ni sentimentalisme.
+
+CONTRACTE NARRATIU
+1. Organitza el conte en sis escenes separades per «· · ·» i sense encapçalaments.
+2. Mostra la mentida amb la diferència entre el registre biomètric intern i la
+   factura lliurada al client.
+3. Dona a la protagonista dos problemes quotidians sense relació causal amb la
+   garantia —una multa d'aparcament recurrible i una capsa de mandarines que es
+   fan malbé—. Fes-los reaparèixer i no els resolguis.
+4. La protagonista ha de provar tres hipòtesis amb cronòmetre i testimonis abans
+   d'acceptar el funcionament de la garantia.
+5. Reserva una escena per a la relació trencada amb el germà a qui va negar una
+   feina. No facis que l'anomalia els reconciliï.
+6. L'acte empàtic final ha de costar-li una lesió verificable i la baixa de la
+   plataforma, sense convertir-la en màrtir.
+7. Inclou a cada escena una frase llarga subordinada, dos passatges d'estil
+   indirecte lliure i una digressió tècnica que no faci avançar la trama.
+8. Diàlegs amb guió llarg al principi de paràgraf, mai entre cometes.
+9. Explica pas a pas la manipulació del registre, però deixa sense explicació el
+   mecanisme físic de la transferència.
+10. L'última frase ha de descriure una tasca domèstica incompleta.
+
+PROHIBICIONS
+La garantia no és una assegurança sobrenatural, una simulació, una droga ni una
+màquina conscient. No facis servir dobles, records comprats, prediccions de
+delictes, objectes que envelleixen, entorns falsos o identitats revelades a
+l'última línia. No copiïs cap nom o marca d'una obra existent.
+
+Retorna només un títol d'una a quatre paraules extret del conte i el conte complet.

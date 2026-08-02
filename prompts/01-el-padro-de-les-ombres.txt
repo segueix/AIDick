@@ -1,0 +1,48 @@
+PROMPT 01 · EL PADRÓ DE LES OMBRES
+
+Escriu un conte especulatiu original i inèdit en català, d'entre 15.000 i
+20.000 caràcters amb espais. No adaptis cap conte conegut ni reutilitzis
+personatges, artefactes, marques o girs d'altres obres.
+
+PREMISSA INÈDITA
+En una ciutat on l'ombra que projecta cada habitatge consta al padró municipal,
+una tècnica descobreix que l'ombra d'un edifici enderrocat continua canviant de
+domicili cada matinada i concedeix drets de residència a qui la rep. Aquesta és
+l'única anomalia del conte.
+
+COORDENADES OBLIGATÒRIES
+- Protagonista: una delineant municipal que comprova límits de finques.
+- Institució que menteix: l'oficina del padró, que afirma que les ombres només
+  descriuen els edificis i no produeixen cap efecte jurídic.
+- Espais: terrats comunitaris, un pati d'illa i una oficina provisional dins
+  d'un antic gimnàs.
+- Veu: primera persona del plural en present; el «nosaltres» inclou la
+  protagonista i els veïns, però canvia subtilment d'abast.
+- Temperatura: calor seca, humor administratiu i inquietud sense terror.
+
+CONTRACTE NARRATIU
+1. Escriu cinc escenes sense títols interns, separades per «· · ·».
+2. Fes verificable la mentida amb dos certificats expedits el mateix dia: un
+   nega efectes a l'ombra i l'altre concedeix una prestació gràcies a ella.
+3. Dona a la protagonista dos problemes quotidians aliens a l'anomalia —una
+   nevera que perd aigua i una filla que no li torna una bicicleta—, recupera'ls
+   almenys tres vegades i no els resolguis.
+4. La investigació ha d'emprar plànols, hores solars i visites sobre el terreny.
+5. Dedica una escena a la culpa de la protagonista per haver signat anys enrere
+   un desallotjament tècnicament correcte. No la converteixis en revelació.
+6. La seva decisió empàtica ha de fer-li perdre l'antiguitat administrativa.
+7. Cada escena ha d'incloure una frase llarga amb subordinació encadenada, dos
+   moments d'estil indirecte lliure i una digressió quotidiana.
+8. Escriu els diàlegs amb guió llarg al principi del paràgraf.
+9. El clímax ha de mostrar un procediment concret per traslladar l'ombra, però
+   no ha d'explicar què és ni per què persisteix.
+10. Acaba amb una anotació petita feta a llapis, no amb un gir final.
+
+PROHIBICIONS
+No facis que l'edifici continuï existint en una simulació o en una realitat
+paral·lela. No introdueixis androides, records implantats, precrim, drogues
+visionàries, entropia accelerada, màquines de pagament ni una veu que resulti ser
+una gravació. L'ombra no pot parlar, pensar ni ser una metàfora explicada.
+
+Retorna només un títol d'una a quatre paraules extret del conte i el conte
+complet.
