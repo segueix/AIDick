@@ -37,6 +37,10 @@ const SEPARADOR_ESCENA_NORMALITZAT = '\n· · ·\n';
 const FUNCIONS_PKD = ['esquerda', 'mentida', 'paranoia', 'empatia', 'cap'];
 const FUNCIONS_PKD_OBLIGATORIES = ['esquerda', 'mentida', 'empatia'];
 
+// Un títol és un concepte, no un nom de fitxer descriptiu. El patró
+// «nom del protagonista + ofici» queda prohibit i es comprova per codi.
+const TITOL_MAX_PARAULES = 4;
+
 // ═══════════════════════════════════════════════════════════
 //  2. RECOMPTE DE CARÀCTERS
 // ═══════════════════════════════════════════════════════════
@@ -132,6 +136,11 @@ function pesosPerEscenes(escenes) {
 function crearDossierBuit() {
   return {
     premissa: '',
+    // L'anomalia única del conte, en una frase, i per què no és cap dels
+    // mecanismes de MOTIUS_VETATS. La justificació no bloqueja: és la traça de
+    // la tria, no material narratiu.
+    anomalia: '',
+    anomalia_justificacio: '',
     final_obligatori: '',
     esquerda: '',
     mentida_del_sistema: '',
@@ -142,6 +151,10 @@ function crearDossierBuit() {
       ferida: '',
       objectiu_extern: '',
       secret: '',
+      // Dos problemes de vida quotidiana SENSE cap relació amb la trama. No es
+      // resolen ni es connecten amb el desenllaç: són soroll de fons i han de
+      // continuar sent-ho.
+      problemes_quotidians: [],
       veu: { registre: '', mai_diria: [] }
     },
     secundaris: [],
@@ -172,6 +185,7 @@ function validarDossier(dossier) {
 
   const arrel = [
     ['premissa', "L'anomalia inicial del conte, en una frase."],
+    ['anomalia', "L'anomalia única del conte en una frase, que no pot ser cap dels mecanismes vetats."],
     ['final_obligatori', 'El desenllaç concret que la darrera escena ha d\'executar.'],
     ['esquerda', "Què descobrirà el lector que no era real."],
     ['mentida_del_sistema', 'Quina institució menteix i com es comprova dins del text.'],
@@ -191,6 +205,19 @@ function validarDossier(dossier) {
   ].forEach(([camp, motiu]) => {
     if (!esTextUtil(p[camp])) falta(`protagonista.${camp}`, motiu, `Omple «${camp}» del protagonista`);
   });
+
+  // Els problemes quotidians són la brutícia humana que fa creïble la
+  // metafísica: sense ells el protagonista no té res fora de la trama.
+  const quotidians = Array.isArray(p.problemes_quotidians) ? p.problemes_quotidians.filter(esTextUtil) : [];
+  if (quotidians.length < 2) {
+    falta('protagonista.problemes_quotidians',
+      `Calen 2 problemes quotidians sense cap relació amb la trama; n'hi ha ${quotidians.length}.`,
+      'Genera els problemes quotidians del protagonista');
+  } else if (quotidians.length > 2) {
+    falta('protagonista.problemes_quotidians',
+      `Hi ha ${quotidians.length} problemes quotidians i n'han de ser exactament 2.`,
+      'Retalla els problemes quotidians fins a 2');
+  }
 
   const veu = p.veu || {};
   if (!esTextUtil(veu.registre)) {
@@ -255,6 +282,46 @@ function validarDossier(dossier) {
   return { valid: faltants.length === 0, faltants };
 }
 
+// ═══════════════════════════════════════════════════════════
+//  4 bis. TÍTOL
+//
+//  Comprovació determinista i zero tokens. «Denise Holloway, telefonista
+//  nocturna d'una asseguradora» descriu el fitxer, no el conte: és el patró
+//  nom + ofici, i és el que aquesta funció rebutja.
+// ═══════════════════════════════════════════════════════════
+
+function validarTitolConte(titol, dossier) {
+  const t = String(titol == null ? '' : titol).trim();
+  const no = (motiu, com_resoldre) => ({ valid: false, motiu, com_resoldre });
+
+  if (!esTextUtil(t)) {
+    return no('El títol és buit.', `Posa un títol conceptual d'1 a ${TITOL_MAX_PARAULES} paraules tret d'una frase o d'un terme del conte`);
+  }
+  const paraules = t.split(/\s+/).filter(Boolean);
+  if (paraules.length > TITOL_MAX_PARAULES) {
+    return no(`El títol té ${paraules.length} paraules i el màxim és ${TITOL_MAX_PARAULES}.`,
+      'Retalla el títol al terme que el sosté');
+  }
+  if (/[,;:]/.test(t)) {
+    return no('El títol porta una coma o dos punts: això és una descripció, no un títol.',
+      'Queda\'t amb la part que és un concepte');
+  }
+
+  const p = (dossier || {}).protagonista || {};
+  const tMinuscula = t.toLowerCase();
+  const componentsNom = String(p.nom || '').split(/\s+/)
+    .filter(x => x.replace(/[^\p{L}]/gu, '').length >= 3)
+    .map(x => x.toLowerCase());
+  const teNom = componentsNom.some(n => tMinuscula.includes(n));
+  const teOfici = paraulesDistintives(p.feina_ordinaria || '').some(f => tMinuscula.includes(f));
+  if (teNom && teOfici) {
+    return no('El títol és el patró prohibit «nom del protagonista + ofici»: descriu qui és, no de què va.',
+      'Tria un terme que aparegui al conte i que en signifiqui el nucli');
+  }
+
+  return { valid: true, motiu: '', com_resoldre: '' };
+}
+
 // Fusió que MAI buida el que ja tenia valor. Aquesta funció existeix perquè la
 // regressió documentada del projecte original era exactament la contrària: una
 // compleció parcial que retornava dos camps deixava els altres a zero.
@@ -316,9 +383,19 @@ function crearContracteEscena(i, escena) {
     cost_immediat: String(e.cost_immediat || '').trim(),
     consequencia: String(e.consequencia || '').trim(),
     caracters_objectiu: Math.max(0, Math.round(Number(e.caracters_objectiu) || 0)),
-    funcio_pkd: FUNCIONS_PKD.indexOf(e.funcio_pkd) >= 0 ? e.funcio_pkd : 'cap'
+    funcio_pkd: FUNCIONS_PKD.indexOf(e.funcio_pkd) >= 0 ? e.funcio_pkd : 'cap',
+    // L'escena on la ferida del protagonista és la matèria, no una menció.
+    escena_ferida: e.escena_ferida === true
   };
   return contracte;
+}
+
+// Índex de l'escena de la ferida, o -1 si no n'hi ha cap. Si l'escaleta en
+// marca més d'una, val la primera: la ferida necessita una escena, no un tema
+// repartit per tot el conte.
+function indexEscenaFerida(escaleta) {
+  const escenes = Array.isArray(escaleta) ? escaleta : (escaleta && Array.isArray(escaleta.escenes) ? escaleta.escenes : []);
+  return escenes.findIndex(e => e && e.escena_ferida === true);
 }
 
 // Retorna la llista de camps incomplets. Cap camp pot quedar buit excepte
@@ -413,7 +490,10 @@ function contracteFallbackLocal(i, dossier, caracters) {
       ? `El que donava per estable deixa de ser-ho: ${retallar(d.esquerda, 80)}`
       : 'A partir d\'aquí ningú del sistema li torna a respondre igual',
     caracters_objectiu: Math.max(1, Math.round(Number(caracters) || Math.round(CONTE_OBJECTIU_CARACTERS / CONTE_MIN_ESCENES))),
-    funcio_pkd: 'cap'
+    funcio_pkd: 'cap',
+    // Pel mateix motiu que funcio_pkd: si el fallback pogués declarar l'escena
+    // de la ferida, la declararia sempre i deixaria de mesurar res.
+    escena_ferida: false
   };
 
   return contracte;
@@ -1016,17 +1096,114 @@ function buidaUnParagraf(abans, despres) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  12. BANC DE MOTIUS PKD
+//  12. MOTIUS VETATS
+//
+//  TOPICS_PROHIBITS prohibeix NOMS: escriure «Ubik» o «Precrim». Això no impedeix
+//  reproduir el mecanisme amb un altre nom, que és exactament el que passava: un
+//  conte que recombinava quatre invencions conegudes del cànon de Dick sense
+//  citar-ne cap paraula.
+//
+//  Aquesta llista prohibeix MECANISMES. Cada entrada porta:
+//   · mecanisme — el nom del dispositiu, perquè el model no el pugui reproduir
+//     sense adonar-se'n que l'està reproduint;
+//   · disfressa — la forma en què torna quan se li canvia la superfície, que és
+//     com tornen sempre.
+//
+//  L'estil de Dick és la manera d'escriure la paranoia burocràtica i
+//  ontològica, no aquest catàleg d'objectes. La llista és editable: treure'n una
+//  entrada torna a obrir el mecanisme al generador.
+// ═══════════════════════════════════════════════════════════
+
+const MOTIUS_VETATS = [
+  {
+    id: 'entropia_regressiva',
+    mecanisme: "Regressió o entropia d'objectes: coses que es desfan, envelleixen, perden massa o retrocedeixen a una forma anterior d'elles mateixes.",
+    disfressa: "El producte que caduca abans d'hora i es converteix en el que era abans de ser fabricat; l'habitació que torna a ser com era fa vint anys."
+  },
+  {
+    id: 'precrim',
+    mecanisme: "Predicció o autorització administrativa d'un fet abans que passi: l'expedient, la condemna, la indemnització o la factura arriben abans que allò que registren.",
+    disfressa: "L'asseguradora que paga el sinistre el dia abans; l'oficina que arxiva com a ferma una resolució sobre demà."
+  },
+  {
+    id: 'entorn_fals',
+    mecanisme: "Ciutat, poble, barri o centre de treball falsos que amaguen al darrere una realitat devastada.",
+    disfressa: "El decorat que s'acaba a la sortida del poble; la finestra que dona a una projecció; la vila reconstruïda damunt d'una plana cremada o vitrificada."
+  },
+  {
+    id: 'aparell_que_cobra',
+    mecanisme: "Electrodomèstics, portes, ascensors o mobiliari que exigeixen un pagament per fer la seva funció.",
+    disfressa: "La nevera que factura per obrir-se; l'ascensor que demana un suplement per pujar; la cadira de casa que es cobra per hores."
+  },
+  {
+    id: 'records_comprats',
+    mecanisme: "Records implantats, comprats, venuts o extrets com a servei.",
+    disfressa: "L'agència que ven un viatge que no s'ha fet; la clínica que esborra un dol; el personatge que descobreix que la seva infantesa és d'algú altre."
+  },
+  {
+    id: 'simulacre_que_dubta',
+    mecanisme: "Simulacres, androides, clons o màquines que dubten de la seva pròpia humanitat, o protagonista que descobreix que no és humà.",
+    disfressa: "El test que el personatge no supera; la ferida que ensenya cables; el company de feina que resulta fabricat."
+  },
+  {
+    id: 'droga_que_obre_realitats',
+    mecanisme: "Una droga —clandestina, prescrita o obligatòria— que obre, revela o travessa capes de realitat.",
+    disfressa: "La pastilla que deixa veure el món de debò; la substància compartida que porta tothom al mateix lloc."
+  },
+  {
+    id: 'entitat_gravada',
+    mecanisme: "L'entitat divina, fundacional o corporativa que resulta ser una gravació, un bucle o un mort que continua emetent.",
+    disfressa: "El déu que repeteix sempre la mateixa frase; la veu del sistema que és un enregistrament antic; el fundador que continua signant des d'una cinta."
+  }
+];
+
+// ═══════════════════════════════════════════════════════════
+//  12 bis. CRITERIS DE REVISIÓ LINGÜÍSTICA
+//
+//  Control de qualitat de llengua, no d'estil. Cap d'aquests tres no es pot
+//  comprovar amb la llista tancada de lintCatalaParcial —fan falta el context i
+//  el conte sencer—, i per això són l'única part de la llengua que sí que es
+//  pregunta a un model. Van al prompt de costura i al de pedaç dirigit.
+//
+//  Els exemples surten de defectes reals observats a la sortida del generador.
+// ═══════════════════════════════════════════════════════════
+
+const CRITERIS_LLENGUA_REVISIO = [
+  {
+    id: 'verbs_inventats',
+    criteri: "Verbs i paraules que no existeixen en català, formats per analogia a partir d'un substantiu. Si dubtes que una forma sigui al diccionari, substitueix-la per la que hi és.",
+    exemple: "«gargamellejar» no existeix; la paraula que es volia dir era «gorgotejar»."
+  },
+  {
+    id: 'tractament',
+    criteri: "Coherència de tractament: per cada parella de personatges, un sol tractament (vostè, tu o vós) de la primera frase a l'última. Un canvi només val si és un gest narratiu deliberat i el text el marca.",
+    exemple: "La protagonista tracta el supervisor de vostè tot el conte i de sobte li diu «Digueu:»."
+  },
+  {
+    id: 'designacio_objectes',
+    criteri: "Coherència de designació dels objectes i les accions recurrents: una mateixa cosa es diu sempre igual, tret que el canvi de nom signifiqui alguna cosa.",
+    exemple: "«va prémer el silenci» i «va prémer el botó de silenci» per a la mateixa acció."
+  }
+];
+
+// ═══════════════════════════════════════════════════════════
+//  12 ter. BANC DE MOTIUS PKD
 //
 //  Un generador PKD sense control escriu sempre el mateix conte: androides,
 //  drogues, simulació. El banc reparteix el ventall real de Dick i cada motiu
 //  porta el clixé concret que tendeix a produir, perquè el prompt el pugui
 //  prohibir pel seu nom.
+//
+//  Els motius amb 'vetat_per' són els que coincidien amb un mecanisme de
+//  MOTIUS_VETATS: es conserven amb el motiu del veto a la vista, però
+//  triarMotius no els proposa mai. Oferir-los i prohibir-los al mateix prompt
+//  seria demanar-li al model dues coses contràries alhora.
 // ═══════════════════════════════════════════════════════════
 
 const BANC_MOTIUS_PKD = [
   {
     id: 'precognicio_administrativa',
+    vetat_per: 'precrim',
     motiu: "Una oficina emet resolucions sobre fets que encara no han passat i les arxiva com si ja fossin ferms.",
     tensio: "Si la decisió ja està presa i registrada, què queda del que el protagonista farà demà?",
     evita: "El vident torturat en una banyera amb elèctrodes, i la persecució per evitar un assassinat anunciat."
@@ -1039,6 +1216,7 @@ const BANC_MOTIUS_PKD = [
   },
   {
     id: 'entropia_dels_objectes',
+    vetat_per: 'entropia_regressiva',
     motiu: "Els objectes de casa es degraden més de pressa del que haurien i ningú no en porta el compte.",
     tensio: "Si tot es desfà a un ritme que no quadra, quant fa que dura de debò el que sembla d'ahir?",
     evita: "L'apartament ple de deixalles descrit com a metàfora de la decadència moral del protagonista."
@@ -1075,12 +1253,14 @@ const BANC_MOTIUS_PKD = [
   },
   {
     id: 'record_facturat',
+    vetat_per: 'records_comprats',
     motiu: "Un servei ven records de vacances que no s'han fet i n'emet la factura amb la data del viatge.",
     tensio: "Un record que va acompanyat de justificant, és més fals o més real que un que no en té?",
     evita: "El client que entra a la botiga a comprar un viatge a un altre planeta i acaba disparant a tothom."
   },
   {
     id: 'corporacio_postuma',
+    vetat_per: 'entitat_gravada',
     motiu: "L'empresa segueix signant contractes amb la signatura d'un fundador que consta mort fa dècades.",
     tensio: "Qui decideix, quan la persona que decideix ja no hi és i el sistema continua igual?",
     evita: "El cap conservat en una cambra freda que parla per un altaveu i dona ordres criptiques."
@@ -1095,7 +1275,7 @@ const BANC_MOTIUS_PKD = [
     id: 'recepta_obligatoria',
     motiu: "Una medicació d'estat és obligatòria per conservar el lloc de treball i el prospecte no diu què conté.",
     tensio: "Si el que sent és el que la pastilla vol que senti, què és seu?",
-    evita: "El viatge psicodèlic descrit amb colors i espirals com a escena central del conte."
+    evita: "El viatge psicodèlic descrit amb colors i espirals com a escena central, i que la pastilla obri cap capa de realitat que sense ella no es veiés."
   },
   {
     id: 'consens_fabricat',
@@ -1117,6 +1297,7 @@ const BANC_MOTIUS_PKD = [
   },
   {
     id: 'garantia_que_es_renova_sola',
+    vetat_per: 'aparell_que_cobra',
     motiu: "Un electrodomèstic renova la seva garantia sense que ningú l'hagi renovada i factura el càrrec.",
     tensio: "Qui ha acceptat el contracte, si el titular no ha signat res?",
     evita: "L'aparell parlant que xantatgeja el propietari i li exigeix monedes per obrir la porta."
@@ -1125,10 +1306,11 @@ const BANC_MOTIUS_PKD = [
     id: 'doble_de_baixa',
     motiu: "Un company de feina agafa la baixa i el substitut que arriba fa la feina exactament igual, amb els mateixos errors.",
     tensio: "Què es transmet d'una persona a una altra quan el que es transmet és el lloc?",
-    evita: "El doble idèntic que apareix a casa del protagonista i lluita amb ell per ocupar-ne la vida."
+    evita: "El doble idèntic que apareix a casa del protagonista i lluita per ocupar-ne la vida, i que el substitut resulti ser una màquina que es pregunta si és humana."
   },
   {
     id: 'assegurança_predictiva',
+    vetat_per: 'precrim',
     motiu: "Una asseguradora cobra la prima segons un càlcul del que el client farà i el càlcul es compleix.",
     tensio: "La predicció descriu el futur o el fabrica cobrant-lo per endavant?",
     evita: "L'ordinador central omniscient amb una veu freda que anuncia la data de la mort del protagonista."
@@ -1155,7 +1337,7 @@ const BANC_MOTIUS_PKD = [
     id: 'reparador_de_maquines_empatiques',
     motiu: "El protagonista repara aparells de companyia domèstica i comença a trobar-hi reparacions que ell no ha fet.",
     tensio: "Qui més entra a les cases i per què arregla el que no li han demanat?",
-    evita: "La màquina que declara el seu amor al tècnic i li demana que no l'apagui."
+    evita: "La màquina que declara el seu amor al tècnic i li demana que no l'apagui, i qualsevol aparell que dubti de si és humà o cobri per funcionar."
   },
   {
     id: 'publicitat_que_respon',
@@ -1173,7 +1355,7 @@ const BANC_MOTIUS_PKD = [
     id: 'menjar_que_recorda',
     motiu: "Un producte alimentari de marca blanca reprodueix el gust exacte d'un àpat concret de la infantesa del client.",
     tensio: "D'on ha tret la fàbrica una cosa que només era dins d'un cap?",
-    evita: "El menjar sintètic gris descrit amb fàstic com a prova que el futur és trist."
+    evita: "El menjar sintètic gris descrit amb fàstic com a prova que el futur és trist, i que el gust resulti ser un record implantat, comprat o extret del client."
   },
   {
     id: 'assemblea_de_propietaris',
@@ -1226,19 +1408,26 @@ const TOPICS_PROHIBITS = [
   'Sidney\'s', 'WPO', 'Ganímedes de Dick', 'Mars colònia Dick'
 ];
 
+// Els motius que no estan vetats per cap mecanisme de MOTIUS_VETATS. És l'única
+// llista que arriba mai a un prompt.
+function motiusDisponibles() {
+  return BANC_MOTIUS_PKD.filter(m => !m.vetat_per);
+}
+
 // Tria n motius no presents a 'usats'. Si no n'hi ha prou de nous, completa amb
 // els MENYS RECENTS (els que apareixen abans a l'històric).
 // Determinista: donat el mateix estat, retorna sempre el mateix resultat.
 function triarMotius(usats, n) {
   const quants = Math.max(1, Math.round(Number(n) || 3));
   const historic = (Array.isArray(usats) ? usats : []).map(x => String(x && x.id ? x.id : x));
+  const disponibles = motiusDisponibles();
 
-  const noUsats = BANC_MOTIUS_PKD.filter(m => historic.indexOf(m.id) < 0);
+  const noUsats = disponibles.filter(m => historic.indexOf(m.id) < 0);
   const triats = noUsats.slice(0, quants);
   if (triats.length >= quants) return triats;
 
   // Els menys recents primer: l'històric va del més antic al més nou.
-  const perAntiguitat = BANC_MOTIUS_PKD
+  const perAntiguitat = disponibles
     .filter(m => historic.indexOf(m.id) >= 0)
     .sort((a, b) => historic.indexOf(a.id) - historic.indexOf(b.id));
 
@@ -1258,15 +1447,17 @@ const CONTE_CORE_API = {
   CONTE_MIN_CARACTERS, CONTE_MAX_CARACTERS, CONTE_OBJECTIU_CARACTERS,
   CONTE_MIN_ESCENES, CONTE_MAX_ESCENES, MAX_CRIDES_CONTE, TOLERANCIA_ESCENA,
   SEPARADOR_ESCENA, SEPARADOR_ESCENA_NORMALITZAT, FUNCIONS_PKD, FUNCIONS_PKD_OBLIGATORIES,
-  LLINDAR_ADVERBIS_PER_MIL, MARGE_LONGITUD_PEDAC,
+  LLINDAR_ADVERBIS_PER_MIL, MARGE_LONGITUD_PEDAC, TITOL_MAX_PARAULES,
   normalitzarTextConte, comptaCaracters, comptaParaules,
   repartirCaracters, pesosPerEscenes,
   crearDossierBuit, validarDossier, fusionarDossierSenseBuidar, esTextUtil,
-  crearContracteEscena, detectarFaltantsContracte, validarGatePKD,
+  validarTitolConte,
+  crearContracteEscena, detectarFaltantsContracte, validarGatePKD, indexEscenaFerida,
   contracteFallbackLocal, completarContracteAmbFallback,
   lintCatalaParcial, densitatAdverbisMent, frasesRepetides, formatDialegInconsistent,
   auditoriaDeterministaConte, aplicarPedacos,
-  BANC_MOTIUS_PKD, TOPICS_PROHIBITS, triarMotius,
+  BANC_MOTIUS_PKD, TOPICS_PROHIBITS, triarMotius, motiusDisponibles,
+  MOTIUS_VETATS, CRITERIS_LLENGUA_REVISIO,
   CASTELLANISMES, ANGLICISMES, ADVERBIS_MENT,
   retallarParaules, retallar
 };

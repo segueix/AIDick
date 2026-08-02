@@ -417,6 +417,9 @@ function blocSistemaGeneracio(opcions) {
   parts.push(p.estil || '');
   if (o.reglesDures !== false) parts.push(p.regles_dures || '');
   if (o.prosa) parts.push([p.prosa, p.exposicio, p.emocio, p.intensitat].filter(Boolean).join('\n'));
+  // La variació de registre només té sentit quan s'està escrivint prosa: al
+  // corrector i a l'arquitectura no hi pinta res.
+  if (o.prosa) parts.push(blocConte(id, 'prosa_variacio'));
   if (o.forma !== false) parts.push(blocFormaConte(id));
   if (o.obertura) parts.push(blocOberturaConte(id));
   if (o.desenllac) parts.push(blocDesenllacConte(id));
@@ -462,6 +465,32 @@ function blocTopicsProhibits() {
 function blocMotius(motius) {
   return 'MOTIUS QUE HAS DE COMBINAR EN AQUESTES PROPOSTES:\n' +
     motius.map((m, i) => `${i + 1}. ${m.motiu}\n   Tensió que obre: ${m.tensio}\n   Clixé que has d'esquivar: ${m.evita}`).join('\n');
+}
+
+// blocTopicsProhibits prohibeix NOMS; això prohibeix MECANISMES, que és el que
+// tornava disfressat amb un altre vocabulari. La llista viu a
+// NUCLI.MOTIUS_VETATS i és editable des del codi, no des d'aquest string.
+// La forma compacta (només els noms) és la que va a cada escena, perquè la
+// llarga multiplicada per cinc escenes seria pressupost d'entrada llençat.
+function blocMotiusVetats(opcions) {
+  const o = opcions || {};
+  const llista = NUCLI.MOTIUS_VETATS || [];
+  if (o.compacte) {
+    return 'MECANISMES VETATS. No en pot entrar cap en aquesta escena, encara que no siguin a la premissa:\n' +
+      llista.map(m => `· ${m.mecanisme}`).join('\n');
+  }
+  return 'MECANISMES VETATS. Cap llavor no pot partir de cap d\'aquests, ni disfressat amb un altre vocabulari:\n' +
+    llista.map((m, i) => `${i + 1}. ${m.mecanisme}\n   Com torna disfressat: ${m.disfressa}`).join('\n') +
+    '\n\nL\'estil de Dick és la manera d\'escriure la paranoia burocràtica i ontològica, no aquest catàleg d\'objectes. ' +
+    'Un conte que en recombina dos o tres no és un conte nou: és un recull de grans èxits.';
+}
+
+// Els criteris de llengua que no es poden comprovar per codi. Van al corrector,
+// no al redactor: són control de qualitat, no estil.
+function blocCriterisLlengua() {
+  const llista = NUCLI.CRITERIS_LLENGUA_REVISIO || [];
+  return 'LLENGUA — busca també aquests tres defectes, que no es detecten amb cap llista tancada:\n' +
+    llista.map((c, i) => `${i + 1}. ${c.criteri}\n   Exemple del defecte: ${c.exemple}`).join('\n');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -520,17 +549,23 @@ function promptLlavors(motius) {
     ESTAT_CONTE.tema ? `Tema o punt de partida que ha donat l'usuari: ${ESTAT_CONTE.tema}` : 'L\'usuari no ha donat cap tema: tria tu el terreny.',
     blocMotius(motius),
     blocTopicsProhibits(),
-    `Proposa SIS llavors de conte. Cadascuna és un objecte amb aquests camps exactes:
-- premissa: una frase. Una anomalia administrativa o domèstica, mai còsmica.
+    blocMotiusVetats(),
+    `Proposa SIS llavors de conte. Cadascuna és un objecte amb aquests camps exactes, i els dos primers els has d'escriure ABANS que cap altre:
+- anomalia: UNA anomalia nova, en una sola frase. És d'on surt tot el conte i no n'hi pot haver cap altra. Administrativa o domèstica, mai còsmica.
+- justificacio_originalitat: per què aquesta anomalia no és cap dels mecanismes vetats. Digues a quin s'assembla més i què la'n separa. Si per justificar-la has de forçar l'argument, canvia-la: vol dir que és el mecanisme vetat amb una altra roba.
+- premissa: la situació de partida en una frase, amb l'anomalia dins.
 - esquerda: en una frase, què és el que el lector descobrirà que no era real.
 - mentida_del_sistema: quina institució menteix i amb quina dada es pot comprovar dins del text.
-- final_obligatori: el desenllaç concret en una frase. Inevitable en retrospectiva i imprevist durant la lectura.
+- final_obligatori: el desenllaç concret en una frase. Desinflat, ambigu o de broma sinistra; mai un tancament de rosca.
 - protagonista: nom, feina ordinària de rang baix i la ferida que el fa seguir quan hauria de parar.
-- cost_empatia: quina decisió empàtica li costarà alguna cosa concreta.`,
+- problemes_quotidians: array de DOS problemes de vida quotidiana sense CAP relació amb l'anomalia ni amb la trama (un deute, una dent, una exdona, una pensió d'aliments, una mudança, un cap que el menysprea, una digestió). No es resolen mai i no es connecten amb el desenllaç.
+- cost_empatia: quina decisió empàtica li costarà alguna cosa concreta.
+- titol: d'UNA a QUATRE paraules, tret d'un terme o d'una frase de la mateixa llavor. Sense comes. PROHIBIT el patró «nom del protagonista + ofici».`,
     `PROHIBICIONS:
 - Cap protagonista escollit, predestinat ni excepcional.
 - Cap revelació per confessió d'un personatge.
 - Cap final que restauri l'estat inicial.
+- Cap final amb revelació d'última línia que reordeni tot el conte (que l'expedient porti el nom del protagonista, que la víctima fos ell, que la data fos una altra).
 - Cap paraula en anglès.
 - Les sis llavors han de ser diferents entre elles: sis variants de la mateixa idea no serveixen.`,
     'Format: JSON estricte amb la clau "llavors", un array de 6 objectes. Res més: cap text abans ni després.'
@@ -567,11 +602,23 @@ function triarLlavor(i) {
 
   const d = ESTAT_CONTE.dossier;
   d.premissa = l.premissa || '';
+  d.anomalia = l.anomalia || '';
+  d.anomalia_justificacio = l.justificacio_originalitat || '';
   d.esquerda = l.esquerda || '';
   d.mentida_del_sistema = l.mentida_del_sistema || '';
   d.final_obligatori = l.final_obligatori || '';
   d.cost_empatia = l.cost_empatia || '';
   d.motius_triats = ESTAT_CONTE.motius_conte.slice();
+
+  // Els dos problemes quotidians viatgen de la llavor al dossier tal com han
+  // arribat: el pas de dossier els pot refinar, però no els ha de tornar a
+  // inventar.
+  const quotidians = Array.isArray(l.problemes_quotidians)
+    ? l.problemes_quotidians.map(x => String(x || '').trim()).filter(x => NUCLI.esTextUtil(x))
+    : [];
+  if (quotidians.length && !(d.protagonista.problemes_quotidians || []).filter(NUCLI.esTextUtil).length) {
+    d.protagonista.problemes_quotidians = quotidians.slice(0, 2);
+  }
 
   // El camp 'protagonista' de la llavor és una frase; el dossier el desglossa a
   // P2. Aquí només se'n guarda el nom si es pot deduir sense inventar res.
@@ -581,15 +628,27 @@ function triarLlavor(i) {
     if (nom && nom.split(/\s+/).length <= 4) d.protagonista.nom = nom;
   }
 
-  ESTAT_CONTE.titol = ESTAT_CONTE.titol || proposarTitol(l.premissa);
+  ESTAT_CONTE.titol = ESTAT_CONTE.titol || proposarTitol(l);
   avancarFins(2);
 }
 
-function proposarTitol(premissa) {
-  const t = String(premissa || '').trim().replace(/\.$/, '');
-  if (!t) return 'Conte sense títol';
-  const parts = t.split(/\s+/);
-  return parts.slice(0, 6).join(' ').replace(/[,;:]$/, '');
+// El títol el proposa la llavor, que l'ha tret d'un terme del conte mateix. Si
+// no en porta o no passa validarTitolConte —massa paraules, una coma, el patró
+// nom + ofici—, se'n deriva un de LOCAL: el terme més llarg de l'anomalia. Un
+// títol d'una paraula sempre compleix el format, i la interfície el deixa
+// editar. Aquí no es gasta cap crida: un títol no val una crida al model.
+function proposarTitol(llavor) {
+  const l = (llavor && typeof llavor === 'object') ? llavor : { premissa: String(llavor || '') };
+  const candidat = String(l.titol || '').trim().replace(/[.…]$/, '');
+  if (candidat && NUCLI.validarTitolConte(candidat, ESTAT_CONTE.dossier).valid) return candidat;
+
+  const font = String(l.anomalia || l.premissa || '').trim();
+  const terme = font.toLowerCase()
+    .split(/[^\p{L}\p{N}·'-]+/u)
+    .filter(p => p.length >= 6)
+    .sort((a, b) => b.length - a.length)[0];
+  if (!terme) return 'Conte sense títol';
+  return terme.charAt(0).toUpperCase() + terme.slice(1);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -597,11 +656,13 @@ function proposarTitol(premissa) {
 // ═══════════════════════════════════════════════════════════
 
 const ESQUEMA_DOSSIER_TEXT = `{
-  "premissa": "...", "final_obligatori": "...", "esquerda": "...",
+  "premissa": "...", "anomalia": "...", "anomalia_justificacio": "...",
+  "final_obligatori": "...", "esquerda": "...",
   "mentida_del_sistema": "...", "cost_empatia": "...",
   "protagonista": {
     "nom": "...", "feina_ordinaria": "...", "ferida": "...",
     "objectiu_extern": "...", "secret": "...",
+    "problemes_quotidians": ["...", "..."],
     "veu": { "registre": "...", "mai_diria": ["...", "...", "..."] }
   },
   "secundaris": [ { "nom": "...", "funcio": "...", "vol": "...", "amaga": "..." } ],
@@ -618,7 +679,11 @@ function promptDossier() {
   return [
     'LLAVOR TRIADA:\n' + JSON.stringify(l, null, 2),
     `Converteix aquesta llavor en el dossier del conte. Omple l'esquema exacte del dossier:\n${ESQUEMA_DOSSIER_TEXT}`,
+    blocConte(perfilActual(), 'vida_quotidiana'),
     `REGLES:
+- anomalia: la mateixa de la llavor, en una frase. És l'única anomalia del conte i cap escena no en pot afegir una segona.
+- anomalia_justificacio: la justificació d'originalitat de la llavor, retallada.
+- protagonista.problemes_quotidians: exactament 2, els de la llavor. Sense cap relació amb l'anomalia, sense resolució i sense connexió amb el desenllaç. Concrets i avorrits: una quota, una dent, una trucada de la mare, una gotera, un cotxe.
 - protagonista.veu.mai_diria: exactament 3 frases senceres que aquest personatge no diria mai. Serviran de control de veu.
 - mon.deteriorament: exactament 3 detalls que mostrin que el futur és el present deteriorat, no el present lluent.
 - mon.objectes_consum_defectuosos: exactament 2 objectes quotidians amb el defecte concret (marca mal impresa, logotip desalineat, botó que respon tard).
@@ -657,6 +722,8 @@ function completarDossierLocalment() {
   };
 
   posar(d, 'premissa', l.premissa, 'premissa');
+  posar(d, 'anomalia', l.anomalia || d.premissa, 'anomalia');
+  posar(d, 'anomalia_justificacio', l.justificacio_originalitat, 'anomalia_justificacio');
   posar(d, 'esquerda', l.esquerda, 'esquerda');
   posar(d, 'mentida_del_sistema', l.mentida_del_sistema, 'mentida_del_sistema');
   posar(d, 'final_obligatori', l.final_obligatori, 'final_obligatori');
@@ -670,6 +737,30 @@ function completarDossierLocalment() {
   posar(p, 'objectiu_extern', d.premissa ? `Resoldre l'anomalia sense que ningú hi miri dues vegades: ${NUCLI.retallar(d.premissa, 90)}` : '', 'protagonista.objectiu_extern');
   posar(p, 'secret', d.cost_empatia ? `El que ja ha decidit callar: ${NUCLI.retallar(d.cost_empatia, 90)}` : '', 'protagonista.secret');
   posar(p.veu, 'registre', 'Sec i procedimental; frases curtes, precisió de qui treballa amb impresos', 'protagonista.veu.registre');
+
+  // Els problemes quotidians: primer els de la llavor, i si no n'hi ha, dos de
+  // base. Han de ser reemplaçables sense pensar-hi: el que importa és que
+  // n'hi hagi dos i que no toquin la trama.
+  if (!Array.isArray(p.problemes_quotidians)) p.problemes_quotidians = [];
+  const quotidiansLlavor = Array.isArray(l.problemes_quotidians) ? l.problemes_quotidians : [];
+  quotidiansLlavor.forEach(q => {
+    if (p.problemes_quotidians.filter(NUCLI.esTextUtil).length < 2 && NUCLI.esTextUtil(q)) {
+      p.problemes_quotidians.push(String(q).trim());
+      omplerts.push('protagonista.problemes_quotidians');
+    }
+  });
+  const quotidiansBase = [
+    'Deu tres mensualitats del dentista i li truquen a la feina per cobrar-les',
+    'L\'exdona li reclama uns mobles que ell ja no té i no ho sap com dir-l\'hi'
+  ];
+  while (p.problemes_quotidians.filter(NUCLI.esTextUtil).length < 2) {
+    p.problemes_quotidians.push(quotidiansBase[p.problemes_quotidians.length % quotidiansBase.length]);
+    omplerts.push('protagonista.problemes_quotidians');
+  }
+  if (p.problemes_quotidians.length > 2) {
+    p.problemes_quotidians = p.problemes_quotidians.slice(0, 2);
+    omplerts.push('protagonista.problemes_quotidians');
+  }
 
   if (!Array.isArray(p.veu.mai_diria)) p.veu.mai_diria = [];
   const maiDiriaBase = [
@@ -775,12 +866,16 @@ function promptEscaleta() {
 - decisio_irreversible: què decideix que ja no pot desfer
 - cost_immediat: què perd en aquesta mateixa escena
 - consequencia: què canvia a partir d'ara
-- funcio_pkd: un de "esquerda", "mentida", "paranoia", "empatia" o "cap"`,
+- funcio_pkd: un de "esquerda", "mentida", "paranoia", "empatia" o "cap"
+- escena_ferida: true en UNA sola escena, false a la resta`,
+    blocConte(perfilActual(), 'nucli_emocional'),
     `REGLES:
 - Almenys una escena amb funcio_pkd "esquerda", una amb "mentida" i una amb "empatia".
+- EXACTAMENT una escena amb escena_ferida: true. És l'escena on la ferida del protagonista —"${esc(NUCLI.retallar(ESTAT_CONTE.dossier.protagonista.ferida, 120))}"— és la matèria de l'escena i no una menció. No pot ser la mateixa escena que executa el final.
 - Cap escena pot ser un resum temàtic ni una formulació moral abstracta.
 - Cap escena sense objectiu visible, sense obstacle concret, sense cost immediat i sense conseqüència.
-- L'última escena ha d'executar exactament el final_obligatori del dossier: "${esc(ESTAT_CONTE.dossier.final_obligatori)}".`,
+- Cada decisio_irreversible ha de ser una acció física amb la seva cadena causal: si el que decideix el protagonista provoca un efecte, l'escaleta ha de dir per quin camí el provoca. Un efecte que passa perquè convé a la trama és màgia.
+- L'última escena ha d'executar exactament el final_obligatori del dossier: "${esc(ESTAT_CONTE.dossier.final_obligatori)}", i no pot contenir cap revelació que reordeni el que s'ha llegit.`,
     'Format: JSON estricte { "escenes": [...], "justificacio_nombre": "..." }. Res més.'
   ].join('\n\n');
 }
@@ -816,9 +911,31 @@ function aplicarEscaleta(escenesCrues, justificacio) {
     return contracte;
   });
 
+  // L'escena de la ferida es comprova aquí i s'avisa, però no es tapa: si el
+  // fallback la pogués declarar, la declararia sempre i deixaria de mesurar res,
+  // exactament com passaria amb la porta PKD.
+  const iFerida = NUCLI.indexEscenaFerida(contractes);
+  if (iFerida < 0) {
+    ESTAT_CONTE.avisos.push('Cap escena no porta escena_ferida: la ferida del protagonista quedarà en mencions repartides. Marca\'n una a P3 o regenera l\'escaleta.');
+  } else if (iFerida === contractes.length - 1) {
+    ESTAT_CONTE.avisos.push(`L'escena de la ferida és l'última, la mateixa que executa el final. Es resoldran alhora i la ferida hi perdrà. Marca'n una altra a P3.`);
+  }
+
   ESTAT_CONTE.escaleta = { escenes: contractes, justificacio_nombre: justificacio };
   ESTAT_CONTE.escenes_text = new Array(contractes.length).fill('');
   ESTAT_CONTE.text_conte = '';
+}
+
+// Marca UNA escena com a escena de la ferida i desmarca la resta: la ferida
+// necessita una escena, no un tema repartit per tot el conte.
+function marcarEscenaFerida(i) {
+  const escenes = ESTAT_CONTE.escaleta.escenes;
+  if (!escenes[i]) return;
+  const jaHiEra = escenes[i].escena_ferida === true;
+  escenes.forEach(e => { e.escena_ferida = false; });
+  escenes[i].escena_ferida = !jaHiEra;
+  desarEstat();
+  renderitzar();
 }
 
 function reassignarFuncioPKD(i, funcio) {
@@ -837,6 +954,24 @@ function resumEscena(i) {
   const c = ESTAT_CONTE.escaleta.escenes[i];
   if (!c) return '';
   return `Escena ${i + 1} (${c.lloc}): ${c.objectiu_pov} — obstacle: ${c.obstacle} — conseqüència: ${c.consequencia}`;
+}
+
+// Quins problemes quotidians toquen a cada escena, decidit per CODI i no pel
+// model: tres aparicions repartides —principi, mig i final— i alternant els dos
+// problemes, perquè apareguin tots dos. Si es deixés a criteri del model,
+// s'acumularien a la primera escena i desapareixerien.
+function sorollQuotidiaDeLEscena(i, total) {
+  const quotidians = ((ESTAT_CONTE.dossier.protagonista || {}).problemes_quotidians || [])
+    .filter(NUCLI.esTextUtil);
+  if (quotidians.length === 0 || total < 1) return '';
+
+  const punts = [0, Math.round((total - 1) / 2), total - 1].filter((v, k, a) => a.indexOf(v) === k);
+  const posicio = punts.indexOf(i);
+  if (posicio < 0) return '';
+
+  return `SOROLL DE FONS OBLIGATORI EN AQUESTA ESCENA: «${quotidians[posicio % quotidians.length]}».
+Ha d'aparèixer una vegada, de gairell, enmig d'una altra cosa: una trucada que talla, un paper que li recorda, una molèstia física mentre parla d'una altra cosa.
+PROHIBIT resoldre'l, PROHIBIT connectar-lo amb l'anomalia i PROHIBIT que el protagonista se n'aturi a pensar. Entra, molesta i es queda igual que estava.`;
 }
 
 function promptEscena(i) {
@@ -869,12 +1004,27 @@ function promptEscena(i) {
 - Diàleg amb guió llarg (—) a principi de paràgraf. Aquest format és únic a tot el conte: mai cometes per marcar qui parla.
 - Cap paraula en anglès ni en castellà.
 - Cap etiqueta d'emoció genèrica: l'estat intern es llegeix en el cos, l'objecte, la rutina i el que el personatge deixa de fer. El narrador sí que pot nomenar el que sent el protagonista, però el personatge ha de desconfiar de la pròpia emoció i preguntar-se si és seva o si l'hi han posat.
+- Les tres exigències de variació de registre —una frase llarga amb subordinació encadenada, dos passatges d'estil indirecte lliure i una digressió que no fa avançar la trama— s'apliquen a AQUESTA escena, no al conte en conjunt.
+- Si aquí hi ha una acció que provoca un efecte, escriu la cadena sencera: què toca què, per on passa i per què això dona allò. La física pot ser inventada; el que no pot ser és que l'efecte passi perquè convé. El lector ha de poder seguir-la pas a pas.
 - No escriguis el títol, ni el número d'escena, ni cap comentari fora de la ficció. Comença directament amb la primera frase de la narració.`);
+
+  const soroll = sorollQuotidiaDeLEscena(i, total);
+  if (soroll) parts.push(soroll);
+
+  if (c.escena_ferida === true) {
+    parts.push(blocConte(perfilActual(), 'nucli_emocional'));
+    parts.push(`AQUESTA ÉS L'ESCENA DE LA FERIDA: "${ESTAT_CONTE.dossier.protagonista.ferida}".
+Ocupa-hi espai. La ferida és la matèria d'aquesta escena, no un apunt dins d'una altra cosa: hi ha una gestió, un objecte o algú altre a l'habitació a través del qual es fa present.
+PROHIBIT liquidar-la amb una frase de revelació. PROHIBIT tancar-la, entendre-la o perdonar-la.`);
+  }
+
+  parts.push(blocMotiusVetats({ compacte: true }));
 
   if (esPrimera) parts.push(blocOberturaConte(perfilActual()));
   if (esUltima) {
     parts.push(blocDesenllacConte(perfilActual()));
-    parts.push(`Aquesta escena ha d'executar exactament el final obligatori: "${ESTAT_CONTE.dossier.final_obligatori}".`);
+    parts.push(`Aquesta escena ha d'executar exactament el final obligatori: "${ESTAT_CONTE.dossier.final_obligatori}".
+L'última frase NO pot ser una revelació que reordeni el conte. Ha de ser petita: un gest, un tràmit, una frase de feina. El lector ha de tancar el conte amb el marc trencat i sense que ningú l'hi hagi explicat.`);
   }
 
   return parts.join('\n\n');
@@ -940,7 +1090,7 @@ function compensarPressupost(iEscrita) {
 function promptCosturaEstil(text) {
   return [
     'CONTE SENCER:\n\n' + text,
-    `Troba fins a 12 punts concrets a millorar: repeticions literals, tics, adverbis en -ment acumulats, salts de registre, frases que expliquen una emoció en lloc de mostrar-la, informació repetida entre escenes.
+    `Troba fins a 12 punts concrets a millorar: repeticions literals, tics, adverbis en -ment acumulats, frases que expliquen una emoció en lloc de mostrar-la, informació repetida entre escenes.
 
 Per a cadascun retorna un objecte { "cerca", "substitueix", "motiu" }.
 
@@ -954,6 +1104,9 @@ REGLES SOBRE 'substitueix':
 - No canviïs cap fet, cap nom, cap xifra ni cap data.
 - Ha de tenir una longitud semblant a 'cerca'.
 - No toquis l'última frase del conte.`,
+    blocCriterisLlengua(),
+    `NO proposis cap pedaç per aquests motius, que són de generació i no de correcció: la premissa, el registre de la prosa, la profunditat del personatge o l'estructura del conte. Si el problema és d'aquests, el conte s'ha de tornar a generar, no apedaçar.
+Un pedaç d'estil que uniformitza la longitud de les frases és un defecte: la variació de període és deliberada. No retallis les frases llargues subordinades, ni els passatges d'estil indirecte lliure, ni les digressions.`,
     'Format: JSON estricte { "pedacos": [...] }. Res més.'
   ].join('\n\n');
 }
@@ -1083,6 +1236,11 @@ function promptPedacDirigit(text, defectes) {
 - 'cerca' ha de ser un fragment LITERAL i ÚNIC del text, copiat caràcter a caràcter.
 - 'substitueix' ha de tenir una longitud semblant.
 - No canviïs cap fet, cap nom, cap xifra ni cap data. No toquis l'última frase del conte.`,
+    `CADA PEDAÇ ES LLEGEIX SOBRE EL CONTE SENCER, NO SOBRE EL FRAGMENT.
+- Si canvies una paraula que apareix més vegades al text —una classificació impresa, el nom d'un imprès, una fórmula administrativa—, comprova abans totes les altres aparicions. Canviar «HABITATGE» per «FITXA ACTIVA» deixa quatre línies més avall una frase que parla de la paraula «habitatge» que ja no hi és.
+- Si esborres una opció, una dada o una alternativa, esborra també la clàusula que la justificava. Una justificació sense allò que justificava queda òrfena i el lector la llegeix com un error.
+- No deixis mai dues frases idèntiques seguides: comprova que 'substitueix' no repeteix el que ja diu la frase anterior o la següent.`,
+    blocCriterisLlengua(),
     'Format: JSON estricte { "pedacos": [...] }. Res més.'
   ].join('\n\n');
 }
@@ -1430,12 +1588,17 @@ function renderP1() {
 
   const llista = llavors.map((l, i) => `
     <div class="llavor ${triada === i ? 'triada' : ''}" onclick="triarLlavor(${i})">
-      <h3>${i + 1}. ${esc(l.premissa)}</h3>
+      <h3>${i + 1}. ${esc(l.titol || l.premissa)}</h3>
       <dl>
+        ${l.anomalia ? `<dt>Anomalia</dt><dd>${esc(l.anomalia)}</dd>` : ''}
+        ${l.justificacio_originalitat ? `<dt>Per què és original</dt><dd>${esc(l.justificacio_originalitat)}</dd>` : ''}
+        <dt>Premissa</dt><dd>${esc(l.premissa)}</dd>
         <dt>Esquerda</dt><dd>${esc(l.esquerda)}</dd>
         <dt>Mentida del sistema</dt><dd>${esc(l.mentida_del_sistema)}</dd>
         <dt>Final obligatori</dt><dd>${esc(l.final_obligatori)}</dd>
         <dt>Protagonista</dt><dd>${esc(l.protagonista)}</dd>
+        ${Array.isArray(l.problemes_quotidians) && l.problemes_quotidians.length
+          ? `<dt>Soroll de fons</dt><dd>${l.problemes_quotidians.map(q => esc(q)).join(' · ')}</dd>` : ''}
         <dt>Cost de l'empatia</dt><dd>${esc(l.cost_empatia)}</dd>
       </dl>
     </div>`).join('');
@@ -1473,8 +1636,10 @@ function renderP2() {
   const resum = ESTAT_CONTE.dossier_generat ? `
     <table class="metrica">
       <tr><th>Camp</th><th>Contingut</th></tr>
+      <tr><td>Anomalia única</td><td>${esc(d.anomalia) || '<span style="color:var(--vermell)">falta</span>'}</td></tr>
       <tr><td>Protagonista</td><td>${esc(d.protagonista.nom)} — ${esc(d.protagonista.feina_ordinaria)}</td></tr>
       <tr><td>Ferida</td><td>${esc(d.protagonista.ferida)}</td></tr>
+      <tr><td>Soroll de fons</td><td>${(d.protagonista.problemes_quotidians || []).map(q => esc(q)).join('<br>') || '<span style="color:var(--vermell)">falten</span>'}</td></tr>
       <tr><td>Món</td><td>${esc(d.mon.lloc)} · ${esc(d.mon.any)}</td></tr>
       <tr><td>Secundaris</td><td>${(d.secundaris || []).map(s => esc(s.nom)).join(', ') || '—'}</td></tr>
       <tr><td>Fets canònics</td><td>${(d.fets_canonics || []).length}</td></tr>
@@ -1550,8 +1715,11 @@ function renderP3() {
       <div class="cap">
         <strong>Escena ${i + 1}</strong>
         <span class="marca-pkd ${esc(e.funcio_pkd)}">${esc(e.funcio_pkd)}</span>
+        ${e.escena_ferida ? '<span class="pastilla" title="La ferida del protagonista és la matèria d\'aquesta escena">ferida</span>' : ''}
         <span style="color:var(--text3);font-size:.78rem">${num(e.caracters_objectiu)} caràcters</span>
-        <select class="petit" style="width:auto;margin-left:auto;font-size:.78rem"
+        <button class="petit" style="width:auto;margin-left:auto;font-size:.72rem"
+          onclick="marcarEscenaFerida(${i})">${e.escena_ferida ? 'Treu la ferida' : 'Escena de la ferida'}</button>
+        <select class="petit" style="width:auto;font-size:.78rem"
           onchange="reassignarFuncioPKD(${i}, this.value)">
           ${NUCLI.FUNCIONS_PKD.map(f => `<option value="${f}" ${f === e.funcio_pkd ? 'selected' : ''}>funció: ${f}</option>`).join('')}
         </select>
@@ -1582,6 +1750,16 @@ function renderP3() {
   }
   if (escenes.length && !gate.paranoia_present) {
     blocatges += `<div class="nota">${esc(gate.avis_paranoia)}</div>`;
+  }
+  const iFerida = NUCLI.indexEscenaFerida(escenes);
+  if (escenes.length && iFerida < 0) {
+    blocatges += blocatge(
+      'Cap escena no és l\'escena de la ferida. La ferida del protagonista quedarà repartida en mencions, que és el defecte que aquesta marca serveix per evitar.',
+      'Com la porta PKD, aquesta marca no la pot posar el fallback local: la posa el model o una persona.',
+      `<button class="resolucio petit" onclick="marcarEscenaFerida(${Math.max(0, Math.min(1, escenes.length - 1))})">Marca l'escena ${Math.max(0, Math.min(1, escenes.length - 1)) + 1}</button>
+       <button class="resolucio petit" onclick="accio('b-escaleta', generarEscaleta)">Regenera l'escaleta · 1 crida</button>`);
+  } else if (escenes.length && iFerida === escenes.length - 1) {
+    blocatges += `<div class="nota">L'escena de la ferida és l'última, la mateixa que executa el final: es resoldran alhora i la ferida hi perdrà.</div>`;
   }
 
   return targeta(3, 'Escaleta i contractes',
@@ -1869,8 +2047,12 @@ function renderP8() {
 
   return targeta(8, 'Exportació', m.caracters_amb_espais ? `${num(m.caracters_amb_espais)} caràcters` : 'pendent',
     m.dins_interval ? 'ok' : 'avis', `
-    <label for="camp-titol">Títol <span style="color:var(--text3)">— proposat a partir de la premissa, editable</span></label>
+    <label for="camp-titol">Títol <span style="color:var(--text3)">— conceptual, d'1 a ${NUCLI.TITOL_MAX_PARAULES} paraules, tret d'un terme del conte. Editable</span></label>
     <input type="text" id="camp-titol" value="${esc(ESTAT_CONTE.titol)}" onchange="ESTAT_CONTE.titol=this.value;desarEstat();renderitzar()">
+    ${(() => {
+      const v = NUCLI.validarTitolConte(ESTAT_CONTE.titol, ESTAT_CONTE.dossier);
+      return v.valid ? '' : `<div class="avis" style="margin-top:.4rem">${esc(v.motiu)} <span style="color:var(--text3)">${esc(v.com_resoldre)}.</span></div>`;
+    })()}
     <label style="display:flex;align-items:center;gap:.5rem;margin-top:.6rem;cursor:pointer">
       <input type="checkbox" style="width:auto" ${ESTAT_CONTE.titol_al_cos ? 'checked' : ''}
         onchange="ESTAT_CONTE.titol_al_cos=this.checked;desarEstat();renderitzar()">

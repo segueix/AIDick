@@ -61,6 +61,10 @@ const prompts = await pagina.evaluate(() => ({
   escena: { sistema: blocSistemaGeneracio({ prosa: true, forma: true, excellencia: true }), usuari: promptEscena(0) },
   escenaFinal: { sistema: blocSistemaGeneracio({ prosa: true, forma: true, excellencia: true }), usuari: promptEscena(ESTAT_CONTE.escaleta.escenes.length - 1) },
   costura: { sistema: blocSistemaGeneracio({ corrector: true, forma: false }), usuari: promptCosturaEstil(textActual()) },
+  pedac: {
+    sistema: blocSistemaGeneracio({ corrector: true, forma: false }),
+    usuari: promptPedacDirigit(textActual(), [{ cita: 'Va comprovar la data.', per_que: 'verb repetit' }])
+  },
   lectura: { sistema: blocSistemaLectura(), usuari: promptLectura(textActual()) }
 }));
 
@@ -120,6 +124,113 @@ comprova('el prompt de lectura prohibeix posar nota, resumir i elogiar',
   /PROHIBIT[\s\S]*nota[\s\S]*resumir[\s\S]*elogiar/.test(prompts.lectura.sistema));
 comprova('el prompt de lectura exigeix cita literal a cada defecte',
   prompts.lectura.usuari.includes('fragment LITERAL'));
+
+// ── Els sis defectes sistemàtics que el prompt nou ha de tancar ─────────────
+// 1.1 Premissa: llista negra de MECANISMES, no només de noms propis.
+const vetats = await pagina.evaluate(() => CONTE_CORE.MOTIUS_VETATS.map(m => m.mecanisme));
+comprova('els vuit mecanismes vetats arriben sencers al prompt de llavors',
+  vetats.every(m => prompts.llavor.usuari.includes(m)),
+  vetats.filter(m => !prompts.llavor.usuari.includes(m)).join(' | '));
+comprova('el prompt de llavors porta també la disfressa de cada mecanisme vetat',
+  prompts.llavor.usuari.includes('Com torna disfressat:'));
+comprova('el prompt de llavors demana una anomalia única justificada com a original',
+  /anomalia: UNA anomalia nova/.test(prompts.llavor.usuari) &&
+  prompts.llavor.usuari.includes('justificacio_originalitat'));
+comprova('cada escena rep la forma compacta dels mecanismes vetats',
+  vetats.every(m => prompts.escena.usuari.includes(m)) &&
+  !prompts.escena.usuari.includes('Com torna disfressat:'));
+comprova('la llista de vetats no viu dins de cap string de prompt',
+  llegirFitxer('index.html').includes('NUCLI.MOTIUS_VETATS') &&
+  !/const MOTIUS_VETATS/.test(llegirFitxer('index.html')));
+
+// 1.2 Vida quotidiana: dos problemes, tres aparicions repartides per codi.
+comprova('el prompt de llavors demana dos problemes quotidians sense relació amb la trama',
+  prompts.llavor.usuari.includes('problemes_quotidians') &&
+  /sense CAP relació amb l'anomalia/.test(prompts.llavor.usuari));
+comprova('el prompt de dossier porta el bloc de soroll de fons',
+  prompts.dossier.usuari.includes('SOROLL DE FONS'));
+const soroll = await pagina.evaluate(() => {
+  const total = ESTAT_CONTE.escaleta.escenes.length;
+  return ESTAT_CONTE.escaleta.escenes.map((_, i) => promptEscena(i).includes('SOROLL DE FONS OBLIGATORI'))
+    .concat([total]);
+});
+const totalEscenes = soroll.pop();
+comprova('exactament tres escenes porten soroll de fons obligatori',
+  soroll.filter(Boolean).length === 3, `${soroll.filter(Boolean).length} de ${totalEscenes}`);
+comprova('les tres escenes amb soroll són la primera, una del mig i l\'última',
+  soroll[0] === true && soroll[totalEscenes - 1] === true && soroll.slice(1, -1).filter(Boolean).length === 1,
+  JSON.stringify(soroll));
+comprova('els dos problemes quotidians apareixen repartits, no el mateix tres cops',
+  await pagina.evaluate(() => {
+    const q = ESTAT_CONTE.dossier.protagonista.problemes_quotidians;
+    const textos = ESTAT_CONTE.escaleta.escenes.map((_, i) => promptEscena(i));
+    return q.every(p => textos.some(t => t.includes(p)));
+  }));
+
+// 1.3 Prosa: variació de registre obligatòria, i només al redactor.
+comprova('el prompt d\'escena porta la variació de registre obligatòria',
+  prompts.escena.sistema.includes('VARIACIÓ DE REGISTRE') &&
+  prompts.escena.sistema.includes('estil indirecte lliure') &&
+  prompts.escena.sistema.includes('digressió'));
+comprova('la variació de registre s\'exigeix a CADA escena, no al conte sencer',
+  prompts.escena.usuari.includes("s'apliquen a AQUESTA escena"));
+comprova('la variació de registre NO arriba al corrector ni al lector',
+  !prompts.costura.sistema.includes('VARIACIÓ DE REGISTRE') &&
+  !prompts.lectura.sistema.includes('VARIACIÓ DE REGISTRE'));
+comprova('el corrector té prohibit uniformitzar la longitud de les frases',
+  prompts.costura.usuari.includes('No retallis les frases llargues subordinades'));
+
+// 1.4 Nucli emocional: escena pròpia, no menció.
+comprova('el prompt d\'escaleta exigeix exactament una escena de la ferida',
+  /EXACTAMENT una escena amb escena_ferida: true/.test(prompts.escaleta.usuari) &&
+  prompts.escaleta.usuari.includes('LA FERIDA'));
+comprova('només l\'escena marcada rep el bloc de la ferida',
+  await pagina.evaluate(() => {
+    const i = CONTE_CORE.indexEscenaFerida(ESTAT_CONTE.escaleta.escenes);
+    if (i < 0) return false;
+    const ambBloc = ESTAT_CONTE.escaleta.escenes
+      .map((_, k) => promptEscena(k).includes("AQUESTA ÉS L'ESCENA DE LA FERIDA"))
+      .reduce((a, hi, k) => hi ? a.concat(k) : a, []);
+    return ambBloc.length === 1 && ambBloc[0] === i;
+  }));
+comprova('el bloc de la ferida prohibeix liquidar-la amb una frase de revelació',
+  await pagina.evaluate(() => {
+    const i = CONTE_CORE.indexEscenaFerida(ESTAT_CONTE.escaleta.escenes);
+    return i >= 0 && /PROHIBIT liquidar-la amb una frase de revelació/.test(promptEscena(i));
+  }));
+
+// 1.5 Final: ni gir d'O. Henry ni cadena causal afirmada.
+comprova('l\'última escena prohibeix la revelació d\'última línia',
+  /L'última frase NO pot ser una revelació que reordeni el conte/.test(prompts.escenaFinal.usuari));
+comprova('el bloc de desenllaç ja no demana reencuadrar amb l\'última frase',
+  !prompts.escenaFinal.usuari.includes('ha de REENCUADRAR') &&
+  prompts.escenaFinal.usuari.includes("PROHIBIDA LA REVELACIÓ D'ÚLTIMA LÍNIA"));
+comprova('cada escena exigeix la cadena causal explicada',
+  prompts.escena.usuari.includes('escriu la cadena sencera') &&
+  prompts.escaleta.usuari.includes('cadena causal'));
+
+// 1.6 Títol: conceptual, d'1 a 4 paraules, mai nom + ofici.
+comprova('el prompt de llavors demana el títol amb el format i la prohibició',
+  /titol: d'UNA a QUATRE paraules/.test(prompts.llavor.usuari) &&
+  prompts.llavor.usuari.includes('nom del protagonista + ofici'));
+comprova('el títol que proposa el pipeline compleix el format',
+  await pagina.evaluate(() => CONTE_CORE.validarTitolConte(ESTAT_CONTE.titol, ESTAT_CONTE.dossier).valid),
+  await pagina.evaluate(() => ESTAT_CONTE.titol + ' — ' + CONTE_CORE.validarTitolConte(ESTAT_CONTE.titol, ESTAT_CONTE.dossier).motiu));
+
+// 1.7 Llengua: només al corrector, mai al redactor.
+const criterisLlengua = await pagina.evaluate(() => CONTE_CORE.CRITERIS_LLENGUA_REVISIO.map(c => c.criteri));
+comprova('els tres criteris de llengua arriben a la costura i al pedaç dirigit',
+  criterisLlengua.every(c => prompts.costura.usuari.includes(c)) &&
+  criterisLlengua.every(c => prompts.pedac.usuari.includes(c)));
+comprova('els criteris de llengua porten l\'exemple del defecte real',
+  prompts.costura.usuari.includes('gargamellejar') && prompts.costura.usuari.includes('gorgotejar'));
+comprova('els criteris de llengua NO arriben al prompt de redacció',
+  !criterisLlengua.some(c => prompts.escena.sistema.includes(c) || prompts.escena.usuari.includes(c)));
+comprova('el pedaç dirigit avisa que cada canvi es llegeix sobre el conte sencer',
+  prompts.pedac.usuari.includes('NO SOBRE EL FRAGMENT') &&
+  prompts.pedac.usuari.includes('clàusula que la justificava'));
+comprova('la costura rebutja els diagnòstics que demanen regenerar, no apedaçar',
+  prompts.costura.usuari.includes('el conte s\'ha de tornar a generar, no apedaçar'));
 
 // ── L'entrada de les escenes no creix amb la longitud del conte ─────────────
 const midaPrompts = await pagina.evaluate(() => ESTAT_CONTE.escaleta.escenes.map((_, i) => promptEscena(i).length));
