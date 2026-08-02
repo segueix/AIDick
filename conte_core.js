@@ -37,6 +37,10 @@ const SEPARADOR_ESCENA_NORMALITZAT = '\n· · ·\n';
 const FUNCIONS_PKD = ['esquerda', 'mentida', 'paranoia', 'empatia', 'cap'];
 const FUNCIONS_PKD_OBLIGATORIES = ['esquerda', 'mentida', 'empatia'];
 
+// Un títol és un concepte, no un nom de fitxer descriptiu. El patró
+// «nom del protagonista + ofici» queda prohibit i es comprova per codi.
+const TITOL_MAX_PARAULES = 4;
+
 // ═══════════════════════════════════════════════════════════
 //  2. RECOMPTE DE CARÀCTERS
 // ═══════════════════════════════════════════════════════════
@@ -132,6 +136,11 @@ function pesosPerEscenes(escenes) {
 function crearDossierBuit() {
   return {
     premissa: '',
+    // L'anomalia única del conte, en una frase, i per què no és cap dels
+    // mecanismes de MOTIUS_VETATS. La justificació no bloqueja: és la traça de
+    // la tria, no material narratiu.
+    anomalia: '',
+    anomalia_justificacio: '',
     final_obligatori: '',
     esquerda: '',
     mentida_del_sistema: '',
@@ -142,6 +151,10 @@ function crearDossierBuit() {
       ferida: '',
       objectiu_extern: '',
       secret: '',
+      // Dos problemes de vida quotidiana SENSE cap relació amb la trama. No es
+      // resolen ni es connecten amb el desenllaç: són soroll de fons i han de
+      // continuar sent-ho.
+      problemes_quotidians: [],
       veu: { registre: '', mai_diria: [] }
     },
     secundaris: [],
@@ -172,6 +185,7 @@ function validarDossier(dossier) {
 
   const arrel = [
     ['premissa', "L'anomalia inicial del conte, en una frase."],
+    ['anomalia', "L'anomalia única del conte en una frase, que no pot ser cap dels mecanismes vetats."],
     ['final_obligatori', 'El desenllaç concret que la darrera escena ha d\'executar.'],
     ['esquerda', "Què descobrirà el lector que no era real."],
     ['mentida_del_sistema', 'Quina institució menteix i com es comprova dins del text.'],
@@ -191,6 +205,19 @@ function validarDossier(dossier) {
   ].forEach(([camp, motiu]) => {
     if (!esTextUtil(p[camp])) falta(`protagonista.${camp}`, motiu, `Omple «${camp}» del protagonista`);
   });
+
+  // Els problemes quotidians són la brutícia humana que fa creïble la
+  // metafísica: sense ells el protagonista no té res fora de la trama.
+  const quotidians = Array.isArray(p.problemes_quotidians) ? p.problemes_quotidians.filter(esTextUtil) : [];
+  if (quotidians.length < 2) {
+    falta('protagonista.problemes_quotidians',
+      `Calen 2 problemes quotidians sense cap relació amb la trama; n'hi ha ${quotidians.length}.`,
+      'Genera els problemes quotidians del protagonista');
+  } else if (quotidians.length > 2) {
+    falta('protagonista.problemes_quotidians',
+      `Hi ha ${quotidians.length} problemes quotidians i n'han de ser exactament 2.`,
+      'Retalla els problemes quotidians fins a 2');
+  }
 
   const veu = p.veu || {};
   if (!esTextUtil(veu.registre)) {
@@ -255,6 +282,46 @@ function validarDossier(dossier) {
   return { valid: faltants.length === 0, faltants };
 }
 
+// ═══════════════════════════════════════════════════════════
+//  4 bis. TÍTOL
+//
+//  Comprovació determinista i zero tokens. «Denise Holloway, telefonista
+//  nocturna d'una asseguradora» descriu el fitxer, no el conte: és el patró
+//  nom + ofici, i és el que aquesta funció rebutja.
+// ═══════════════════════════════════════════════════════════
+
+function validarTitolConte(titol, dossier) {
+  const t = String(titol == null ? '' : titol).trim();
+  const no = (motiu, com_resoldre) => ({ valid: false, motiu, com_resoldre });
+
+  if (!esTextUtil(t)) {
+    return no('El títol és buit.', `Posa un títol conceptual d'1 a ${TITOL_MAX_PARAULES} paraules tret d'una frase o d'un terme del conte`);
+  }
+  const paraules = t.split(/\s+/).filter(Boolean);
+  if (paraules.length > TITOL_MAX_PARAULES) {
+    return no(`El títol té ${paraules.length} paraules i el màxim és ${TITOL_MAX_PARAULES}.`,
+      'Retalla el títol al terme que el sosté');
+  }
+  if (/[,;:]/.test(t)) {
+    return no('El títol porta una coma o dos punts: això és una descripció, no un títol.',
+      'Queda\'t amb la part que és un concepte');
+  }
+
+  const p = (dossier || {}).protagonista || {};
+  const tMinuscula = t.toLowerCase();
+  const componentsNom = String(p.nom || '').split(/\s+/)
+    .filter(x => x.replace(/[^\p{L}]/gu, '').length >= 3)
+    .map(x => x.toLowerCase());
+  const teNom = componentsNom.some(n => tMinuscula.includes(n));
+  const teOfici = paraulesDistintives(p.feina_ordinaria || '').some(f => tMinuscula.includes(f));
+  if (teNom && teOfici) {
+    return no('El títol és el patró prohibit «nom del protagonista + ofici»: descriu qui és, no de què va.',
+      'Tria un terme que aparegui al conte i que en signifiqui el nucli');
+  }
+
+  return { valid: true, motiu: '', com_resoldre: '' };
+}
+
 // Fusió que MAI buida el que ja tenia valor. Aquesta funció existeix perquè la
 // regressió documentada del projecte original era exactament la contrària: una
 // compleció parcial que retornava dos camps deixava els altres a zero.
@@ -316,9 +383,19 @@ function crearContracteEscena(i, escena) {
     cost_immediat: String(e.cost_immediat || '').trim(),
     consequencia: String(e.consequencia || '').trim(),
     caracters_objectiu: Math.max(0, Math.round(Number(e.caracters_objectiu) || 0)),
-    funcio_pkd: FUNCIONS_PKD.indexOf(e.funcio_pkd) >= 0 ? e.funcio_pkd : 'cap'
+    funcio_pkd: FUNCIONS_PKD.indexOf(e.funcio_pkd) >= 0 ? e.funcio_pkd : 'cap',
+    // L'escena on la ferida del protagonista és la matèria, no una menció.
+    escena_ferida: e.escena_ferida === true
   };
   return contracte;
+}
+
+// Índex de l'escena de la ferida, o -1 si no n'hi ha cap. Si l'escaleta en
+// marca més d'una, val la primera: la ferida necessita una escena, no un tema
+// repartit per tot el conte.
+function indexEscenaFerida(escaleta) {
+  const escenes = Array.isArray(escaleta) ? escaleta : (escaleta && Array.isArray(escaleta.escenes) ? escaleta.escenes : []);
+  return escenes.findIndex(e => e && e.escena_ferida === true);
 }
 
 // Retorna la llista de camps incomplets. Cap camp pot quedar buit excepte
@@ -413,7 +490,10 @@ function contracteFallbackLocal(i, dossier, caracters) {
       ? `El que donava per estable deixa de ser-ho: ${retallar(d.esquerda, 80)}`
       : 'A partir d\'aquí ningú del sistema li torna a respondre igual',
     caracters_objectiu: Math.max(1, Math.round(Number(caracters) || Math.round(CONTE_OBJECTIU_CARACTERS / CONTE_MIN_ESCENES))),
-    funcio_pkd: 'cap'
+    funcio_pkd: 'cap',
+    // Pel mateix motiu que funcio_pkd: si el fallback pogués declarar l'escena
+    // de la ferida, la declararia sempre i deixaria de mesurar res.
+    escena_ferida: false
   };
 
   return contracte;
@@ -1016,17 +1096,625 @@ function buidaUnParagraf(abans, despres) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  12. BANC DE MOTIUS PKD
+//  11 bis. COHERÈNCIA GLOBAL POST-EDICIÓ
+//
+//  aplicarPedacos garanteix que cada pedaç s'aplica on toca. No garanteix res
+//  sobre la RESTA del text, i és allà on van aparèixer els destrosses reals:
+//
+//   · una revisió que va tocar 90 caràcters sobre 18.700 va canviar una
+//     classificació impresa i va deixar quatre línies més avall una frase que
+//     parlava d'una paraula que ja no hi era;
+//   · un altre pedaç va deixar la mateixa frase dues vegades seguides;
+//   · un tercer va esborrar unes opcions i va deixar les clàusules que les
+//     justificaven penjades de res.
+//
+//  Aquesta passada mira SEMPRE el text sencer, mai el fragment editat, i no
+//  gasta cap token. Les cinc comprovacions viuen a CRITERIS_COHERENCIA_GLOBAL i
+//  els seus paràmetres, a les constants de sota: totes dues coses són
+//  editables sense tocar cap prompt.
+// ═══════════════════════════════════════════════════════════
+
+// Dues frases iguals a més distància que aquesta ja no són un descuit d'edició:
+// en un conte de Dick, repetir una fórmula administrativa és un recurs.
+const DISTANCIA_PARAGRAFS_DUPLICAT = 3;
+// Coeficient de Dice sobre les paraules. 1 és idèntica. A 0,75 hi entra la
+// frase repetida amb dues paraules canviades («…aquella nit» / «…aquell
+// vespre»), que és el residu d'edició típic, i encara queda molt marge per
+// sobre de dues frases del mateix tema amb contingut diferent, que es queden
+// al voltant de 0,3. Per sota d'1 es reporta com a heurística.
+const LLINDAR_SIMILITUD_FRASE = 0.75;
+const MIN_PARAULES_FRASE_DUPLICADA = 5;
+// Un terme que surt més vegades que això al conte és vocabulari, no una
+// designació concreta: canviar-lo en un lloc no trenca cap cadena.
+const MAX_OCURRENCIES_REFERENCIA = 6;
+const MAX_PROBLEMES_PER_CRITERI = 6;
+
+// Obertures que depenen d'alguna cosa dita abans. Llista tancada, com la dels
+// castellanismes: no es dedueix per categoria gramatical.
+const CONNECTORS_DEPENDENTS = [
+  'perquè', 'ja que', 'atès que', 'com que', 'per això', 'per tant',
+  'de manera que', 'en canvi', 'l\'altra', 'la primera', 'la segona',
+  'aquesta opció', 'aquesta possibilitat', 'l\'altra opció', 'cap de les dues',
+  'totes dues', 'la diferència'
+];
+
+// Marques amb què s'anuncia una cosa que ha de tornar: una condició, un horari,
+// una amenaça ajornada. Serveixen per no acusar de setup sense pagament
+// qualsevol paraula llarga que aparegui un sol cop.
+//
+// Han d'anar a l'INICI de la frase, i això no és un detall: «si» i «quan» al
+// mig d'una frase són subordinades corrents i hi surten a cada paràgraf. Amb la
+// marca lliure, tres contes de 18.000 caràcters donaven trenta-nou avisos i tots
+// trenta-nou eren falsos («arronsar», «espatlles», «fregidora»). Ancorada a
+// l'inici, la frase és una condició o un horari de debò: «Després de mitjanit
+// el sistema de ventilació allibera un sedant».
+// Només marques d'HÀBIT o de CONDICIÓ, mai d'un moment concret: «A les 23.40
+// entra la sisena trucada» és narració amb hora, no un anunci, i incloure-hi
+// «a les» tornava a omplir l'informe de falsos positius en un conte que
+// s'estructura per hores.
+const MARCADORS_ANUNCI = [
+  'si ', 'quan ', 'abans que', 'després de', 'després d\'', 'a partir de', 'a partir d\'',
+  'cada nit', 'cada matí', 'cada vegada que', 'en cas de', 'sempre que'
+];
+
+const CRITERIS_COHERENCIA_GLOBAL = [
+  {
+    id: 'frases_duplicades',
+    nom: 'Frases duplicades',
+    que_detecta: `Frases idèntiques o quasi idèntiques a menys de ${DISTANCIA_PARAGRAFS_DUPLICAT} paràgrafs de distància.`,
+    necessita_edicio: false
+  },
+  {
+    id: 'referencies_trencades',
+    nom: 'Referències trencades',
+    que_detecta: 'Termes que una edició ha tret d\'un lloc i que segueixen apareixent en un altre, on ja no tenen a què referir-se.',
+    necessita_edicio: true
+  },
+  {
+    id: 'setups_sense_pagament',
+    nom: 'Setups sense pagament',
+    que_detecta: 'Objectes, dades o amenaces que s\'introdueixen i no es recuperen mai.',
+    necessita_edicio: false
+  },
+  {
+    id: 'clausules_orfenes',
+    nom: 'Clàusules òrfenes',
+    que_detecta: 'Fragments que justifiquen o contrasten una cosa que l\'edició ha esborrat.',
+    necessita_edicio: true
+  },
+  {
+    id: 'longitud',
+    nom: 'Comptador de caràcters',
+    que_detecta: `El text ha de quedar dins de ${CONTE_MIN_CARACTERS}–${CONTE_MAX_CARACTERS} caràcters amb espais.`,
+    necessita_edicio: false
+  }
+];
+
+// Un paràgraf és un bloc de línia no buida. Es compta sobre el text tal com
+// arriba, perquè normalitzarTextConte ja converteix els salts dobles en simples
+// i la distància s'ha de poder mesurar en tots dos casos.
+function paragrafsDeText(text) {
+  return String(text == null ? '' : text)
+    .split(/\n\s*\n|\n/)
+    .map(p => p.trim())
+    .filter(Boolean);
+}
+
+// Cada frase amb el número de paràgraf on viu.
+function frasesAmbParagraf(text) {
+  const resultat = [];
+  paragrafsDeText(text).forEach((paragraf, iParagraf) => {
+    paragraf.split(/(?<=[.!?…])\s+/).forEach(frase => {
+      const neta = frase.trim();
+      if (neta) resultat.push({ frase: neta, paragraf: iParagraf });
+    });
+  });
+  return resultat;
+}
+
+function tokensFrase(frase) {
+  return String(frase || '').toLowerCase()
+    .split(/[^\p{L}\p{N}·']+/u)
+    .filter(Boolean);
+}
+
+// Coeficient de Dice sobre multiconjunts de paraules: 1 si són la mateixa
+// frase, i baixa de pressa quan canvia el contingut i no només l'ordre.
+function similitudFrases(a, b) {
+  const ta = tokensFrase(a);
+  const tb = tokensFrase(b);
+  if (!ta.length || !tb.length) return 0;
+  const restants = new Map();
+  tb.forEach(t => restants.set(t, (restants.get(t) || 0) + 1));
+  let comuns = 0;
+  ta.forEach(t => {
+    const n = restants.get(t) || 0;
+    if (n > 0) { comuns += 1; restants.set(t, n - 1); }
+  });
+  return (2 * comuns) / (ta.length + tb.length);
+}
+
+// Les paraules amb contingut d'un fragment. Serveix per saber si una edició ha
+// esborrat material del conte, no per acusar ningú de trencar cap referència.
+function termesDestacats(fragment) {
+  const text = String(fragment || '');
+  const majuscules = (text.match(/\b[A-ZÀ-ÖØ-Þ][A-ZÀ-ÖØ-Þ·'-]{3,}\b/g) || []).map(t => t.toLowerCase());
+  return [...new Set(paraulesDistintives(text).concat(majuscules))];
+}
+
+// El vocabulari propi d'aquest conte: noms de personatge, objectes clau, lloc i
+// fets canònics. Surt del dossier, que és l'única font de veritat narrativa.
+function vocabulariCanonic(dossier) {
+  const d = dossier || {};
+  const trossos = [(d.protagonista || {}).nom || '', (d.mon || {}).lloc || ''];
+  (Array.isArray(d.secundaris) ? d.secundaris : []).forEach(s => trossos.push((s && s.nom) || ''));
+  (Array.isArray(d.objectes_clau) ? d.objectes_clau : []).forEach(o => trossos.push((o && o.nom) || ''));
+  (Array.isArray(d.fets_canonics) ? d.fets_canonics : []).forEach(f => trossos.push(f || ''));
+  const paraules = new Set();
+  trossos.forEach(t => paraulesDistintives(t).forEach(p => paraules.add(p)));
+  return paraules;
+}
+
+// Les DESIGNACIONS d'un fragment: el que anomena una cosa concreta i sosté una
+// cadena al llarg del conte. Tres orígens i cap més:
+//   · majúscules —les classificacions impreses i els noms d'imprès—,
+//   · noms propis, descomptant la paraula que obre cada frase,
+//   · vocabulari canònic del dossier.
+// Sense aquest filtre, la comprovació marcaria qualsevol paraula que un pedaç
+// d'estil hagi canviat de lloc ('calaix' per 'caixa'), i dotze pedaços de
+// costura produirien dotze avisos que no assenyalen res.
+function designacionsDelFragment(fragment, canonic) {
+  const text = String(fragment || '');
+  const majuscules = (text.match(/\b[A-ZÀ-ÖØ-Þ][A-ZÀ-ÖØ-Þ·'-]{3,}\b/g) || []).map(t => t.toLowerCase());
+
+  const propis = [];
+  text.split(/(?<=[.!?…])\s+|\n+/).forEach(frase => {
+    frase.trim().split(/\s+/).slice(1).forEach(paraula => {
+      const net = paraula.replace(/^[—–«"(]+/, '').replace(/[.,;:!?…»")]+$/, '');
+      if (/^[A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ·'-]{2,}$/.test(net)) propis.push(net.toLowerCase());
+    });
+  });
+
+  const delDossier = paraulesDistintives(text).filter(t => canonic && canonic.has(t));
+  return [...new Set(majuscules.concat(propis, delDossier))];
+}
+
+function ocurrenciesInsensibles(text, terme) {
+  if (!terme) return 0;
+  const re = new RegExp(escaparRegex(terme), 'gi');
+  return (String(text || '').match(re) || []).length;
+}
+
+// Retorna { caracters, dins_interval, comprovacions, problemes, moment }.
+//
+// 'context' pot portar { textAnterior, pedacos, dossier, escaleta, origen }.
+// Sense textAnterior i pedaços, les dues comprovacions que necessiten saber què
+// s'ha canviat no s'executen i ho DIUEN: una comprovació que no s'ha fet no es
+// pot presentar com una comprovació que ha passat.
+function validarCoherenciaGlobal(text, context) {
+  const ctx = context || {};
+  const sencer = String(text == null ? '' : text);
+  const net = normalitzarTextConte(sencer);
+  const problemes = [];
+  const comptador = {};
+
+  const afegir = (criteri, severitat, detall, cita, camp, extra) => {
+    if (!esTextUtil(cita) && !esTextUtil(camp)) return; // la mateixa regla de l'auditoria
+    comptador[criteri] = (comptador[criteri] || 0) + 1;
+    if (comptador[criteri] > MAX_PROBLEMES_PER_CRITERI) return;
+    problemes.push(Object.assign(
+      { id: `${criteri}_${comptador[criteri]}`, criteri, severitat, detall, cita: cita || '', camp: camp || '' },
+      extra || {}));
+  };
+
+  const pedacos = (Array.isArray(ctx.pedacos) ? ctx.pedacos : [])
+    .map(p => (p && p.pedac) ? p.pedac : p)
+    .filter(p => p && typeof p.cerca === 'string');
+  const textAnterior = typeof ctx.textAnterior === 'string' ? ctx.textAnterior : '';
+  const teEdicio = pedacos.length > 0 && !!textAnterior;
+
+  // ── 1. Frases duplicades ──────────────────────────────────
+  const frases = frasesAmbParagraf(sencer);
+  for (let i = 0; i < frases.length; i++) {
+    const a = frases[i];
+    if (tokensFrase(a.frase).length < MIN_PARAULES_FRASE_DUPLICADA) continue;
+    for (let j = i + 1; j < frases.length; j++) {
+      const b = frases[j];
+      if (b.paragraf - a.paragraf > DISTANCIA_PARAGRAFS_DUPLICAT) break;
+      if (tokensFrase(b.frase).length < MIN_PARAULES_FRASE_DUPLICADA) continue;
+      const s = similitudFrases(a.frase, b.frase);
+      if (s < LLINDAR_SIMILITUD_FRASE) continue;
+      afegir('frases_duplicades', s === 1 ? 'alta' : 'mitjana',
+        s === 1
+          ? `Aquesta frase apareix dues vegades a ${b.paragraf - a.paragraf} paràgrafs de distància.`
+          : `Dues frases quasi idèntiques (${Math.round(s * 100)}% de coincidència) a ${b.paragraf - a.paragraf} paràgrafs de distància: «${retallarParaules(b.frase, 12)}».`,
+        retallarParaules(a.frase, 12), '', s === 1 ? undefined : { heuristica: true });
+      break; // una troballa per frase: la resta serien la mateixa notícia
+    }
+  }
+
+  // ── 2. Referències trencades ──────────────────────────────
+  if (teEdicio) {
+    const canonic = vocabulariCanonic(ctx.dossier);
+    const jaReportat = new Set();
+    pedacos.forEach(p => {
+      const treguts = designacionsDelFragment(p.cerca, canonic)
+        .filter(t => ocurrenciesInsensibles(p.substitueix || '', t) === 0);
+      treguts.forEach(terme => {
+        if (jaReportat.has(terme)) return;
+        const abans = ocurrenciesInsensibles(textAnterior, terme);
+        if (abans === 0 || abans > MAX_OCURRENCIES_REFERENCIA) return; // vocabulari, no designació
+        const despres = ocurrenciesInsensibles(sencer, terme);
+        if (despres === 0) return;
+        jaReportat.add(terme);
+        const frase = frases.find(f => ocurrenciesInsensibles(f.frase, terme) > 0);
+        afegir('referencies_trencades', 'alta',
+          `L'edició ha tret «${terme}» d'un lloc i el terme encara apareix ${despres} ${despres === 1 ? 'vegada' : 'vegades'} més al conte. Comprova que el que hi queda segueix tenint a què referir-se.`,
+          frase ? retallarParaules(frase.frase, 14) : '', `terme: ${terme}`);
+      });
+    });
+  }
+
+  // ── 3. Setups sense pagament ──────────────────────────────
+  // Part determinista: el que el dossier i l'escaleta havien promès.
+  const d = ctx.dossier || {};
+  const netMinuscula = net.toLowerCase();
+  (Array.isArray(d.objectes_clau) ? d.objectes_clau : []).forEach(o => {
+    if (!o || !esTextUtil(o.nom)) return;
+    const claus = paraulesDistintives(o.nom);
+    if (!claus.length) return;
+    const aparicions = Math.max(...claus.map(k => ocurrenciesInsensibles(netMinuscula, k)));
+    if (aparicions === 1) {
+      afegir('setups_sense_pagament', 'mitjana',
+        `L'objecte clau «${retallar(o.nom, 60)}» apareix una sola vegada al conte: s'introdueix i no es recupera.`,
+        '', `objecte_clau: ${retallar(o.nom, 60)}`);
+    }
+  });
+
+  const escenes = Array.isArray(ctx.escaleta)
+    ? ctx.escaleta
+    : (ctx.escaleta && Array.isArray(ctx.escaleta.escenes) ? ctx.escaleta.escenes : []);
+  escenes.forEach((e, i) => {
+    const enDisputa = e && e.objecte_o_informacio_en_disputa;
+    if (!esTextUtil(enDisputa)) return;
+    const claus = paraulesDistintives(enDisputa);
+    if (claus.length === 0) return;
+    const presents = claus.filter(k => netMinuscula.includes(k));
+    if (presents.length === 0) {
+      afegir('setups_sense_pagament', 'mitjana',
+        `El que l'escena ${i + 1} posava en disputa —«${retallar(enDisputa, 60)}»— no apareix enlloc del text.`,
+        '', `escena ${i + 1}`, { heuristica: true });
+    }
+  });
+
+  // Part heurística, i marcada com a tal: una cosa anunciada amb condició o amb
+  // horari («el sedant de ventilació de després de mitjanit») que no torna mai.
+  // El filtre és estret a propòsit: sense el marcador d'anunci, qualsevol
+  // paraula llarga que surti un sol cop seria una acusació, i un validador que
+  // es queixa de text correcte s'acaba ignorant.
+  const meitat = Math.floor(frases.length * 0.6);
+  const anunciats = new Set();
+  frases.slice(0, meitat).forEach(f => {
+    const minuscula = f.frase.toLowerCase().replace(/^[—–«"(¿¡\s]+/, '');
+    if (!MARCADORS_ANUNCI.some(m => minuscula.startsWith(m))) return;
+    paraulesDistintives(f.frase)
+      .filter(t => t.length >= 8 && !anunciats.has(t))
+      .forEach(terme => {
+        if (ocurrenciesInsensibles(netMinuscula, terme) !== 1) return;
+        anunciats.add(terme);
+        afegir('setups_sense_pagament', 'baixa',
+          `«${terme}» s'anuncia en una frase condicional o d'horari i no torna a aparèixer mai més.`,
+          retallarParaules(f.frase, 14), '', { heuristica: true });
+      });
+  });
+
+  // ── 4. Clàusules òrfenes ──────────────────────────────────
+  if (teEdicio) {
+    const paragrafs = paragrafsDeText(sencer);
+    pedacos.forEach(p => {
+      const treguts = termesDestacats(p.cerca)
+        .filter(t => ocurrenciesInsensibles(p.substitueix || '', t) === 0)
+        .filter(t => ocurrenciesInsensibles(sencer, t) === 0);
+      if (treguts.length === 0) return; // no s'ha esborrat res que es pugui haver quedat orfe
+
+      const iParagraf = paragrafs.findIndex(x => p.substitueix && x.includes(p.substitueix));
+      if (iParagraf < 0) return;
+      paragrafs.slice(iParagraf, iParagraf + 2).forEach(paragraf => {
+        paragraf.split(/(?<=[.!?…])\s+/).forEach(frase => {
+          const neta = frase.trim();
+          // La frase que acaba d'escriure el pedaç no pot quedar òrfena d'ella
+          // mateixa: el que es busca és el que ha quedat penjat al voltant.
+          if (p.substitueix && p.substitueix.includes(neta)) return;
+          const minuscula = neta.toLowerCase().replace(/^[—–«"]\s*/, '');
+          const connector = CONNECTORS_DEPENDENTS.find(c => minuscula.startsWith(c));
+          if (!connector) return;
+          afegir('clausules_orfenes', 'mitjana',
+            `Aquesta frase comença per «${connector}» i l'edició acaba d'esborrar del conte ${treguts.length === 1 ? 'el terme' : 'els termes'} ${treguts.map(t => `«${t}»`).join(', ')}. Comprova que encara justifica alguna cosa que hi consti.`,
+            retallarParaules(neta, 14), '', { heuristica: true });
+        });
+      });
+    });
+  }
+
+  // ── 5. Comptador de caràcters ─────────────────────────────
+  const caracters = net.length;
+  const dinsInterval = caracters >= CONTE_MIN_CARACTERS && caracters <= CONTE_MAX_CARACTERS;
+  if (!dinsInterval) {
+    afegir('longitud', 'alta',
+      caracters < CONTE_MIN_CARACTERS
+        ? `Després de l'edició el conte té ${caracters} caràcters: ${CONTE_MIN_CARACTERS - caracters} per sota del mínim.`
+        : `Després de l'edició el conte té ${caracters} caràcters: ${caracters - CONTE_MAX_CARACTERS} per sobre del màxim.`,
+      '', 'longitud');
+  }
+
+  // Cada criteri diu si s'ha executat i quantes troballes ha tingut. Un criteri
+  // que no s'ha pogut executar no es pot presentar com un criteri superat.
+  const comprovacions = CRITERIS_COHERENCIA_GLOBAL.map(c => {
+    const executada = c.necessita_edicio ? teEdicio : true;
+    const trobades = comptador[c.id] || 0;
+    return {
+      id: c.id,
+      nom: c.nom,
+      que_detecta: c.que_detecta,
+      executada,
+      motiu_no_executada: executada ? '' : 'Necessita saber què s\'ha canviat: no hi ha ni text anterior ni llista de pedaços.',
+      trobades,
+      reportades: Math.min(trobades, MAX_PROBLEMES_PER_CRITERI)
+    };
+  });
+
+  return {
+    caracters,
+    dins_interval: dinsInterval,
+    interval: [CONTE_MIN_CARACTERS, CONTE_MAX_CARACTERS],
+    sobre: 'text sencer',
+    origen: String(ctx.origen || ''),
+    amb_context_d_edicio: teEdicio,
+    comprovacions,
+    problemes,
+    moment: new Date().toISOString()
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  11 ter. PEDAÇ O REGENERACIÓ
+//
+//  Un pedaç canvia una frase. Hi ha diagnòstics que no es poden arreglar
+//  canviant frases: si la premissa és un recull de coses ja vistes, si el
+//  registre de la prosa és pla de la primera línia a l'última o si el
+//  protagonista no té res fora de la trama, cap llista de {cerca, substitueix}
+//  no ho tocarà. Apedaçar-ho només fa que el defecte quedi amagat sota una
+//  redacció millor.
+//
+//  Aquesta classificació decideix, per a cada diagnòstic, si es corregeix o si
+//  es torna a generar amb el prompt corregit, i des de quin pas. La llista és
+//  editable i les paraules clau són tancades, com les del lint.
+// ═══════════════════════════════════════════════════════════
+
+const CATEGORIES_DIAGNOSTIC = [
+  {
+    id: 'premissa',
+    nom: 'Premissa',
+    accio: 'regenerar',
+    pas: 1,
+    que_es: "L'anomalia de partida: que sigui coneguda, recombinada d'altres contes o previsible.",
+    com_resoldre: 'Torna a P1 i genera una altra llavor amb una anomalia nova',
+    claus: ['premissa', 'anomalia', 'ja vist', 'ja llegit', 'conegut', 'clixé', 'clixe', 'tòpic', 'topic',
+            'recombina', 'previsible', 'original', 'derivatiu', 'pastitx', 'cànon', 'canon']
+  },
+  {
+    id: 'prosa',
+    nom: 'Registre de la prosa',
+    accio: 'regenerar',
+    pas: 4,
+    que_es: 'La manera d\'escriure de tot el conte: monotonia de frase, absència de digressió, paràgrafs tots iguals.',
+    com_resoldre: 'Torna a P4 i reescriu les escenes amb el prompt corregit',
+    claus: ['registre', 'monoton', 'monòton', 'prosa', 'ritme', 'sintaxi', 'totes les frases',
+            'longitud de les frases', 'estil indirecte', 'digressió', 'digressio', 'paràgrafs', 'paragrafs', 'pla']
+  },
+  {
+    id: 'personatge',
+    nom: 'Profunditat de personatge',
+    accio: 'regenerar',
+    pas: 2,
+    que_es: 'El protagonista no té vida fora de la trama, o la seva ferida no ocupa espai.',
+    com_resoldre: 'Torna a P2, refes el dossier i torna a escriure les escenes',
+    claus: ['personatge', 'protagonista', 'profunditat', 'instrument de la trama', 'no té vida',
+            'ferida', 'psicolog', 'motivació', 'motivacio', 'veu del personatge', 'interior']
+  },
+  {
+    id: 'llengua',
+    nom: 'Llengua',
+    accio: 'pedac',
+    pas: null,
+    que_es: 'Verbs inventats, castellanismes, tractaments inconsistents, designacions variables.',
+    com_resoldre: 'Corregeix-ho amb un pedaç dirigit',
+    claus: ['castellanisme', 'anglicisme', 'verb', 'ortograf', 'tractament', 'concordan',
+            'lèxic', 'lexic', 'paraula inventada', 'no existeix', 'vostè', 'voste', 'designa']
+  },
+  {
+    id: 'continuitat',
+    nom: 'Continuïtat',
+    accio: 'pedac',
+    pas: null,
+    que_es: 'Contradiccions, referències trencades, repeticions, coses que canvien de nom pel camí.',
+    com_resoldre: 'Corregeix-ho amb un pedaç dirigit',
+    claus: ['contradic', 'continuïtat', 'continuitat', 'repetei', 'repetid', 'duplicad',
+            'referència', 'referencia', 'incoherèn', 'incoheren', 'abans deia', 'no quadra']
+  },
+  {
+    id: 'mecanica',
+    nom: 'Mecànica',
+    accio: 'pedac',
+    pas: null,
+    que_es: 'Format de diàleg, longitud, transicions, marques d\'escena.',
+    com_resoldre: 'Corregeix-ho amb un pedaç dirigit',
+    claus: ['diàleg', 'dialeg', 'guió', 'guio', 'format', 'longitud', 'caràcters', 'caracters',
+            'transició', 'transicio', 'talla', 'marca d\'escena']
+  }
+];
+
+// Retorna { categoria, nom, accio, pas, motiu, com_resoldre, per_paraules_clau }.
+//
+// 'entrada' pot ser un text o un objecte { categoria, per_que }. Si el lector
+// hostil ha classificat el defecte ell mateix i la categoria existeix, mana la
+// seva; si no, es classifica per paraules clau, i si no en toca cap es diu que
+// no s'ha pogut classificar en lloc d'inventar-se una categoria. El defecte
+// sense classificar es tracta com a local: bloquejar l'única correcció barata
+// per un dubte de classificació seria pitjor que deixar-la passar.
+function classificarDiagnostic(entrada) {
+  const e = (entrada && typeof entrada === 'object') ? entrada : { per_que: String(entrada || '') };
+  const declarada = String(e.categoria || '').trim().toLowerCase();
+  const text = String(e.per_que || e.text || '').toLowerCase();
+
+  const decidir = (cat, perParaules) => ({
+    categoria: cat.id,
+    nom: cat.nom,
+    accio: cat.accio,
+    pas: cat.pas,
+    motiu: cat.que_es,
+    com_resoldre: cat.com_resoldre,
+    per_paraules_clau: !!perParaules
+  });
+
+  const declaradaValida = CATEGORIES_DIAGNOSTIC.find(c => c.id === declarada);
+  if (declaradaValida) return decidir(declaradaValida, false);
+
+  let millor = null;
+  let maxEncerts = 0;
+  CATEGORIES_DIAGNOSTIC.forEach(c => {
+    const encerts = c.claus.filter(k => text.includes(k)).length;
+    if (encerts > maxEncerts) { maxEncerts = encerts; millor = c; }
+  });
+  if (millor) return decidir(millor, true);
+
+  return {
+    categoria: 'sense_classificar',
+    nom: 'Sense classificar',
+    accio: 'pedac',
+    pas: null,
+    motiu: 'No s\'ha pogut classificar el diagnòstic amb les paraules clau conegudes.',
+    com_resoldre: 'Tracta\'l com a local, o mira si de fet parla de la premissa, de la prosa o del personatge',
+    per_paraules_clau: true
+  };
+}
+
+// Els diagnòstics d'un lot que demanen regenerar en lloc d'apedaçar.
+function diagnosticsQueDemanenRegenerar(defectes) {
+  return (Array.isArray(defectes) ? defectes : [])
+    .map(d => Object.assign({}, d, { decisio: classificarDiagnostic(d) }))
+    .filter(d => d.decisio.accio === 'regenerar');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  12. MOTIUS VETATS
+//
+//  TOPICS_PROHIBITS prohibeix NOMS: escriure «Ubik» o «Precrim». Això no impedeix
+//  reproduir el mecanisme amb un altre nom, que és exactament el que passava: un
+//  conte que recombinava quatre invencions conegudes del cànon de Dick sense
+//  citar-ne cap paraula.
+//
+//  Aquesta llista prohibeix MECANISMES. Cada entrada porta:
+//   · mecanisme — el nom del dispositiu, perquè el model no el pugui reproduir
+//     sense adonar-se'n que l'està reproduint;
+//   · disfressa — la forma en què torna quan se li canvia la superfície, que és
+//     com tornen sempre.
+//
+//  L'estil de Dick és la manera d'escriure la paranoia burocràtica i
+//  ontològica, no aquest catàleg d'objectes. La llista és editable: treure'n una
+//  entrada torna a obrir el mecanisme al generador.
+// ═══════════════════════════════════════════════════════════
+
+const MOTIUS_VETATS = [
+  {
+    id: 'entropia_regressiva',
+    mecanisme: "Regressió o entropia d'objectes: coses que es desfan, envelleixen, perden massa o retrocedeixen a una forma anterior d'elles mateixes.",
+    disfressa: "El producte que caduca abans d'hora i es converteix en el que era abans de ser fabricat; l'habitació que torna a ser com era fa vint anys."
+  },
+  {
+    id: 'precrim',
+    mecanisme: "Predicció o autorització administrativa d'un fet abans que passi: l'expedient, la condemna, la indemnització o la factura arriben abans que allò que registren.",
+    disfressa: "L'asseguradora que paga el sinistre el dia abans; l'oficina que arxiva com a ferma una resolució sobre demà."
+  },
+  {
+    id: 'entorn_fals',
+    mecanisme: "Ciutat, poble, barri o centre de treball falsos que amaguen al darrere una realitat devastada.",
+    disfressa: "El decorat que s'acaba a la sortida del poble; la finestra que dona a una projecció; la vila reconstruïda damunt d'una plana cremada o vitrificada."
+  },
+  {
+    id: 'aparell_que_cobra',
+    mecanisme: "Electrodomèstics, portes, ascensors o mobiliari que exigeixen un pagament per fer la seva funció.",
+    disfressa: "La nevera que factura per obrir-se; l'ascensor que demana un suplement per pujar; la cadira de casa que es cobra per hores."
+  },
+  {
+    id: 'records_comprats',
+    mecanisme: "Records implantats, comprats, venuts o extrets com a servei.",
+    disfressa: "L'agència que ven un viatge que no s'ha fet; la clínica que esborra un dol; el personatge que descobreix que la seva infantesa és d'algú altre."
+  },
+  {
+    id: 'simulacre_que_dubta',
+    mecanisme: "Simulacres, androides, clons o màquines que dubten de la seva pròpia humanitat, o protagonista que descobreix que no és humà.",
+    disfressa: "El test que el personatge no supera; la ferida que ensenya cables; el company de feina que resulta fabricat."
+  },
+  {
+    id: 'droga_que_obre_realitats',
+    mecanisme: "Una droga —clandestina, prescrita o obligatòria— que obre, revela o travessa capes de realitat.",
+    disfressa: "La pastilla que deixa veure el món de debò; la substància compartida que porta tothom al mateix lloc."
+  },
+  {
+    id: 'entitat_gravada',
+    mecanisme: "L'entitat divina, fundacional o corporativa que resulta ser una gravació, un bucle o un mort que continua emetent.",
+    disfressa: "El déu que repeteix sempre la mateixa frase; la veu del sistema que és un enregistrament antic; el fundador que continua signant des d'una cinta."
+  }
+];
+
+// ═══════════════════════════════════════════════════════════
+//  12 bis. CRITERIS DE REVISIÓ LINGÜÍSTICA
+//
+//  Control de qualitat de llengua, no d'estil. Cap d'aquests tres no es pot
+//  comprovar amb la llista tancada de lintCatalaParcial —fan falta el context i
+//  el conte sencer—, i per això són l'única part de la llengua que sí que es
+//  pregunta a un model. Van al prompt de costura i al de pedaç dirigit.
+//
+//  Els exemples surten de defectes reals observats a la sortida del generador.
+// ═══════════════════════════════════════════════════════════
+
+const CRITERIS_LLENGUA_REVISIO = [
+  {
+    id: 'verbs_inventats',
+    criteri: "Verbs i paraules que no existeixen en català, formats per analogia a partir d'un substantiu. Si dubtes que una forma sigui al diccionari, substitueix-la per la que hi és.",
+    exemple: "«gargamellejar» no existeix; la paraula que es volia dir era «gorgotejar»."
+  },
+  {
+    id: 'tractament',
+    criteri: "Coherència de tractament: per cada parella de personatges, un sol tractament (vostè, tu o vós) de la primera frase a l'última. Un canvi només val si és un gest narratiu deliberat i el text el marca.",
+    exemple: "La protagonista tracta el supervisor de vostè tot el conte i de sobte li diu «Digueu:»."
+  },
+  {
+    id: 'designacio_objectes',
+    criteri: "Coherència de designació dels objectes i les accions recurrents: una mateixa cosa es diu sempre igual, tret que el canvi de nom signifiqui alguna cosa.",
+    exemple: "«va prémer el silenci» i «va prémer el botó de silenci» per a la mateixa acció."
+  }
+];
+
+// ═══════════════════════════════════════════════════════════
+//  12 ter. BANC DE MOTIUS PKD
 //
 //  Un generador PKD sense control escriu sempre el mateix conte: androides,
 //  drogues, simulació. El banc reparteix el ventall real de Dick i cada motiu
 //  porta el clixé concret que tendeix a produir, perquè el prompt el pugui
 //  prohibir pel seu nom.
+//
+//  Els motius amb 'vetat_per' són els que coincidien amb un mecanisme de
+//  MOTIUS_VETATS: es conserven amb el motiu del veto a la vista, però
+//  triarMotius no els proposa mai. Oferir-los i prohibir-los al mateix prompt
+//  seria demanar-li al model dues coses contràries alhora.
 // ═══════════════════════════════════════════════════════════
 
 const BANC_MOTIUS_PKD = [
   {
     id: 'precognicio_administrativa',
+    vetat_per: 'precrim',
     motiu: "Una oficina emet resolucions sobre fets que encara no han passat i les arxiva com si ja fossin ferms.",
     tensio: "Si la decisió ja està presa i registrada, què queda del que el protagonista farà demà?",
     evita: "El vident torturat en una banyera amb elèctrodes, i la persecució per evitar un assassinat anunciat."
@@ -1039,6 +1727,7 @@ const BANC_MOTIUS_PKD = [
   },
   {
     id: 'entropia_dels_objectes',
+    vetat_per: 'entropia_regressiva',
     motiu: "Els objectes de casa es degraden més de pressa del que haurien i ningú no en porta el compte.",
     tensio: "Si tot es desfà a un ritme que no quadra, quant fa que dura de debò el que sembla d'ahir?",
     evita: "L'apartament ple de deixalles descrit com a metàfora de la decadència moral del protagonista."
@@ -1075,12 +1764,14 @@ const BANC_MOTIUS_PKD = [
   },
   {
     id: 'record_facturat',
+    vetat_per: 'records_comprats',
     motiu: "Un servei ven records de vacances que no s'han fet i n'emet la factura amb la data del viatge.",
     tensio: "Un record que va acompanyat de justificant, és més fals o més real que un que no en té?",
     evita: "El client que entra a la botiga a comprar un viatge a un altre planeta i acaba disparant a tothom."
   },
   {
     id: 'corporacio_postuma',
+    vetat_per: 'entitat_gravada',
     motiu: "L'empresa segueix signant contractes amb la signatura d'un fundador que consta mort fa dècades.",
     tensio: "Qui decideix, quan la persona que decideix ja no hi és i el sistema continua igual?",
     evita: "El cap conservat en una cambra freda que parla per un altaveu i dona ordres criptiques."
@@ -1095,7 +1786,7 @@ const BANC_MOTIUS_PKD = [
     id: 'recepta_obligatoria',
     motiu: "Una medicació d'estat és obligatòria per conservar el lloc de treball i el prospecte no diu què conté.",
     tensio: "Si el que sent és el que la pastilla vol que senti, què és seu?",
-    evita: "El viatge psicodèlic descrit amb colors i espirals com a escena central del conte."
+    evita: "El viatge psicodèlic descrit amb colors i espirals com a escena central, i que la pastilla obri cap capa de realitat que sense ella no es veiés."
   },
   {
     id: 'consens_fabricat',
@@ -1117,6 +1808,7 @@ const BANC_MOTIUS_PKD = [
   },
   {
     id: 'garantia_que_es_renova_sola',
+    vetat_per: 'aparell_que_cobra',
     motiu: "Un electrodomèstic renova la seva garantia sense que ningú l'hagi renovada i factura el càrrec.",
     tensio: "Qui ha acceptat el contracte, si el titular no ha signat res?",
     evita: "L'aparell parlant que xantatgeja el propietari i li exigeix monedes per obrir la porta."
@@ -1125,10 +1817,11 @@ const BANC_MOTIUS_PKD = [
     id: 'doble_de_baixa',
     motiu: "Un company de feina agafa la baixa i el substitut que arriba fa la feina exactament igual, amb els mateixos errors.",
     tensio: "Què es transmet d'una persona a una altra quan el que es transmet és el lloc?",
-    evita: "El doble idèntic que apareix a casa del protagonista i lluita amb ell per ocupar-ne la vida."
+    evita: "El doble idèntic que apareix a casa del protagonista i lluita per ocupar-ne la vida, i que el substitut resulti ser una màquina que es pregunta si és humana."
   },
   {
     id: 'assegurança_predictiva',
+    vetat_per: 'precrim',
     motiu: "Una asseguradora cobra la prima segons un càlcul del que el client farà i el càlcul es compleix.",
     tensio: "La predicció descriu el futur o el fabrica cobrant-lo per endavant?",
     evita: "L'ordinador central omniscient amb una veu freda que anuncia la data de la mort del protagonista."
@@ -1155,7 +1848,7 @@ const BANC_MOTIUS_PKD = [
     id: 'reparador_de_maquines_empatiques',
     motiu: "El protagonista repara aparells de companyia domèstica i comença a trobar-hi reparacions que ell no ha fet.",
     tensio: "Qui més entra a les cases i per què arregla el que no li han demanat?",
-    evita: "La màquina que declara el seu amor al tècnic i li demana que no l'apagui."
+    evita: "La màquina que declara el seu amor al tècnic i li demana que no l'apagui, i qualsevol aparell que dubti de si és humà o cobri per funcionar."
   },
   {
     id: 'publicitat_que_respon',
@@ -1173,7 +1866,7 @@ const BANC_MOTIUS_PKD = [
     id: 'menjar_que_recorda',
     motiu: "Un producte alimentari de marca blanca reprodueix el gust exacte d'un àpat concret de la infantesa del client.",
     tensio: "D'on ha tret la fàbrica una cosa que només era dins d'un cap?",
-    evita: "El menjar sintètic gris descrit amb fàstic com a prova que el futur és trist."
+    evita: "El menjar sintètic gris descrit amb fàstic com a prova que el futur és trist, i que el gust resulti ser un record implantat, comprat o extret del client."
   },
   {
     id: 'assemblea_de_propietaris',
@@ -1226,19 +1919,165 @@ const TOPICS_PROHIBITS = [
   'Sidney\'s', 'WPO', 'Ganímedes de Dick', 'Mars colònia Dick'
 ];
 
+// ═══════════════════════════════════════════════════════════
+//  12 quater. DIVERGÈNCIA ENTRE GENERACIONS
+//
+//  El banc de motius reparteix DE QUÈ va el conte. No reparteix res més, i un
+//  mateix model amb un mateix prompt torna sempre al mateix lloc: un funcionari
+//  d'oficina de rang baix, tercera persona en passat, un despatx amb
+//  fluorescents, un expedient. El motiu canvia i el conte s'assembla igualment.
+//
+//  Aquests eixos fixen per CODI les coordenades de cada generació —feina,
+//  institució, escenari, veu, restricció formal i temperatura— i les roten
+//  perquè dues generacions seguides no en comparteixin cap.
+//
+//  Les llistes tenen longituds diferents a propòsit: si totes en tinguessin
+//  deu, els sis eixos avançarien alhora i al cap de deu contes tornaria a
+//  sortir la mateixa combinació. Amb 12, 10, 9, 8, 6 i 5 opcions, la
+//  combinació no es repeteix en centenars de generacions.
+// ═══════════════════════════════════════════════════════════
+
+const EIXOS_DIVERGENCIA = [
+  {
+    id: 'ofici',
+    nom: 'Feina del protagonista',
+    instruccio: 'El protagonista fa aquesta feina i hi és de rang baix. No el converteixis en funcionari d\'oficina si no ho és.',
+    opcions: [
+      'repartidor de paqueteria amb ruta fixa',
+      'inspectora de comptadors d\'aigua',
+      'telefonista de servei d\'urgències nocturnes',
+      'conductor de grua municipal',
+      'auxiliar de laboratori d\'anàlisis clíniques',
+      'reposadora de màquines expenedores',
+      'vigilant de nit d\'un aparcament subterrani',
+      'perruquera a domicili per a gent gran',
+      'peó de manteniment de vies de tren',
+      'caixera d\'un supermercat de barri',
+      'taxador de danys de vehicles a domicili',
+      'operari d\'una planta de reciclatge de paper'
+    ]
+  },
+  {
+    id: 'institucio',
+    nom: 'Qui menteix',
+    instruccio: 'La mentida verificable del sistema surt d\'aquesta institució i no de cap altra.',
+    opcions: [
+      'una mutualitat d\'enterraments',
+      'la junta d\'aigües comarcal',
+      'una cooperativa de consum',
+      'l\'oficina de patents i marques',
+      'una empresa de transport escolar',
+      'el servei municipal de recollida d\'animals',
+      'una companyia de telefonia de baix cost',
+      'la inspecció de treball',
+      'un fons de pensions d\'empresa',
+      'una escola de formació professional privada'
+    ]
+  },
+  {
+    id: 'escenari',
+    nom: 'On passa',
+    instruccio: 'El pes del conte passa en aquest lloc. Cap despatx amb fluorescents si no és aquest.',
+    opcions: [
+      'un aparcament subterrani de tres plantes',
+      'una carretera comarcal i les seves àrees de servei',
+      'un bloc de pisos amb l\'ascensor espatllat',
+      'un mercat municipal a mig buidar',
+      'una nau industrial reconvertida en magatzem',
+      'un tanatori de poble',
+      'una piscina coberta fora de temporada',
+      'un tren de rodalies i les seves estacions',
+      'una urbanització de segona residència a l\'hivern'
+    ]
+  },
+  {
+    id: 'veu',
+    nom: 'Veu narrativa',
+    instruccio: 'Escriu tot el conte en aquesta veu, de la primera línia a l\'última.',
+    opcions: [
+      'tercera persona limitada en passat',
+      'primera persona en passat',
+      'tercera persona limitada en present',
+      'primera persona en present',
+      'tercera persona amb estil indirecte lliure predominant',
+      'primera persona que parla d\'ella mateixa en tercera quan explica la feina'
+    ]
+  },
+  {
+    id: 'forma',
+    nom: 'Restricció formal',
+    instruccio: 'Aquesta restricció s\'aplica a tot el conte. No és decorativa: si no es compleix, el conte no val.',
+    opcions: [
+      'cap escena passa al lloc de treball del protagonista',
+      'el conte inclou un document oficial reproduït sencer',
+      'tot passa en menys de vint-i-quatre hores',
+      'hi ha un personatge que apareix a totes les escenes i no diu mai res',
+      'el protagonista no està mai sol: sempre hi ha algú altre a l\'habitació',
+      'una escena sencera és una conversa telefònica',
+      'el conte comença i acaba amb el mateix objecte a la mà',
+      'cap escena té més de tres personatges'
+    ]
+  },
+  {
+    id: 'temperatura',
+    nom: 'Temperatura',
+    instruccio: 'El color emocional dominant. No l\'anunciïs: es nota en el que el narrador tria mirar.',
+    opcions: [
+      'còmica per acumulació de tràmits absurds',
+      'freda i clínica',
+      'irritada, de qui ja n\'està tip',
+      'melancòlica sense autocompassió',
+      'd\'urgència continguda'
+    ]
+  }
+];
+
+// Tria una coordenada per eix evitant les que ja s'han fet servir. Determinista:
+// amb el mateix històric, el mateix resultat. Quan un eix s'esgota, recicla la
+// MENYS RECENT, igual que triarMotius.
+//
+// 'usats' és una llista plana de claus "eix:opcio", de la més antiga a la més
+// nova, que és com la desa la interfície.
+function triarDivergencia(usats) {
+  const historic = (Array.isArray(usats) ? usats : []).map(x => String(x));
+  const tria = {};
+  EIXOS_DIVERGENCIA.forEach(eix => {
+    const clau = o => `${eix.id}:${o}`;
+    const noUsades = eix.opcions.filter(o => historic.indexOf(clau(o)) < 0);
+    if (noUsades.length) { tria[eix.id] = noUsades[0]; return; }
+    const perAntiguitat = eix.opcions.slice()
+      .sort((a, b) => historic.indexOf(clau(a)) - historic.indexOf(clau(b)));
+    tria[eix.id] = perAntiguitat[0];
+  });
+  return tria;
+}
+
+// Les claus "eix:opcio" d'una tria, que són el que es desa a l'històric.
+function clausDivergencia(tria) {
+  const t = tria || {};
+  return EIXOS_DIVERGENCIA.filter(e => t[e.id]).map(e => `${e.id}:${t[e.id]}`);
+}
+
+// Els motius que no estan vetats per cap mecanisme de MOTIUS_VETATS. És l'única
+// llista que arriba mai a un prompt.
+function motiusDisponibles() {
+  return BANC_MOTIUS_PKD.filter(m => !m.vetat_per);
+}
+
 // Tria n motius no presents a 'usats'. Si no n'hi ha prou de nous, completa amb
 // els MENYS RECENTS (els que apareixen abans a l'històric).
 // Determinista: donat el mateix estat, retorna sempre el mateix resultat.
 function triarMotius(usats, n) {
   const quants = Math.max(1, Math.round(Number(n) || 3));
   const historic = (Array.isArray(usats) ? usats : []).map(x => String(x && x.id ? x.id : x));
+  const disponibles = motiusDisponibles();
 
-  const noUsats = BANC_MOTIUS_PKD.filter(m => historic.indexOf(m.id) < 0);
+  const noUsats = disponibles.filter(m => historic.indexOf(m.id) < 0);
   const triats = noUsats.slice(0, quants);
   if (triats.length >= quants) return triats;
 
   // Els menys recents primer: l'històric va del més antic al més nou.
-  const perAntiguitat = BANC_MOTIUS_PKD
+  const perAntiguitat = disponibles
     .filter(m => historic.indexOf(m.id) >= 0)
     .sort((a, b) => historic.indexOf(a.id) - historic.indexOf(b.id));
 
@@ -1258,15 +2097,21 @@ const CONTE_CORE_API = {
   CONTE_MIN_CARACTERS, CONTE_MAX_CARACTERS, CONTE_OBJECTIU_CARACTERS,
   CONTE_MIN_ESCENES, CONTE_MAX_ESCENES, MAX_CRIDES_CONTE, TOLERANCIA_ESCENA,
   SEPARADOR_ESCENA, SEPARADOR_ESCENA_NORMALITZAT, FUNCIONS_PKD, FUNCIONS_PKD_OBLIGATORIES,
-  LLINDAR_ADVERBIS_PER_MIL, MARGE_LONGITUD_PEDAC,
+  LLINDAR_ADVERBIS_PER_MIL, MARGE_LONGITUD_PEDAC, TITOL_MAX_PARAULES,
   normalitzarTextConte, comptaCaracters, comptaParaules,
   repartirCaracters, pesosPerEscenes,
   crearDossierBuit, validarDossier, fusionarDossierSenseBuidar, esTextUtil,
-  crearContracteEscena, detectarFaltantsContracte, validarGatePKD,
+  validarTitolConte,
+  crearContracteEscena, detectarFaltantsContracte, validarGatePKD, indexEscenaFerida,
   contracteFallbackLocal, completarContracteAmbFallback,
   lintCatalaParcial, densitatAdverbisMent, frasesRepetides, formatDialegInconsistent,
   auditoriaDeterministaConte, aplicarPedacos,
-  BANC_MOTIUS_PKD, TOPICS_PROHIBITS, triarMotius,
+  validarCoherenciaGlobal, CRITERIS_COHERENCIA_GLOBAL,
+  CATEGORIES_DIAGNOSTIC, classificarDiagnostic, diagnosticsQueDemanenRegenerar,
+  DISTANCIA_PARAGRAFS_DUPLICAT, LLINDAR_SIMILITUD_FRASE, MAX_OCURRENCIES_REFERENCIA,
+  EIXOS_DIVERGENCIA, triarDivergencia, clausDivergencia,
+  BANC_MOTIUS_PKD, TOPICS_PROHIBITS, triarMotius, motiusDisponibles,
+  MOTIUS_VETATS, CRITERIS_LLENGUA_REVISIO,
   CASTELLANISMES, ANGLICISMES, ADVERBIS_MENT,
   retallarParaules, retallar
 };

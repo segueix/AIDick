@@ -43,6 +43,8 @@ comprova('pesosPerEscenes dona més pes a l\'esquerda i a la final',
 // ── Dossier ──────────────────────────────────────────────────────────────────
 const dossierValid = {
   premissa: 'Un imprès duplicat amb el mateix número de sèrie',
+  anomalia: 'El registre manté actives fitxes de morts perquè no n\'ha tornat mai cap carta',
+  anomalia_justificacio: 'No és cap entorn fals: és un procediment correcte aplicat divuit anys',
   final_obligatori: 'Rep l\'imprès que faltava signat amb la seva lletra',
   esquerda: 'El registre decideix qui existeix',
   mentida_del_sistema: 'El llibre diu un exemplar i n\'hi ha dos',
@@ -50,6 +52,7 @@ const dossierValid = {
   protagonista: {
     nom: 'Peter Halloran', feina_ordinaria: 'Auxiliar de cens', ferida: 'Va signar els papers de la seva germana',
     objectiu_extern: 'Tancar el duplicat', secret: 'Guarda expedients que no li toquen',
+    problemes_quotidians: ['Deu quatre mensualitats del dentista', 'El veí de sobre fa saltar el diferencial'],
     veu: { registre: 'Sec i procedimental', mai_diria: ['El sistema té raó', 'No vull saber-ho', 'No és cosa meva'] }
   },
   secundaris: [{ nom: 'Devereux', funcio: 'Arxiver', vol: 'Que ningú toqui el seu ordre', amaga: 'Les fitxes antigues' }],
@@ -73,6 +76,56 @@ comprova('menys de 3 frases a mai_diria bloqueja', (() => {
   d.protagonista.veu.mai_diria = ['una', 'dues'];
   return !C.validarDossier(d).valid;
 })());
+
+// ── Anomalia única i vida quotidiana ─────────────────────────────────────────
+// Cada comprovació nova porta el cas que ha de detectar i el cas legítim que
+// s'hi assembla: un validador que es queixa de material correcte és pitjor que
+// no tenir-lo.
+comprova('un dossier sense anomalia bloqueja i diu com resoldre-ho', (() => {
+  const d = JSON.parse(JSON.stringify(dossierValid));
+  d.anomalia = '';
+  const v = C.validarDossier(d);
+  return !v.valid && v.faltants.some(f => f.camp === 'anomalia' && f.com_resoldre);
+})());
+comprova('un dossier amb anomalia i justificació buida NO bloqueja', (() => {
+  const d = JSON.parse(JSON.stringify(dossierValid));
+  d.anomalia_justificacio = '';
+  return C.validarDossier(d).valid;
+})());
+comprova('un sol problema quotidià bloqueja', (() => {
+  const d = JSON.parse(JSON.stringify(dossierValid));
+  d.protagonista.problemes_quotidians = ['Deu quatre mensualitats del dentista'];
+  return !C.validarDossier(d).valid;
+})());
+comprova('tres problemes quotidians també bloquegen: n\'han de ser exactament dos', (() => {
+  const d = JSON.parse(JSON.stringify(dossierValid));
+  d.protagonista.problemes_quotidians = ['un problema llarg', 'un altre problema llarg', 'un tercer problema'];
+  const v = C.validarDossier(d);
+  return !v.valid && v.faltants.some(f => f.camp === 'protagonista.problemes_quotidians');
+})());
+comprova('exactament dos problemes quotidians passen', C.validarDossier(dossierValid).valid);
+
+// ── Títol ────────────────────────────────────────────────────────────────────
+comprova('un títol conceptual d\'una a quatre paraules és vàlid',
+  C.validarTitolConte('Fil de cosit', dossierValid).valid &&
+  C.validarTitolConte('Consta', dossierValid).valid);
+comprova('el patró nom + ofici es rebutja pel seu nom',
+  !C.validarTitolConte('Peter Halloran auxiliar de cens', dossierValid).valid);
+comprova('el nom del protagonista SOL no invalida el títol',
+  C.validarTitolConte('El cas Halloran', dossierValid).valid,
+  C.validarTitolConte('El cas Halloran', dossierValid).motiu);
+comprova('l\'ofici SOL tampoc invalida el títol',
+  C.validarTitolConte('Cens residencial', dossierValid).valid,
+  C.validarTitolConte('Cens residencial', dossierValid).motiu);
+comprova('més de quatre paraules es rebutja',
+  !C.validarTitolConte('Denise Holloway telefonista nocturna d\'una asseguradora', dossierValid).valid);
+comprova('un títol amb coma es rebutja',
+  !C.validarTitolConte('Halloran, cens', dossierValid).valid);
+comprova('un títol buit es rebutja i porta com_resoldre',
+  !C.validarTitolConte('', dossierValid).valid && !!C.validarTitolConte('', dossierValid).com_resoldre);
+comprova('tot rebuig de títol porta motiu i com_resoldre',
+  ['', 'Halloran, cens', 'una descripció massa llarga per ser un títol de conte']
+    .every(t => { const v = C.validarTitolConte(t, dossierValid); return v.valid || (v.motiu && v.com_resoldre); }));
 
 // ── Fusió que no buida (mode de fallada b) ───────────────────────────────────
 const fusionat = C.fusionarDossierSenseBuidar(dossierValid, { esquerda: 'Text nou', mon: { any: '2051' } });
@@ -103,6 +156,27 @@ comprova('un contracte buit té faltants a tots els camps',
   C.detectarFaltantsContracte(C.crearContracteEscena(0, {})).length >= 10);
 comprova('una funcio_pkd desconeguda es normalitza a "cap"',
   C.crearContracteEscena(0, { funcio_pkd: 'inventada' }).funcio_pkd === 'cap');
+
+// ── Escena de la ferida ──────────────────────────────────────────────────────
+comprova('escena_ferida és false si el model no la declara',
+  C.crearContracteEscena(0, {}).escena_ferida === false);
+comprova('escena_ferida només és true amb el booleà true, mai amb una cadena',
+  C.crearContracteEscena(0, { escena_ferida: true }).escena_ferida === true &&
+  C.crearContracteEscena(0, { escena_ferida: 'sí' }).escena_ferida === false);
+comprova('indexEscenaFerida troba l\'escena marcada',
+  C.indexEscenaFerida([{ escena_ferida: false }, { escena_ferida: true }, {}]) === 1);
+comprova('indexEscenaFerida torna -1 si no n\'hi ha cap',
+  C.indexEscenaFerida([{ escena_ferida: false }, {}]) === -1);
+comprova('el fallback local no pot declarar l\'escena de la ferida',
+  C.contracteFallbackLocal(0, dossierValid, 3500).escena_ferida === false);
+
+// ── Criteris de revisió lingüística ──────────────────────────────────────────
+comprova('CRITERIS_LLENGUA_REVISIO porta els tres controls de llengua',
+  C.CRITERIS_LLENGUA_REVISIO.length === 3 &&
+  C.CRITERIS_LLENGUA_REVISIO.every(c => c.id && c.criteri && c.exemple));
+comprova('els criteris de llengua cobreixen verbs inventats, tractament i designació',
+  ['verbs_inventats', 'tractament', 'designacio_objectes']
+    .every(id => C.CRITERIS_LLENGUA_REVISIO.some(c => c.id === id)));
 
 // ── Fallback local (mode de fallada c) ───────────────────────────────────────
 [dossierValid, {}, C.crearDossierBuit()].forEach((d, i) => {
@@ -187,23 +261,100 @@ comprova('cada "tensió" és una pregunta', C.BANC_MOTIUS_PKD.every(m => m.tensi
 comprova('TOPICS_PROHIBITS cobreix l\'obra i les adaptacions',
   ['Deckard', 'Ubik', 'replicant', 'Rekal', 'Precrim'].every(x => C.TOPICS_PROHIBITS.includes(x)));
 
-// Deu generacions seguides sense repetir cap motiu.
+// ── Mecanismes vetats ────────────────────────────────────────────────────────
+// TOPICS_PROHIBITS prohibeix noms; MOTIUS_VETATS prohibeix mecanismes, que és
+// el que es reproduïa disfressat amb un altre vocabulari.
+comprova('MOTIUS_VETATS té les vuit categories', C.MOTIUS_VETATS.length === 8, String(C.MOTIUS_VETATS.length));
+comprova('cada motiu vetat porta id, mecanisme i disfressa',
+  C.MOTIUS_VETATS.every(m => m.id && m.mecanisme && m.disfressa));
+comprova('els vuit mecanismes vetats hi són pel seu nom',
+  ['entropia_regressiva', 'precrim', 'entorn_fals', 'aparell_que_cobra',
+   'records_comprats', 'simulacre_que_dubta', 'droga_que_obre_realitats', 'entitat_gravada']
+    .every(id => C.MOTIUS_VETATS.some(m => m.id === id)));
+comprova('cada vetat_per del banc apunta a un mecanisme que existeix',
+  C.BANC_MOTIUS_PKD.filter(m => m.vetat_per).every(m => C.MOTIUS_VETATS.some(v => v.id === m.vetat_per)),
+  C.BANC_MOTIUS_PKD.filter(m => m.vetat_per && !C.MOTIUS_VETATS.some(v => v.id === m.vetat_per)).map(m => m.id).join(', '));
+comprova('sis motius del banc queden vetats i vint-i-quatre disponibles',
+  C.BANC_MOTIUS_PKD.filter(m => m.vetat_per).length === 6 && C.motiusDisponibles().length === 24,
+  `${C.motiusDisponibles().length} disponibles`);
+comprova('triarMotius no proposa mai un motiu vetat',
+  C.triarMotius([], 3).every(m => !m.vetat_per) &&
+  C.triarMotius(C.BANC_MOTIUS_PKD.map(m => m.id), 3).every(m => !m.vetat_per));
+comprova('el motiu de la premissa analitzada (indemnització abans del sinistre) és vetat',
+  !!C.BANC_MOTIUS_PKD.find(m => m.id === 'assegurança_predictiva').vetat_per);
+
+// Vuit generacions seguides sense repetir cap motiu: 24 disponibles / 3 per conte.
 let usats = [];
 const combinacions = [];
-for (let i = 0; i < 10; i++) {
+for (let i = 0; i < 8; i++) {
   const tria = C.triarMotius(usats, 3);
   combinacions.push(tria.map(m => m.id));
   usats = usats.concat(tria.map(m => m.id));
 }
-const totsEls30 = combinacions.flat();
-comprova('deu generacions seguides gasten 30 motius sense repetir-ne cap',
-  totsEls30.length === 30 && new Set(totsEls30).size === 30, `${new Set(totsEls30).size} únics de ${totsEls30.length}`);
+const totsElsDisponibles = combinacions.flat();
+comprova('vuit generacions seguides gasten els 24 motius disponibles sense repetir-ne cap',
+  totsElsDisponibles.length === 24 && new Set(totsElsDisponibles).size === 24,
+  `${new Set(totsElsDisponibles).size} únics de ${totsElsDisponibles.length}`);
 comprova('cada generació dona una combinació diferent de l\'anterior',
   combinacions.every((c, i) => i === 0 || c.some(id => !combinacions[i - 1].includes(id))));
 comprova('triarMotius és determinista amb el mateix estat',
   JSON.stringify(C.triarMotius(['precognicio_administrativa'], 3)) === JSON.stringify(C.triarMotius(['precognicio_administrativa'], 3)));
 comprova('esgotat el banc, triarMotius recicla els menys recents sense petar',
   C.triarMotius(C.BANC_MOTIUS_PKD.map(m => m.id), 3).length === 3);
+
+// ── Divergència entre generacions ────────────────────────────────────────────
+// El banc de motius reparteix de què va el conte; això reparteix tota la resta,
+// que és el que fa que un mateix model no torni sempre al mateix funcionari
+// d'oficina amb fluorescents.
+comprova('hi ha sis eixos de divergència', C.EIXOS_DIVERGENCIA.length === 6);
+comprova('cada eix porta nom, instrucció i opcions',
+  C.EIXOS_DIVERGENCIA.every(e => e.id && e.nom && e.instruccio && e.opcions.length >= 5));
+comprova('els eixos tenen longituds diferents perquè no avancin alhora',
+  new Set(C.EIXOS_DIVERGENCIA.map(e => e.opcions.length)).size === C.EIXOS_DIVERGENCIA.length,
+  C.EIXOS_DIVERGENCIA.map(e => `${e.id}:${e.opcions.length}`).join(' '));
+comprova('cap eix té opcions repetides',
+  C.EIXOS_DIVERGENCIA.every(e => new Set(e.opcions).size === e.opcions.length));
+
+comprova('triarDivergencia dona una coordenada per eix',
+  C.EIXOS_DIVERGENCIA.every(e => !!C.triarDivergencia([])[e.id]));
+comprova('triarDivergencia és determinista amb el mateix històric',
+  JSON.stringify(C.triarDivergencia(['ofici:repartidor de paqueteria amb ruta fixa'])) ===
+  JSON.stringify(C.triarDivergencia(['ofici:repartidor de paqueteria amb ruta fixa'])));
+comprova('clausDivergencia serialitza la tria com a "eix:opcio"',
+  C.clausDivergencia(C.triarDivergencia([])).length === 6 &&
+  C.clausDivergencia(C.triarDivergencia([])).every(c => c.includes(':')));
+
+// Dues generacions seguides no poden compartir cap coordenada.
+let historicDiv = [];
+const generacions = [];
+for (let i = 0; i < 5; i++) {
+  const tria = C.triarDivergencia(historicDiv);
+  generacions.push(tria);
+  historicDiv = historicDiv.concat(C.clausDivergencia(tria));
+}
+comprova('cinc generacions seguides no repeteixen cap coordenada en cap eix',
+  C.EIXOS_DIVERGENCIA.every(e => new Set(generacions.map(g => g[e.id])).size === 5),
+  C.EIXOS_DIVERGENCIA.map(e => `${e.id}:${new Set(generacions.map(g => g[e.id])).size}`).join(' '));
+comprova('dues generacions consecutives no comparteixen res',
+  generacions.every((g, i) => i === 0 ||
+    C.EIXOS_DIVERGENCIA.every(e => g[e.id] !== generacions[i - 1][e.id])));
+
+// Esgotat un eix, recicla el menys recent sense petar i sense repetir l'últim.
+const totesLesClaus = C.EIXOS_DIVERGENCIA.flatMap(e => e.opcions.map(o => `${e.id}:${o}`));
+const reciclada = C.triarDivergencia(totesLesClaus);
+comprova('esgotades les opcions, torna a triar la menys recent sense petar',
+  C.EIXOS_DIVERGENCIA.every(e => e.opcions.includes(reciclada[e.id])));
+comprova('la tria reciclada agafa la primera de l\'històric, no l\'última',
+  C.EIXOS_DIVERGENCIA.every(e => reciclada[e.id] === e.opcions[0]));
+comprova('triarDivergencia tolera un històric buit, nul o amb brossa',
+  (() => {
+    try {
+      C.triarDivergencia(null);
+      C.triarDivergencia(['brossa', 42, null]);
+      C.clausDivergencia(null);
+      return C.clausDivergencia({}).length === 0;
+    } catch (e) { return false; }
+  })());
 
 // ── Auditoria sobre text correcte (el fals positiu és el defecte més car) ────
 const contenet = readFileSync(new URL('./ajudes/conte_net.txt', import.meta.url), 'utf8');

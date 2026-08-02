@@ -157,7 +157,9 @@ Un conte de Philip K. Dick no comença amb un món: comença amb una anomalia. U
 El protagonista és de rang baix —un venedor, un funcionari de finestreta, un tècnic de manteniment, un comptable— i té accés a l'anomalia perquè la seva feina consisteix a mirar precisament allò que ningú més mira.
 Investiga amb mètode. Comprova, torna a comprovar, descarta explicacions senzilles una per una. Les seves conclusions són raonables encara que siguin falses; el lector les segueix perquè estan ben construïdes.
 L'esquerda s'obre i NO es tanca. Quan el marc del que semblava real es trenca, no es recompon: el que ve després passa dins del marc trencat.
-El final no explica res. Reencuadra. L'última frase fa que tot el que s'ha llegit vulgui dir una altra cosa, i el lector no pot desfer-ho.
+El conte surt d'UNA anomalia nova, no d'una combinació d'anomalies conegudes. Una sola, formulable en una frase, i tot el que passa n'és conseqüència.
+Tota acció decisiva té una cadena causal explicada. La física pot ser inventada, però el lector ha de poder seguir pas a pas per què allò que passa passa. Un efecte simplement afirmat és màgia, i Dick no escrivia màgia: donava sempre una explicació falsa però articulada.
+El final no tanca la rosca. S'esvaeix, queda ambigu o fa una broma sinistra. Dick escrivia de pressa i acabava quan ja ho havia dit tot, no quan encaixava l'última peça.
 El món és el present deteriorat: la tecnologia falla, la publicitat interromp, la burocràcia respon amb formularis, els objectes de consum porten la marca mal impresa. Mai el futur lluent.`,
 
       obertura: `── PRIMERS 600 CARÀCTERS ──
@@ -170,9 +172,44 @@ La primera frase no pot ser una sentència general ni una imatge poètica: ha de
       desenllac: `── ÚLTIMS 800 CARÀCTERS ──
 El final NO explica l'esquerda: la fa irreversible. Res de personatges que resumeixen el que ha passat ni de revelacions per confessió.
 Prohibit restaurar l'estat inicial. El protagonista no torna a la feina com si res: alguna cosa concreta ha canviat i no es pot desfer.
-L'última frase ha de REENCUADRAR, no resumir. Ha de donar una dada, un gest o un objecte que obligui el lector a rellegir el que ja sap d'una altra manera.
+PROHIBIDA LA REVELACIÓ D'ÚLTIMA LÍNIA que reordena tot el conte. Res de descobrir al final que l'expedient portava el nom del protagonista, que la víctima era ell, que la data era una altra. Aquest gir és O. Henry, no Dick: és una peça de rellotgeria que tanca el conte en lloc de deixar-lo obert.
+El final de Dick és desinflat, ambigu o una broma sinistra. El protagonista continua fent la seva feina dins d'un món que ja no és el mateix, i ningú no ve a explicar-l'hi. Pot acabar en una frase petita, en un gest administratiu o en una conversa que no va enlloc.
+L'última acció ha de tenir la cadena causal explicada. Si el clímax depèn que alguna cosa provoqui una altra, el text ha d'haver dit com. Baixar una palanca i que s'encengui una impressora dues plantes més amunt, sense res que ho connecti, és màgia.
 Prohibit tancar amb una reflexió del narrador sobre el sentit de tot plegat.
 Prohibit el gir final que resulti que era un somni, una simulació revelada per un tercer o una prova de laboratori.`,
+
+      // ── 1.3 Prosa: contra la monotonia de registre ──
+      // El defecte observat: un sol registre de la primera línia a l'última,
+      // frases curtes declaratives, un paràgraf per unitat d'acció. Això és
+      // minimalisme contemporani. Dick escrivia de pressa i amb energia
+      // desigual. Aquest bloc MODULA la regla de període breu; no la substitueix.
+      prosa_variacio: `── VARIACIÓ DE REGISTRE (OBLIGATÒRIA) ──
+El període breu i nerviós és la base del conte, però una base no és una regla mecànica: un text on totes les frases tenen la mateixa llargada no és Dick, és minimalisme contemporani.
+En aquesta escena, com a mínim:
+· UNA frase llarga amb subordinació encadenada, de les que arrenquen i no s'aturen fins que han dit tot el que el personatge està pensant alhora.
+· DOS passatges d'estil indirecte lliure: el pensament del personatge dins de la narració, sense verb de dicció i sense cometes, amb la seva sintaxi i el seu vocabulari, no els del narrador.
+· UNA digressió que no fa avançar la trama: una explicació de com funciona un tràmit, una comparació que s'allarga, un record de feina, una queixa.
+PROHIBIT que tots els paràgrafs continguin una sola unitat d'acció. Alguns n'han de portar tres o quatre, i algun ha de ser d'una línia.`,
+
+      // ── 1.2 Vida quotidiana ──
+      vida_quotidiana: `── SOROLL DE FONS ──
+Els protagonistes de Dick tenen exdones, deutes, pensions d'aliments, mala digestió, caps que els menyspreen i electrodomèstics que no els funcionen. Aquesta brutícia humana és el que fa creïble la metafísica: sense ella el personatge només és un instrument de la trama.
+Els dos problemes quotidians del dossier NO tenen cap relació amb l'anomalia, NO es resolen mai i NO es connecten amb el desenllaç. Apareixen i queden. Són soroll de fons i han de continuar sent soroll de fons.
+PROHIBIT que un problema quotidià acabi tenint sentit dins de la trama, que expliqui el comportament del protagonista o que es tanqui amb una escena de resolució.`,
+
+      // ── 1.4 El nucli emocional ha d'ocupar espai ──
+      nucli_emocional: `── LA FERIDA ──
+La ferida del protagonista (una mort, una pèrdua, una culpa) és el centre emocional del conte i necessita una ESCENA PRÒPIA, no una menció.
+PROHIBIT liquidar-la amb una sola frase de revelació i seguir endavant. Una frase decisiva sobre un germà mort deixada en una línia és una etiqueta on calia desenvolupament.
+A l'escena de la ferida, la ferida és la matèria: hi ha una acció present, un objecte, algú altre a l'habitació o una gestió concreta a través de la qual es fa visible. No es narra en resum ni s'explica en un record ben ordenat.
+PROHIBIT també resoldre-la: la ferida no es tanca, no es perdona i no s'entén millor al final.`,
+
+      // ── 1.6 Títol ──
+      titol: `── TÍTOL ──
+Un títol conceptual d'UNA a QUATRE paraules, tret d'una frase o d'un terme que surti dins del conte mateix.
+PROHIBIT el patró «nom del protagonista + ofici» («Denise Holloway, telefonista nocturna d'una asseguradora» és un nom de fitxer, no un títol).
+Prohibides les comes: si el títol necessita una coma, és una descripció.
+Ha de nomenar el concepte, l'objecte o el tràmit que sosté el conte, no explicar de qui va.`,
 
       // Condicions de GENERACIÓ. Van al prompt del redactor.
       criteris_excellencia_conte: [
@@ -181,7 +218,10 @@ Prohibit el gir final que resulti que era un somni, una simulació revelada per 
         "El món es mostra per objectes deteriorats i procediments, mai per exposició del narrador",
         "El sistema menteix amb una dada que el lector pot contrastar amb una altra dada del mateix text",
         "Hi ha una decisió en què ser empàtic li costa alguna cosa concreta al personatge",
-        "L'esquerda de realitat s'obre i el text continua dins del marc trencat, sense recompondre'l"
+        "L'esquerda de realitat s'obre i el text continua dins del marc trencat, sense recompondre'l",
+        "Tota acció decisiva porta la seva cadena causal explicada dins del text, encara que la física sigui inventada",
+        "Els problemes quotidians del protagonista apareixen sense relació amb la trama i sense resoldre's mai",
+        "La longitud de les frases varia dins de cada escena, amb estil indirecte lliure i alguna digressió que no fa avançar res"
       ],
 
       // Condicions d'AVALUACIÓ. NOMÉS al prompt de la lectura hostil.
@@ -190,7 +230,12 @@ Prohibit el gir final que resulti que era un somni, una simulació revelada per 
         "La paranoia del protagonista té base verificable dins del text, o només és to i vocabulari?",
         "El sistema menteix d'una manera que el lector pugui comprovar sol, o només se'ns diu que menteix?",
         "L'empatia li costa alguna cosa concreta, o és una declaració de bones intencions sense preu?",
-        "El final reencuadra el que s'ha llegit, o només tanca la trama?",
+        "El conte acaba amb una revelació d'última línia que reordena tot el que s'ha llegit? Si hi és, és un gir de rellotgeria i el final ha fallat.",
+        "La cadena causal del clímax es pot seguir pas a pas, o l'efecte està simplement afirmat?",
+        "La premissa és una anomalia nova, o és una recombinació de mecanismes que ja existeixen al cànon de la ciència-ficció paranoica?",
+        "El protagonista té vida fora de la trama? Quantes vegades apareix, i queda sense resoldre?",
+        "La ferida del protagonista té escena pròpia o queda liquidada en una menció?",
+        "Totes les frases tenen la mateixa llargada i tots els paràgrafs una sola unitat d'acció? Si és així, el registre és pla.",
         "Si es canviés el nom del protagonista per un altre, es notaria? La veu és seva o és la veu per defecte del model?",
         "Hi ha alguna frase que expliqui al lector què ha de sentir? Quantes?",
         "El futur descrit és el present deteriorat o és una decoració de ciència-ficció genèrica?"
@@ -274,6 +319,15 @@ function blocOberturaConte(idPerfil) {
 function blocDesenllacConte(idPerfil) {
   const c = perfilConte(idPerfil);
   return (c && c.desenllac) || '';
+}
+
+// Accessor genèric per als blocs de forma breu afegits després (prosa_variacio,
+// vida_quotidiana, nucli_emocional, titol). Retorna cadena buida si el perfil no
+// el porta, com la resta d'accessors: un perfil sense forma breu no ha de petar.
+function blocConte(idPerfil, clau) {
+  const c = perfilConte(idPerfil);
+  const valor = c && c[clau];
+  return typeof valor === 'string' ? valor : '';
 }
 
 // Condicions de GENERACIÓ: van al prompt del redactor.

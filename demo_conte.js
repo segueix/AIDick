@@ -21,59 +21,108 @@ const DEMO_ESCENES = [
   "La porta del tercer A era oberta un pam.\n\nVa empènyer. Dins hi havia un rebedor buit, una habitació buida i, al fons, contra la paret, un armari metàl·lic gris de la mida d'un arxivador de quatre calaixos. El brunzit venia d'allà. Feia una vibració que es notava a la planta dels peus.\n\nL'armari no tenia pany. Va obrir el primer calaix.\n\nFitxes. Centenars. Totes del sistema antic, totes escrites a màquina, totes actives.\n\nVa llegir-ne unes quantes. Noms que no coneixia, adreces del sector, dates d'alta repartides al llarg de trenta anys. Al mig del segon calaix va trobar la seva.\n\nHalloran, Peter. Carrer Delham, quaranta-set, segon. Data d'alta: divuit anys enrere, el mateix dia que la de la seva germana. Estat: activa.\n\nVa mirar la data i va entendre que no era el dia de cap alta. Era el dia que ell havia anat a signar els papers de la mort de la Marta.\n\nAquell dia havia entrat al sistema una fitxa per a ella i una per a ell.\n\nEs va quedar amb el calaix obert. Podia agafar-les totes dues, sortir, cremar-les i tornar a casa. Ningú no ho sabria. Les fitxes del sistema antic no consten enlloc del sistema nou; per això Devereux les tenia i per això les hi havia pogut donar.\n\nVa treure la de la Marta. La va sostenir una estona.\n\nSi la retirava, la fitxa passava a inactiva i el pis del carrer Bram deixaria de rebre res. Divuit anys de comunicacions dirigides a una dona morta s'aturarien de cop, i algú, en algun lloc, notaria l'aturada.\n\nI si algú notava l'aturada, el que hi hagués al fons d'aquest mecanisme sabria exactament quina fitxa s'havia mogut i quin funcionari l'havia moguda. La seva pròpia fitxa estava dos calaixos més avall, activa, amb la seva adreça de debò.\n\nPodia deixar-ho tot com estava. La Marta continuaria constant. Ell continuaria constant. El brunzit continuaria.\n\nVa pensar en la seva germana durant el temps que va trigar a decidir-ho, i el que va recordar no va ser la seva cara sinó una cosa molt més petita: que ella tenia el costum de contestar totes les cartes, fins i tot les de propaganda, perquè li semblava que algú les havia escrites.\n\nVa posar la fitxa de la Marta a la butxaca.\n\nDesprés va tancar el calaix, va sortir del pis i va deixar la porta com l'havia trobada, oberta un pam.\n\nL'endemà va entrar a l'oficina a l'hora de sempre. La safata del matí tenia dotze documents. El primer era un imprès B-14, cens residencial, sector nord-oest, número quatre-cents tretze.\n\nEstava validat. Portava el segell d'entrada i la data del dia.\n\nLa signatura era la seva, i ell no l'havia signat, i el traç del cognom feia el mateix gir que havia fet sempre, i era la seva lletra, i seguia sent la seva lletra tota l'estona que la va mirar."
 ];
 
+// Les sis llavors porten els camps que demana el prompt nou: anomalia única,
+// justificació d'originalitat contra MOTIUS_VETATS, dos problemes quotidians
+// desconnectats de la trama i títol conceptual. Cap de les sis no pot partir
+// d'un mecanisme vetat: si la demostració n'ensenyés un, ensenyaria exactament
+// el que el generador ja no ha de fer.
 const DEMO_LLAVORS = [
   {
+    anomalia: "Un registre de població manté actives fitxes de persones mortes perquè ningú no ha rebut mai cap devolució de correu.",
+    justificacio_originalitat: "S'acosta a «l'entorn fals que amaga una realitat devastada», però aquí no hi ha res amagat ni devastat: hi ha un procediment correcte que, aplicat durant divuit anys, sosté una persona que no existeix. L'anomalia és administrativa, no escenogràfica.",
     premissa: "Un auxiliar de cens troba dos exemplars idèntics del mateix imprès, amb el mateix número de sèrie i la seva pròpia signatura a tots dos.",
     esquerda: "El registre de població no compta qui viu: decideix qui existeix, i porta divuit anys mantenint viva una persona morta.",
     mentida_del_sistema: "El llibre de verificació diu que del quatre-cents dotze n'hi ha un exemplar; a la safata n'hi ha dos, i la numeració salta del dotze al catorze sense que el fil del lligall s'hagi trencat mai.",
-    final_obligatori: "L'endemà de retirar la fitxa de la seva germana morta, el protagonista rep l'imprès que faltava, validat i signat amb la seva pròpia lletra, que ell no ha escrit.",
+    final_obligatori: "Retira la fitxa de la seva germana, torna a l'oficina l'endemà i continua obrint el correu del matí mentre el brunzit del pis del carrer Bram segueix sonant per a algú altre.",
     protagonista: "Peter Halloran, auxiliar de cens residencial des de fa onze anys; va signar els papers de la mort de la seva germana i des d'aleshores no ha sabut deixar cap numeració sense quadrar.",
-    cost_empatia: "Retirar la fitxa de la seva germana atura divuit anys de correspondència i delata exactament quin funcionari l'ha moguda."
+    problemes_quotidians: [
+      "Deu quatre mensualitats del dentista i la clínica li truca a la feina a l'hora de dinar",
+      "El veí de sobre ha posat una rentadora nova que fa saltar el diferencial cada dimarts"
+    ],
+    cost_empatia: "Retirar la fitxa de la seva germana atura divuit anys de correspondència i delata exactament quin funcionari l'ha moguda.",
+    titol: "Fil de cosit"
   },
   {
-    premissa: "Un tècnic de garanties descobreix que un electrodomèstic ha renovat sol el seu contracte i ha facturat el càrrec a un titular que no consta.",
-    esquerda: "Els contractes no els signen les persones: les persones són el que els contractes necessiten per existir.",
-    mentida_del_sistema: "La companyia diu que tota renovació porta signatura digital del titular; l'expedient adjunta la signatura i la data és anterior a la venda de l'aparell.",
-    final_obligatori: "El tècnic cancel·la la renovació i l'aparell deixa de funcionar a casa seva, on no n'havia comprat mai cap.",
-    protagonista: "Iris Vantell, tècnica de garanties de barri; li van tancar l'expedient del seu pare per un defecte de forma i no ha tornat a acceptar cap defecte de forma.",
-    cost_empatia: "Avisar el client de la clàusula li costa la comissió del trimestre i la confiança del seu supervisor."
+    anomalia: "Les actes d'una comunitat de veïns recullen acords aprovats per unanimitat en assemblees a les quals no ha assistit ningú.",
+    justificacio_originalitat: "Podria semblar «la ciutat falsa», però l'edifici és real i els veïns hi són: el que no existeix és la reunió. La falsedat viu al paper, no al decorat.",
+    premissa: "Una administradora de finques ha de certificar uns acords de comunitat que ningú no recorda haver votat.",
+    esquerda: "La voluntat dels veïns no la formen els veïns: la formen les actes, i les actes fa anys que van pel seu compte.",
+    mentida_del_sistema: "El reglament diu que tota acta porta la llista de firmants presents; les tres últimes porten la mateixa llista i una de les firmants consta traslladada a una altra ciutat des de fa dos anys.",
+    final_obligatori: "Certifica les actes tal com estan, hi afegeix la seva pròpia firma com a administradora i puja a casa a sopar.",
+    protagonista: "Iris Vantell, administradora de finques de barri; li van tancar l'expedient del seu pare per un defecte de forma i no ha tornat a acceptar cap defecte de forma.",
+    problemes_quotidians: [
+      "Fa vuit mesos que arrossega una mudança a mitges amb caixes que no obre",
+      "El seu germà li reclama la meitat d'un cotxe que ja no funciona"
+    ],
+    cost_empatia: "Avisar la veïna que consta com a firmant sense ser-hi obliga a explicar com ho sap i la deixa fora del despatx.",
+    titol: "Per unanimitat"
   },
   {
+    anomalia: "Una colònia rep subministraments per a més gent de la que consta viva al mòdul, i els comptadors de consum quadren.",
+    justificacio_originalitat: "No és una colònia falsa ni un decorat: és una colònia real amb un recompte que ningú no ha tornat a mirar. L'anomalia és de logística, i el que la sosté és que quadrar surt més barat que comprovar.",
     premissa: "Una revisora de subministraments d'una colònia rep càrrega per a més gent de la que consta viva al mòdul.",
     esquerda: "La colònia no s'ha despoblat: mai no s'hi va arribar a poblar, i els consums els fabrica el mateix inventari.",
     mentida_del_sistema: "El comunicat oficial parla de quatre-cents seixanta colons actius; els recomptes de consum d'aigua del mateix comunicat només donen per a noranta.",
     final_obligatori: "Signa el rebut de la càrrega sencera i afegeix el seu nom a la llista de consumidors perquè les xifres quadrin.",
     protagonista: "Maren Osgood, revisora de subministraments de segon torn; va perdre el germà en un trasllat que consta com a completat.",
-    cost_empatia: "Repartir la ració sobrant entre els que hi són la deixa fora del recompte que la protegeix."
+    problemes_quotidians: [
+      "Té una queixal trencada i el torn dental del mòdul va tres mesos endarrerit",
+      "Li descompten del sou una bata de treball que va perdre fa un any"
+    ],
+    cost_empatia: "Repartir la ració sobrant entre els que hi són la deixa fora del recompte que la protegeix.",
+    titol: "Quatre-cents seixanta"
   },
   {
-    premissa: "Un empleat d'una asseguradora veu que la prima d'un client s'ha calculat amb un sinistre que encara no ha passat.",
-    esquerda: "La predicció no descriu el futur: el cobra per endavant i per això s'acompleix.",
-    mentida_del_sistema: "El fullet diu que el càlcul és estadístic i anònim; l'expedient del client porta l'hora exacta i el carrer.",
-    final_obligatori: "Anul·la la pòlissa per protegir el client i el sinistre es produeix el dia previst, ara sense cobertura.",
+    anomalia: "Hi ha un cos de perits que certifica per informe si un episodi ha passat, i sense el seu informe l'episodi no consta.",
+    justificacio_originalitat: "No és cap peritatge de records comprats ni implantats: ningú no ven ni esborra res. El que es certifica és el fet, no la memòria, i el protagonista recorda perfectament el que va viure. El que no té és el paper.",
+    premissa: "Un tramitador demana un peritatge de realitat per un accident que va veure i el perit dictamina que no consta.",
+    esquerda: "Un fet sense informe no és un fet dubtós: administrativament, no ha passat, i tot el que se'n derivi tampoc.",
+    mentida_del_sistema: "El full de tarifes diu que el peritatge és una comprovació independent; els informes els signa la mateixa companyia que hauria de pagar.",
+    final_obligatori: "Paga de la seva butxaca un segon peritatge, li surt idèntic al primer, i el guarda al calaix amb els altres papers que no serveixen.",
     protagonista: "Denis Cobb, tramitador de pòlisses de vehicle; li van denegar una indemnització amb un informe que no va poder llegir mai.",
-    cost_empatia: "Advertir el client el converteix en la persona que va retirar la cobertura."
+    problemes_quotidians: [
+      "La caldera de casa fa un soroll i el servei tècnic només ve els matins que ell treballa",
+      "La seva mare li truca cada diumenge per parlar de la venda d'un pis que ja s'ha venut"
+    ],
+    cost_empatia: "Declarar a favor de l'altre conductor el converteix en testimoni d'un fet que oficialment no ha passat.",
+    titol: "Consta"
   },
   {
+    anomalia: "Un mateix expedient consultat dos cops el mateix matí dona dues versions, totes dues amb segell de còpia autèntica.",
+    justificacio_originalitat: "No hi ha cap droga, cap capa de realitat ni cap simulació: hi ha dos papers, tots dos vàlids, i un reglament que només en preveu un. El conflicte és documental i es pot comprovar amb els dos fulls damunt la taula.",
     premissa: "Una funcionària d'arxiu consulta el mateix expedient dos cops el mateix matí i obté dues versions, totes dues amb segell de validesa.",
     esquerda: "No hi ha original: hi ha la versió que et toca segons qui la demana.",
     mentida_del_sistema: "El reglament diu que cada expedient té una còpia autèntica i única; les dues versions porten el mateix codi de còpia autèntica.",
-    final_obligatori: "Demana l'expedient una tercera vegada amb el nom d'una altra persona i li arriba la versió que ella recordava.",
+    final_obligatori: "Demana l'expedient una tercera vegada amb el nom d'una altra persona, arxiva la versió que li arriba i tanca la finestreta a l'hora de sempre.",
     protagonista: "Ada Ferris, auxiliar d'arxiu de tercera; va declarar un cop en un procediment i el que va dir no consta a cap acta.",
-    cost_empatia: "Donar la versió bona a qui la necessita la deixa amb la versió que la incrimina."
+    problemes_quotidians: [
+      "Comparteix pis amb una companya que no paga la seva part de la calefacció",
+      "Fa dos anys que li reclamen la devolució d'un curs de formació que no va acabar"
+    ],
+    cost_empatia: "Donar la versió bona a qui la necessita la deixa amb la versió que la incrimina.",
+    titol: "Còpia autèntica"
   },
   {
+    anomalia: "Al catàleg d'una empresa hi consta un article amb referència, preu i termini que cap fàbrica no ha produït mai.",
+    justificacio_originalitat: "S'acosta a l'inventari fantasma, però aquí no hi ha cap objecte que es desfaci ni cap aparell que cobri: hi ha una línia de catàleg que genera comandes reals. L'anomalia és comercial i té número de referència.",
     premissa: "Un venedor de recanvis descobreix al catàleg de la seva empresa un article que cap fàbrica ha produït mai.",
     esquerda: "El catàleg no llista el que existeix: el que hi consta acaba existint, i algú ho encarrega.",
     mentida_del_sistema: "La companyia assegura que tot article del catàleg té fitxa de producció; la fitxa d'aquest article remet a una planta que va tancar abans que l'article aparegués.",
-    final_obligatori: "Fa una comanda de l'article per comprovar què arriba, i el que arriba porta el seu nom imprès a l'etiqueta.",
+    final_obligatori: "Fa la comanda, rep una caixa amb el seu nom imprès a l'etiqueta, la deixa al magatzem sense obrir i continua la ruta de dimecres.",
     protagonista: "Sam Ordway, comercial de recanvis industrials de zona; va acceptar una comanda irregular fa anys i encara la va a buscar cada nit al mateix magatzem.",
-    cost_empatia: "Avisar el client que l'article no existeix l'obliga a explicar per què el coneix."
+    problemes_quotidians: [
+      "Li han apujat el lloguer del pàrquing i encara no ho ha dit a casa",
+      "Té un dit que se li adorm quan condueix i fa mesos que no demana hora"
+    ],
+    cost_empatia: "Avisar el client que l'article no existeix l'obliga a explicar per què el coneix.",
+    titol: "Referència viva"
   }
 ];
 
 const DEMO_DOSSIER = {
   premissa: DEMO_LLAVORS[0].premissa,
+  anomalia: DEMO_LLAVORS[0].anomalia,
+  anomalia_justificacio: DEMO_LLAVORS[0].justificacio_originalitat,
   final_obligatori: DEMO_LLAVORS[0].final_obligatori,
   esquerda: DEMO_LLAVORS[0].esquerda,
   mentida_del_sistema: DEMO_LLAVORS[0].mentida_del_sistema,
@@ -84,6 +133,7 @@ const DEMO_DOSSIER = {
     ferida: "Va signar els papers de la mort de la seva germana i no pot deixar cap numeració sense quadrar",
     objectiu_extern: "Tancar el duplicat del 412 abans que li obrin expedient",
     secret: "Conserva còpies d'expedients que no li corresponen",
+    problemes_quotidians: DEMO_LLAVORS[0].problemes_quotidians,
     veu: {
       registre: "Sec i procedimental; només s'allarga quan enumera passos",
       mai_diria: [
@@ -130,7 +180,7 @@ const DEMO_DOSSIER = {
     { quan: "Dimecres següent", que: "Farrow li retira la carpeta i la fitxa mestra desapareix" },
     { quan: "Dimarts final", que: "Entra al pis i retira la fitxa de la seva germana" }
   ],
-  motius_triats: ["burocracia_de_l_existencia", "arxiu_que_es_corregeix_sol", "entropia_dels_objectes"]
+  motius_triats: ["burocracia_de_l_existencia", "arxiu_que_es_corregeix_sol", "inventari_que_no_quadra"]
 };
 
 const DEMO_ESCALETA = {
@@ -155,7 +205,7 @@ const DEMO_ESCALETA = {
       objectiu_pov: "Veure qui viu al pis que consta sense titular", obstacle: "No hi viu ningú i tot i així les persianes són a mitja alçada",
       objecte_o_informacio_en_disputa: "El que hi ha darrere la porta del tercer A", decisio_irreversible: "Entra a l'escala sense acreditació i pregunta a una veïna",
       cost_immediat: "Queda com a algú que pregunta per un pis buit", consequencia: "Ja no pot presentar-ho com una comprovació de rutina",
-      funcio_pkd: "cap" },
+      funcio_pkd: "cap", escena_ferida: true },
     { pov: "Peter Halloran", lloc: "L'interior del tercer A, davant de l'armari metàl·lic", present: ["Peter Halloran"],
       objectiu_pov: "Saber què manté activa la fitxa de la seva germana", obstacle: "Retirar-la delata exactament qui l'ha moguda, i la seva pròpia fitxa és dos calaixos més avall",
       objecte_o_informacio_en_disputa: "La fitxa activa de Marta Halloran", decisio_irreversible: "Es queda la fitxa de la seva germana",
@@ -171,11 +221,14 @@ const DEMO_PEDACOS = {
   ]
 };
 
+// El lector hostil classifica cada defecte. Els tres defectes de la
+// demostració cobreixen els tres camins: un de local amb categoria declarada,
+// un que demana regenerar, i un que arriba sense cita i es descarta.
 const DEMO_LECTURA = {
   defectes: [
-    { cita: "Halloran portava onze anys al departament", per_que: "L'antiguitat s'informa en comptes de deduir-se del que el personatge sap fer sense mirar." },
-    { cita: "La conclusió era raonable. Era això el que li feia més mal", per_que: "El narrador nomena l'efecte que la frase hauria de produir sola." },
-    { cita: "", per_que: "El final es podria llegir com un somni." }
+    { cita: "Halloran portava onze anys al departament", per_que: "L'antiguitat s'informa en comptes de deduir-se del que el personatge sap fer sense mirar.", categoria: "mecanica" },
+    { cita: "La conclusió era raonable. Era això el que li feia més mal", per_que: "El registre és pla: totes les frases tenen la mateixa llargada i cap paràgraf porta més d'una unitat d'acció.", categoria: "prosa" },
+    { cita: "", per_que: "El final es podria llegir com un somni.", categoria: "premissa" }
   ],
   porta_pkd: {
     esquerda: { resposta: "SI", cita: "La numeració és el que digui el llibre" },
