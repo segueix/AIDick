@@ -257,21 +257,23 @@ L’home va estirar-la pels cabells.
 
 —Dona-me-la.
 
-Al passadís van sonar crits. Johan va arribar primer amb un extintor. Darrere seu hi havia dos cambrers, una mecànica del ferri i quatre passatgers que havien reconegut Rydén.
+Al passadís va sonar un cop contra la porta. Johan va arribar sol amb un extintor. Havia seguit la trucada oberta i havia activat l’alarma d’incendi de la coberta.
 
-L’agressor va girar la pistola. La mecànica li va llançar una safata metàl·lica a la cara. Johan va descarregar l’extintor.
+L’agressor va girar la pistola elèctrica. Johan va descarregar l’extintor abans que pogués apuntar. L’escuma va omplir la cabina. El segon home va arrencar tres annexos de la carpeta i va fugir per una porta de servei.
 
-El segon home va fugir cap a les escales. Un grup d’estibadors que viatjava a Tallinn el va retenir a la coberta sis.
+Johan va intentar seguir-lo, però va relliscar damunt l’escuma i es va colpejar el genoll. Quan els membres de la tripulació van arribar, dos minuts més tard, només van trobar un agressor, Rydén inconscient i Elin agenollada damunt el protocol signat.
 
-Rydén respirava. Tenia una ferida al cap i el pols irregular.
+La gravadora cosida a l’abric havia quedat aixafada. Set pàgines estaven tacades de sang i escuma. Els tres annexos no van aparèixer al registre de cap passatger.
 
-Elin continuava abraçada a la carpeta.
+Rydén respirava. Tenia una fractura al crani i no va recuperar la consciència fins l’endemà.
 
 La capitana va ordenar tornar a Estocolm.
 
-Abans que arribessin, les fotografies de cada pàgina ja eren a sis redaccions, tres sindicats, dues organitzacions de drets humans i una jutgessa retirada que havia acceptat certificar-ne la recepció.
+Abans que arribessin, Karin havia rebut fotografies llegibles del protocol i de disset pàgines. Una jutgessa retirada en va certificar l’hora de recepció. La resta depenia encara de l’original, del testimoni de Rydén i dels annexos desapareguts.
 
-L’original no tornaria a quedar sol.
+L’original ja no estava sol.
+
+Tampoc estava complet.
 
 · · ·
 
@@ -355,9 +357,17 @@ Johan va negar amb el cap.
 
 Karin va trucar a l’hospital. Rydén va acceptar lliurar la còpia a canvi que la recepció quedés documentada abans que la fiscalia pogués confiscar-la en secret.
 
-Durant les sis hores següents, programadors voluntaris de tres universitats i dos sindicats van construir una eina de consulta. No copiava dades al servidor. No conservava cerques. Cada resultat incloïa la font administrativa i l’acció recomanada.
+Durant les sis hores següents, programadors voluntaris de tres universitats i dos sindicats van construir una eina de consulta. No havia de copiar dades al servidor ni conservar cerques. Cada resultat incloïa la font administrativa i l’acció recomanada.
 
-A les onze de la nit, la van activar.
+Karin va demanar una auditoria de vint-i-quatre hores.
+
+—La policia està entrant als pisos ara —va dir Elin.
+
+—Una eina amb dades personals no es publica perquè tinguem pressa.
+
+—Tampoc es deixa tancada mentre les utilitzen.
+
+Van activar-la a les onze de la nit amb una advertència provisional.
 
 En la primera hora, trenta-vuit mil persones van comprovar el seu nom.
 
@@ -371,11 +381,21 @@ Una jutgessa, com a risc ideològic per suspendre una deportació.
 
 Set-centes dones van trobar la categoria probabilitat de retractació.
 
-Milers de persones no hi apareixien. Algunes van interpretar-ho com una prova que el sistema només perseguia culpables. Altres van entendre que la normalitat també podia ser una puntuació favorable.
+A les dotze i tretze, una programadora va detectar que la memòria cau havia conservat dues-centes catorze respostes durant sis minuts. Tres persones havien rebut un perfil que no era el seu. Una captura mostrava el municipi i el número d’un expedient de custòdia protegit.
 
-A les dues, el govern va ordenar bloquejar l’eina per risc de seguretat nacional.
+Karin va desconnectar l’eina.
 
-Els sindicats ja n’havien creat quaranta còpies.
+—Encara podem corregir-ho —va dir Elin.
+
+—Primer protegirem la dona que acabem d’exposar.
+
+La van traslladar aquella mateixa nit. Un fòrum partidari d’Ehn ja havia reproduït la captura i el govern va presentar l’error com a prova que tota la base era una falsificació irresponsable.
+
+Elin va comparèixer davant les càmeres i va assumir la decisió d’haver publicat abans de completar l’auditoria. No va culpar els programadors ni la urgència.
+
+L’endemà, un equip independent va reconstruir l’eina sense memòria cau i amb verificació doble. Els sindicats en van allotjar còpies auditades. El govern va ordenar bloquejar-les per risc de seguretat nacional.
+
+La consulta va continuar, però ja no podia presentar-se com una victòria neta.
 
 · · ·
 
@@ -401,11 +421,11 @@ Elin i Karin eren a la tribuna de premsa. Johan esperava al carrer amb Sanna i c
 
 Abans de la votació, una diputada centrista va demanar la paraula. Es deia Märta Ek i havia defensat el programa pilot en comissió.
 
-—Ahir vaig consultar el meu nom —va dir.
+—Vaig defensar el programa pilot després que una alerta creuada permetés trobar armes destinades a un atac a Malmö —va dir—. Encara crec que aquella actuació va salvar vides.
 
 La cambra va quedar en silenci.
 
-—Consto com a fiable. La meva filla, que treballa en un refugi, consta com a incompatible. No puc votar poders addicionals a un sistema que converteix el desacord familiar en una dada de seguretat.
+—Precisament per això vaig exigir que l’eina fos limitada, revisable i sotmesa a autorització judicial. Ahir vaig consultar el meu nom. Consto com a fiable. La meva filla, que treballa en un refugi, consta com a incompatible. Però no retiro el suport perquè sigui la meva filla. El retiro perquè el sistema que vaig votar ja no existeix. En el seu lloc n’hi ha un que converteix el desacord familiar, sindical o polític en una dada de seguretat.
 
 Altres quatre diputats van retirar el suport.
 
