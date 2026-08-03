@@ -39,7 +39,7 @@ Ingrid va deixar el ganivet. La pera havia quedat marcada però sencera.
 
 Elin li va ensenyar el document.
 
-—Volen que no s’acabi —va dir Ingrid.
+—Volen conservar-ho —va dir Ingrid.
 
 La nova redacció de Fokus Norr era una habitació cedida per un sindicat de traductors. Karin hi havia penjat les portades de LA LLISTA FREDA, CASA SEGURA i EL PAÍS CORRECTE.
 
@@ -49,7 +49,7 @@ Karin va posar damunt la taula una llista de sumes de verificació.
 
 —Els identificadors coincideixen amb la còpia de Rydén —va dir Johan.
 
-Anneli havia descobert que quaranta-dues caixes i els discos mestres no s’havien destruït. Havien estat transferits a SVEA-41, una plataforma d’emergència gestionada per Nordisk Samhällsberedskap AB.
+Anneli havia descobert que quaranta-dues caixes i els discos mestres no s’havien destruït. Havien estat transferits a SVEA-41, una plataforma d’emergència gestionada per Nordskydd.
 
 Birgitta va consultar el registre mercantil.
 
@@ -57,7 +57,7 @@ Birgitta va consultar el registre mercantil.
 
 Maja va trobar el president del consell: un antic assessor de Viktor Ehn.
 
-La xarxa no havia sobreviscut amagant-se. Havia canviat la capçalera dels documents.
+La xarxa no s’havia amagat. Havia canviat la capçalera dels documents.
 
 Anneli no va arribar a la cita. A les dotze i cinquanta-dos, Karin va rebre una ubicació: l’aparcament de l’Arxiu Nacional, a Täby.
 
@@ -87,7 +87,7 @@ Sanna va anar a buscar la filla d’Anneli a l’escola abans que hi arribessin 
 
 Pressió familiar.
 
-El mecanisme conservava fins i tot el nom.
+Feien servir fins i tot la mateixa etiqueta.
 
 Aquella tarda, Elin va tornar a casa per portar medicació a Ingrid. La clínica de rehabilitació havia ofert recuperar-li la plaça si signava un acord de confidencialitat sobre la suspensió anterior.
 
@@ -142,7 +142,7 @@ Una dona del torn de classificació va apagar la següent.
 
 La direcció va ordenar que continuessin. Set treballadors van demanar la instrucció per escrit. Quan va arribar, el document no contenia cap referència als sis volums.
 
-—Llavors no és una ordre per a aquests llibres —va dir Per.
+—Aquests llibres no hi consten —va dir Per.
 
 A les deu i trenta-quatre, les trituradores es van activar des de la sala de control d’Estocolm.
 
@@ -168,7 +168,7 @@ Elin tenia al telèfon la fotografia que Per havia fet del primer full. Mostrava
 
 —Si esperem, esborraran els accessos vius —va dir.
 
-—Si publiques abans del precinte, regalaràs a la defensa una discussió sobre la cadena de custòdia.
+—Si publiques abans del precinte, la defensa discutirà la cadena de custòdia.
 
 —Ja tenim el llibre.
 
@@ -180,7 +180,7 @@ La negació del govern va durar cinquanta-dos minuts.
 
 A les dues i onze, dos centres de dades vinculats a SVEA-41 van iniciar una eliminació d’emergència dels registres d’accés. La policia no va obtenir autorització per entrar-hi fins a les quatre. Quan ho va fer, faltaven sis setmanes d’activitat.
 
-El codi de perforació visible al marge de la fotografia identificava l’estació de treball de Per. Nordisk Samhällsberedskap el va acomiadar l’endemà per revelació de secrets empresarials.
+El codi de perforació visible al marge de la fotografia identificava l’estació de treball de Per. Nordskydd el va acomiadar l’endemà per revelació de secrets empresarials.
 
 Karin va retirar Elin de la direcció del reportatge.
 
@@ -257,7 +257,7 @@ Anneli va identificar els funcionaris que havien recollit els discos. Per va exp
 
 —Per què va aturar la màquina? —li va preguntar un diputat.
 
-—Perquè l’ordre que em demanaven executar no deia què estava destruint.
+—Perquè l’ordre no deia que hagués de destruir aquells llibres.
 
 Johan va admetre que havia coordinat la preservació malgrat la seva restricció professional.
 
@@ -277,9 +277,7 @@ Elin va declarar última. Va explicar també la seva pròpia decisió.
 
 Elin va mirar Per, assegut darrere seu amb una acreditació provisional de l’associació de Sanna.
 
-—Perquè vaig pensar que la urgència em donava dret a decidir quin risc havia d’assumir una altra persona.
-
-No va demanar que aquella resposta la fes quedar millor.
+—Vaig actuar com si la urgència em permetés decidir el risc d’una altra persona.
 
 Després va llegir dates: la mort de Samira, la factura de Civis, la filtració del refugi, l’expansió estatal, la transferència a SVEA-41 i l’ordre de destrucció.
 
@@ -325,7 +323,7 @@ Johan va perdre la llicència durant divuit mesos per haver intervingut malgrat 
 
 —No sembla que t’agradi —va respondre Elin.
 
-—No m’agrada que només tinguin raó després que algú desobeeixi.
+—M’hauria agradat que les normes haguessin funcionat abans.
 
 Fokus Norr va guanyar la demanda principal de l’Estat, però va ser sancionat per la fallada de l’eina de consulta. Karin va mantenir la cooperativa en habitacions cedides i va establir una norma nova: cap urgència eliminava la revisió d’una altra persona.
 
@@ -335,9 +333,9 @@ Maja i Birgitta van negociar una clàusula nacional que obligava les empreses su
 
 Sanna va continuar coordinant una xarxa de refugis amb registres separats dels serveis de custòdia. Selma conservava provisionalment la custòdia de l’Oskar. La investigació de l’incendi de Rebecka Norén seguia oberta.
 
-No totes les històries havien acabat.
+Alguns casos continuaven oberts.
 
-La de SVEA-41 sí que podia acabar-se.
+SVEA-41 ja podia ser destruït.
 
 · · ·
 
@@ -363,9 +361,7 @@ Al final del dia, el responsable tècnic va declarar que no quedava cap còpia o
 
 —Puc certificar els sistemes que hem inspeccionat. No puc certificar que ningú no hagi guardat una captura ni reconstruir l’annex que es va destruir.
 
-Era una resposta limitada.
-
-Per això servia.
+Era l’única certesa que podia oferir.
 
 Johan va marxar cap a una reunió de l’associació. Sanna havia d’agafar un tren. Maja i Birgitta discutien una frase del conveni. Karin editava el reportatge final al telèfon. Per esperava una entrevista de feina l’endemà.
 
