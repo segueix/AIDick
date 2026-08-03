@@ -81,7 +81,7 @@ L’ambulància va entrar a l’aparcament. El guàrdia va començar a fotografi
 
 L’arxiu de contingència ocupava el soterrani d’un antic centre de telecomunicacions als afores d’Örebro. No figurava en cap directori públic. Birgitta el va localitzar a través d’una factura municipal per retirar humitat.
 
-Johan va obtenir una ordre judicial limitada a preservar el llibre de custòdia, però la fiscal va exigir-ne el número exacte. Anneli estava ingressada i el seu telèfon havia desaparegut.
+Johan va obtenir una ordre judicial limitada a preservar el llibre de custòdia, però la fiscal va exigir-ne la referència exacta. Anneli estava ingressada i el seu telèfon havia desaparegut.
 
 Sanna va anar a buscar la filla d’Anneli a l’escola abans que hi arribessin els serveis socials. Una denúncia anònima afirmava que vivia en situació de risc per l’activitat delictiva de la mare.
 
@@ -124,35 +124,75 @@ INICI: 22.30
 MATERIAL ANALÒGIC NO INDEXAT  
 MÈTODE: TRITURACIÓ I PASTA
 
-—El llibre —va dir Johan.
+Sis volums esperaven dins d’una gàbia metàl·lica. Un portava una etiqueta parcial: SVEA. La direcció va negar que existís cap llibre amb aquell nom i va declarar que el material era documentació tècnica sense valor arxivístic.
 
-Sis volums esperaven dins d’una gàbia metàl·lica. Un portava la referència SVEA, però la direcció va negar que existís i l’ordre judicial va quedar sense objecte.
+Sense número complet, l’ordre judicial no servia.
 
-Birgitta va advertir els operaris que destruir documentació sota controvèrsia podia implicar responsabilitat personal. A les deu i vint-i-vuit, van apagar les trituradores.
+Per va enviar una fotografia del llom. El codi estava mig cobert per una cinta d’inventari. Johan va ampliar la imatge fins que els píxels es van convertir en quadrats.
 
-La direcció va enviar vigilants privats. Quaranta treballadors d’una planta pròxima van aparcar davant del centre i van mantenir els telèfons encesos. Karin va iniciar una emissió en directe.
+SVEA-41/K-06/2019-2026.
 
-A les deu i quaranta-set, un camió sense distintius va sortir per una porta lateral.
+Va presentar una ampliació de l’ordre al jutjat de guàrdia. La funcionària va respondre que el magistrat revisaria la petició quan acabés una vista de detenció.
 
-Elin, Johan i Birgitta el van seguir per una carretera coberta de gel. Al primer revolt, el camió va frenar de cop. Dos homes van baixar. Un portava una barra extensible.
+A les deu i vint-i-vuit, Birgitta va trucar al delegat sindical del torn. Li va explicar que cada operari que alimentés la trituradora hauria de signar una declaració individual de destrucció.
 
-—Hi ha una ordre de preservació —va dir Johan.
+Per va apagar la seva màquina.
 
-L’home el va colpejar al pòmul. El segon va intentar obrir el maleter del cotxe. Elin va activar la càmera i Birgitta va fer sonar el clàxon.
+Una dona del torn de classificació va apagar la següent.
 
-Els treballadors que seguien l’emissió van començar a arribar. Per Nyström va aparcar davant del camió. Després en van arribar tres més. Un llevaneu municipal va bloquejar la carretera per l’altra banda.
+La direcció va ordenar que continuessin. Set treballadors van demanar la instrucció per escrit. Quan va arribar, el document no contenia cap referència als sis volums.
 
-La policia va trobar dins del camió sis gàbies, dues trituradores portàtils i el llibre de custòdia de SVEA-41.
+—Llavors no és una ordre per a aquests llibres —va dir Per.
 
-Johan tenia el pòmul trencat.
+A les deu i trenta-quatre, les trituradores es van activar des de la sala de control d’Estocolm.
 
-El llibre era intacte.
+El primer volum va entrar a la cinta abans que ningú pogués apartar-lo. Per va estirar el cable vermell d’emergència. La màquina es va aturar amb mig centenar de pàgines convertides en tires humides.
+
+Els vigilants privats van tancar les portes del soterrani i van exigir els telèfons dels treballadors. Ningú no els va lliurar. La direcció va suspendre Per i la dona de classificació per insubordinació.
+
+Karin no va iniciar cap emissió. Va enregistrar els noms, les hores i les frases exactes que els treballadors li dictaven per telèfon. Birgitta va preparar una declaració conjunta. Catorze persones la van signar abans de les onze.
+
+A les onze i disset, el jutjat va ampliar l’ordre de preservació amb el codi complet. A les onze i quaranta, una oficial d’execució va entrar a l’arxiu amb dos policies i va precintar cinc volums, la gàbia i les restes del sisè.
+
+El llibre de custòdia de SVEA-41 era intacte.
+
+L’annex de rutes administratives no.
 
 · · ·
 
-El llibre demostrava qui havia rebut les dades, qui les havia consultat i quines accions havia generat el sistema després de les eleccions.
+A les dotze i quaranta-un, el govern encara negava que el llibre fos un registre oficial.
 
-Hi havia accessos de la policia, serveis socials, oficines de migració i equips de comunicació de tres partits. Les finalitats declarades eren prevenció, continuïtat i verificació. Les accions eren més clares:
+Karin va ordenar que esperessin l’inventari judicial abans de publicar cap pàgina.
+
+Elin tenia al telèfon la fotografia que Per havia fet del primer full. Mostrava la recepció dels discos, la signatura del nou ministre i set consultes associades a la seva credencial.
+
+—Si esperem, esborraran els accessos vius —va dir.
+
+—Si publiques abans del precinte, regalaràs a la defensa una discussió sobre la cadena de custòdia.
+
+—Ja tenim el llibre.
+
+—Tenim una fotografia feta per un treballador suspès d’un document que encara no ha estat inventariat.
+
+A la una i tres, Elin va publicar la pàgina al seu compte personal.
+
+La negació del govern va durar cinquanta-dos minuts.
+
+A les dues i onze, dos centres de dades vinculats a SVEA-41 van iniciar una eliminació d’emergència dels registres d’accés. La policia no va obtenir autorització per entrar-hi fins a les quatre. Quan ho va fer, faltaven sis setmanes d’activitat.
+
+El codi de perforació visible al marge de la fotografia identificava l’estació de treball de Per. Nordisk Samhällsberedskap el va acomiadar l’endemà per revelació de secrets empresarials.
+
+Karin va retirar Elin de la direcció del reportatge.
+
+—Ho vaig publicar perquè ho negaven —va dir Elin.
+
+—Ho continuaran negant. Ara tenim menys registres i una font sense feina.
+
+Elin no va respondre. Havia volgut impedir que el sistema tornés a guanyar temps. Li n’havia donat.
+
+El llibre preservat demostrava qui havia rebut les dades, qui les havia consultat i quines accions havia generat el sistema després de les eleccions. Hi havia accessos de la policia, serveis socials, oficines de migració i equips de comunicació de tres partits.
+
+Les finalitats declarades eren prevenció, continuïtat i verificació. Les accions eren més clares:
 
 VISITA DOMICILIÀRIA.  
 REVISIÓ DE CUSTÒDIA.  
@@ -160,13 +200,9 @@ INSPECCIÓ FISCAL.
 EXCLUSIÓ DE CONTRACTE.  
 CONTACTE AMB FAMILIAR.
 
-Viktor Ehn apareixia en dotze autoritzacions com a responsable polític de continuïtat. El nou ministre havia signat la recepció de la infraestructura i la seva credencial havia consultat set perfils.
+Viktor Ehn apareixia en dotze autoritzacions com a responsable polític de continuïtat. Les set consultes del nou ministre només constaven a la fotografia d’Elin i als registres esborrats.
 
-La comissió parlamentària va convocar una audiència pública. La fiscalia, mentrestant, va obrir investigacions contra Anneli, Elin, Karin, Johan i Birgitta per revelació i apropiació de documentació estatal.
-
-—Ens investiguen per impedir que destruïssin una prova —va dir Karin.
-
-—Diran que no sabien que era una prova —va respondre Johan des de l’hospital.
+La comissió parlamentària va convocar una audiència pública. La fiscalia, mentrestant, va obrir investigacions contra Anneli, Karin, Johan, Birgitta, Per i Elin per revelació i apropiació de documentació estatal.
 
 La família de Samira va autoritzar l’ús del seu expedient complet. Mostrava el valor de silenci, les amenaces sobre el permís de residència i la decisió de mantenir-la al torn malgrat els informes mèdics. Sis hores abans de morir, el sistema havia registrat:
 
@@ -217,17 +253,37 @@ Ehn va beure aigua.
 
 —L’Estat no deixa de conèixer una persona perquè canviï un govern.
 
-Anneli va entrar amb el llavi encara inflat i va identificar els funcionaris que havien recollit els discos. Un treballava per Nordisk Samhällsberedskap. L’altre era assessor d’Ehn.
+Anneli va identificar els funcionaris que havien recollit els discos. Per va explicar com s’havien activat les trituradores a distància i va reconèixer que havia fotografiat el llibre abans del precinte.
 
-Johan va reconèixer que havia coordinat la preservació del llibre malgrat la seva restricció professional.
+—Per què va aturar la màquina? —li va preguntar un diputat.
 
-—Per què? —va preguntar un diputat.
+—Perquè l’ordre que em demanaven executar no deia què estava destruint.
 
-—Perquè una restricció no converteix una trituradora en un tribunal.
+Johan va admetre que havia coordinat la preservació malgrat la seva restricció professional.
 
-Elin va declarar última. No va descriure cap conspiració. Va llegir dates: la mort de Samira, la factura de Civis, la filtració del refugi, la transferència a SVEA-41, la falsa destrucció i el camió.
+—Una restricció no converteix una trituradora en un tribunal —va dir.
 
-Després va projectar dues pàgines.
+Elin va declarar última. Va explicar també la seva pròpia decisió.
+
+—Va publicar abans que el document fos inventariat? —va preguntar la presidenta.
+
+—Sí.
+
+—Sabia que podia perjudicar la cadena de custòdia?
+
+—Ho sabia.
+
+—Per què ho va fer?
+
+Elin va mirar Per, assegut darrere seu amb una acreditació provisional de l’associació de Sanna.
+
+—Perquè vaig pensar que la urgència em donava dret a decidir quin risc havia d’assumir una altra persona.
+
+No va demanar que aquella resposta la fes quedar millor.
+
+Després va llegir dates: la mort de Samira, la factura de Civis, la filtració del refugi, l’expansió estatal, la transferència a SVEA-41 i l’ordre de destrucció.
+
+Finalment va projectar dues pàgines certificades pel tribunal.
 
 ELIN SANDSTRÖM  
 FRICCIÓ INSTITUCIONAL: CRÍTICA  
@@ -241,23 +297,27 @@ Ehn va mirar la pantalla. Per primera vegada no va prendre notes.
 
 · · ·
 
-La publicació del llibre va provocar tres dimissions i dues detencions. Els servidors van quedar precintats sota supervisió judicial i sindical.
+El judici va començar set mesos més tard.
 
-Ehn va abandonar la direcció del partit, però va conservar l’escó fins que el Parlament li va retirar la immunitat per sis vots. No el van acusar de totes les conseqüències del sistema. El van acusar d’autoritzar-ne la continuïtat, ordenar la destrucció de proves i utilitzar dades personals per interferir en procediments públics.
-
-Era menys que tot.
-
-Era demostrable.
-
-Lars Heder va pactar una pena per destrucció de proves. Annika Broman va ser condemnada per revelar adreces protegides. Mats Randel va rebre una pena superior quan el seu telèfon el va vincular amb els homes del ferri i el camió. Henrik Vahl va ser condemnat per la mort de Samira i per coaccionar testimonis. Tomas Rydén va declarar durant onze dies; la col·laboració li va reduir la pena, no la va evitar.
-
-El judici d’Ehn va durar set mesos. La defensa va sostenir que les puntuacions no eren decisions. La fiscalia va mostrar que cada acció tornava al sistema i millorava el model.
+La defensa va sostenir que les puntuacions no eren decisions i que el llibre de custòdia només registrava consultes administratives. La fiscalia va mostrar ordres d’inspecció, suspensions de serveis i revisions de custòdia creades minuts després de cada accés.
 
 No era una llista passiva.
 
 Era una administració paral·lela.
 
-El tribunal va declarar il·legal tot el programa, inclosa la infraestructura de continuïtat. Ehn va ser condemnat a cinc anys i inhabilitat. El nou ministre va rebre dos anys. Quatre funcionaris van rebre penes menors.
+La pàgina publicada per Elin va quedar exclosa com a prova contra el nou ministre. Sense els registres eliminats aquella nit, el tribunal no va poder determinar qui havia utilitzat la seva credencial. Va dimitir, però va ser absolt del delicte d’accés il·legal.
+
+Per Nyström va obtenir una indemnització laboral, no la readmissió. Durant el judici va treballar descarregant camions en un magatzem de fruita.
+
+Viktor Ehn va ser condemnat per autoritzar la continuïtat del sistema, ordenar la destrucció de proves i utilitzar dades personals per interferir en procediments públics. La pena va ser de cinc anys i inhabilitació.
+
+No el van condemnar per totes les conseqüències del programa. Algunes no tenien autor identificable. D’altres havien quedat dins l’annex triturat.
+
+Era menys que tot.
+
+Era demostrable.
+
+Heder va pactar una pena per destrucció de proves. Els casos contra Broman, Randel, Vahl i Rydén van continuar per vies separades. Les sentències no van arribar el mateix dia ni van explicar una sola història ordenada.
 
 Johan va perdre la llicència durant divuit mesos per haver intervingut malgrat la prohibició. La resolució reconeixia que havia preservat una prova essencial, però afirmava que l’Estat de dret no podia dependre de desobediències individuals.
 
@@ -267,51 +327,47 @@ Johan va perdre la llicència durant divuit mesos per haver intervingut malgrat 
 
 —No m’agrada que només tinguin raó després que algú desobeeixi.
 
-Durant la suspensió va preparar expedients per a l’associació de Sanna. Fokus Norr va guanyar la demanda de l’Estat, però no va recuperar l’oficina. Karin va mantenir la cooperativa en habitacions cedides fins que les subscripcions van permetre pagar sous.
+Fokus Norr va guanyar la demanda principal de l’Estat, però va ser sancionat per la fallada de l’eina de consulta. Karin va mantenir la cooperativa en habitacions cedides i va establir una norma nova: cap urgència eliminava la revisió d’una altra persona.
 
-Maja i Birgitta van negociar el primer conveni nacional que prohibia puntuacions ocultes en empreses subcontractades. La clàusula ocupava quatre línies. Havien necessitat tres anys, una mort i milers de pàgines per escriure-les.
+Elin la va signar.
 
-La nova clàusula obligava les empreses a revelar qualsevol sistema de classificació, donar accés individual a les dades i permetre una impugnació sindical abans d’una sanció. La primera empresa que va intentar esquivar-la canviant «puntuació» per «índex operatiu» va perdre un contracte regional. Birgitta va conservar la carta de rescissió dins la carpeta de Samira. No era justícia pòstuma. Era una conseqüència que una altra empresa podia entendre.
+Maja i Birgitta van negociar una clàusula nacional que obligava les empreses subcontractades a revelar qualsevol sistema de classificació, donar accés individual a les dades i permetre una impugnació sindical abans d’una sanció. Ocupava quatre línies.
 
-Sanna va dirigir una xarxa pública de refugis amb registres separats dels serveis de custòdia. Selma va obtenir la custòdia definitiva de l’Oskar. La investigació de l’incendi de Rebecka Norén va acabar amb la condemna del marit i d’un responsable de Trygga Hem. El primer refugi recuperat per l’administració pública va posar el nom de Rebecka al vestíbul.
+Sanna va continuar coordinant una xarxa de refugis amb registres separats dels serveis de custòdia. Selma conservava provisionalment la custòdia de l’Oskar. La investigació de l’incendi de Rebecka Norén seguia oberta.
 
-La família de Samira va rebre una indemnització. La xifra superava les divuit mil quatre-centes corones del seu valor de silenci, però no s’assemblava a una reparació. La seva germana en va destinar una part a un fons jurídic per a treballadores migrants.
+No totes les històries havien acabat.
 
-El fons de la germana de Samira va assumir els primers vint-i-tres casos abans de l’estiu. Cap era idèntic al de Samira. Tots compartien contractes opacs, por de perdre el permís i empreses que comptaven amb el silenci. Maja hi treballava dos vespres per setmana, després del torn. Quan una dona li preguntava si denunciar serviria d’alguna cosa, no prometia cap victòria. Li explicava els terminis, els riscos i el nom de l’advocada de guàrdia.
-
-Ingrid va continuar la rehabilitació fins al final de l’hivern. Va recuperar prou mobilitat per anar de la cuina al carrer amb un bastó. No va perdonar la clínica ni va voler participar en cap entrevista.
-
-Elin va respectar les dues coses.
+La de SVEA-41 sí que podia acabar-se.
 
 · · ·
 
-La destrucció de SVEA-41 es va fer un matí de març sota supervisió del tribunal, tècnics independents, sindicats i representants de les persones afectades.
+La destrucció dels servidors es va fer un matí de març sota supervisió del tribunal, tècnics independents, sindicats i representants de les persones afectades.
 
 No hi va haver una barra verda ni una roda de premsa.
 
-Cada disc es va comparar amb el llibre de custòdia. Les dades necessàries per als judicis van passar a un arxiu probatori amb accés controlat. La resta es va eliminar davant de testimonis.
+Cada disc es va comparar amb el llibre de custòdia. Les dades necessàries per als procediments oberts van passar a un arxiu probatori amb accés controlat. La resta es va eliminar davant de testimonis.
 
-Elin hi va assistir amb Karin, Johan, Sanna, Maja, Birgitta i Anneli.
+Elin hi va assistir amb Karin, Johan, Sanna, Maja, Birgitta, Anneli i Per.
 
 Quan els tècnics van arribar al registre de Samira Darwish, la seva germana va demanar que s’aturessin. Va llegir el nom complet, la data de naixement i la professió. Després va autoritzar l’eliminació.
 
-Van fer el mateix amb Rebecka Norén i amb les treballadores mortes que ningú havia relacionat fins llavors amb el sistema.
+Van fer el mateix amb Rebecka Norén i amb les altres persones que havien consentit ser representades.
 
 No van llegir els perfils.
 
 Només els noms sencers.
 
-Al final del dia, el responsable tècnic va declarar que no quedava cap còpia operativa.
+Al final del dia, el responsable tècnic va declarar que no quedava cap còpia operativa en mans de l’Estat.
 
 —N’està segur? —va preguntar un periodista.
 
-—No puc certificar que ningú hagi guardat una captura. Puc certificar que l’Estat ja no disposa del sistema ni té dret a reconstruir-lo.
+—Puc certificar els sistemes que hem inspeccionat. No puc certificar que ningú no hagi guardat una captura ni reconstruir l’annex que es va destruir.
 
 Era una resposta limitada.
 
 Per això servia.
 
-Johan va marxar cap a una reunió de l’associació. Sanna havia d’agafar un tren. Maja i Birgitta discutien una clàusula del conveni. Karin editava el reportatge final al telèfon.
+Johan va marxar cap a una reunió de l’associació. Sanna havia d’agafar un tren. Maja i Birgitta discutien una frase del conveni. Karin editava el reportatge final al telèfon. Per esperava una entrevista de feina l’endemà.
 
 Elin va tornar a casa d’Ingrid.
 
@@ -319,15 +375,11 @@ Damunt la taula hi havia una pera tallada en quatre trossos irregulars.
 
 —S’ha acabat? —va preguntar la seva mare.
 
-—Sí.
+—Això sí.
 
-Elin no va afegir per ara.
+Van menjar en silenci mentre la ràdio explicava les condemnes, els procediments pendents i el reglament que prohibia classificar persones sense notificació, accés i recurs.
 
-Van menjar en silenci mentre la ràdio explicava les condemnes, les indemnitzacions i el reglament que prohibia classificar persones sense notificació, accés i recurs.
-
-L’endemà hi hauria errors, abusos i documents amb noms nous. Elin continuaria treballant. Johan tornaria als tribunals quan acabés la suspensió. Sanna rebria una altra trucada d’una dona que no confiava en cap oficina.
-
-Però aquella saga concreta tenia responsables, sentències, arxius preservats i un sistema destruït.
+L’endemà hi hauria altres abusos i documents amb noms nous. Elin continuaria treballant. Aquesta vegada no decidiria sola què podia arriscar una font.
 
 A la paret de Fokus Norr, Karin va penjar l’última portada al costat de les altres tres.
 
