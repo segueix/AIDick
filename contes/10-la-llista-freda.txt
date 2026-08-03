@@ -144,7 +144,7 @@ Elin va mirar les finestres cegues del centre de dades.
 
 A les onze, l’oficina de NordRen a Solna feia olor de cafè recalentat i moqueta humida.
 
-Elin hi havia entrat amb una cita falsa a nom d’una empresa de manteniment. Portava una carpeta, una armilla reflectora i el cansament suficient perquè ningú li preguntés gaire. La recepcionista li va donar una acreditació temporal i li va indicar la tercera planta.
+Elin hi havia entrat amb una cita falsa a nom d’una empresa de manteniment que figurava al calendari públic de proveïdors de NordRen. Portava una carpeta, una armilla reflectora i el cansament suficient perquè ningú li preguntés gaire. La recepcionista va trucar dues vegades al contacte de la visita. Ningú va respondre. Finalment li va donar una acreditació temporal i li va indicar la tercera planta.
 
 No va pujar.
 
@@ -183,7 +183,11 @@ Birgitta va riure una vegada, sense humor.
 
 La va conduir fins al soterrani. El passadís quedava fora de la zona de visitants. Van baixar per una escala de servei i van arribar a una porta metàl·lica amb un lector antic. Birgitta va acostar-hi la seva targeta. L’aparell va marcar accés denegat.
 
-—Samira hi entrava perquè netejava el despatx de Rydén.
+—Samira hi entrava perquè netejava el despatx de Rydén. Feia dies que en copiava fragments. Em va preguntar si les targetes antigues encara podien guardar fitxers de manteniment.
+
+—I podien?
+
+—El lector del vestidor les reconeixia com una memòria petita. No sabia per què ho volia.
 
 —Per què guardaria torns en paper?
 
